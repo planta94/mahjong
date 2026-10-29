@@ -1,14 +1,17 @@
 <div align="center">
   <img src="public/favicon.svg" alt="HK &amp; MY Mahjong Pavilion Crest" width="84" height="84" />
-
-  # 港馬麻雀館 · HK & MY Mahjong Pavilion
-
-  **Zero-Backend Hong Kong 4-Player (144-Tile) & Authentic Malaysian 3-Player Fly Mahjong (84-Tile)**  
-  *5-Fan Minimum (`5番起糊`) · WebRTC P2P Multiplayer · Heuristic 5-Fan AI Bots · Trilingual (`繁中` / `EN` / `BM`)*
-
-  [![Play on GitHub Pages](https://img.shields.io/badge/Play_Now-GitHub_Pages-eab308?style=for-the-badge&logo=github)](https://planta94.github.io/mahjong/)
-  ![Angular 21](https://img.shields.io/badge/Angular-21-dd0031?style=for-the-badge&logo=angular)
-  ![Zero Backend](https://img.shields.io/badge/Backend-Zero_(WebRTC_P2P)-00d285?style=for-the-badge)
+  <h1>港馬麻雀館 · HK &amp; MY Mahjong Pavilion</h1>
+  <p>
+    <strong>Zero-Backend Hong Kong 4-Player (144-Tile) &amp; Authentic Malaysian 3-Player Fly Mahjong (84-Tile)</strong><br />
+    <em>5-Fan Minimum (<code>5番起糊</code>) · WebRTC P2P Multiplayer · Heuristic 5-Fan AI Bots · Trilingual (<code>繁中</code> / <code>EN</code> / <code>BM</code>)</em>
+  </p>
+  <p>
+    <a href="https://planta94.github.io/mahjong/">
+      <img src="https://img.shields.io/badge/Play_Now-GitHub_Pages-eab308?style=for-the-badge&logo=github" alt="Play on GitHub Pages" />
+    </a>
+    <img src="https://img.shields.io/badge/Angular-21-dd0031?style=for-the-badge&logo=angular" alt="Angular 21" />
+    <img src="https://img.shields.io/badge/Backend-Zero_(WebRTC_P2P)-00d285?style=for-the-badge" alt="Zero Backend" />
+  </p>
 </div>
 
 ---

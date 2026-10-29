@@ -1,0 +1,209 @@
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 50px;
+  padding: 8px 28px;
+  background: linear-gradient(180deg, rgba(6, 28, 20, 0.96), rgba(4, 18, 13, 0.94));
+  border-bottom: 1px solid var(--panel-border);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(10px);
+  gap: 14px;
+  flex-wrap: nowrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.brand-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.brand-title {
+  font-weight: 800;
+  font-size: 1.04rem;
+  letter-spacing: 0.25px;
+  color: #fef08a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  background: linear-gradient(135deg, #f59e0b, #b45309);
+  color: #ffffff;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.fan-summary {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+.topbar-actions .btn {
+  height: 34px;
+  padding: 0 11px;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.action-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.room-code-short {
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.toggle-on {
+  border-color: rgba(0, 210, 133, 0.42);
+  color: #d1fae5;
+}
+
+.toggle-muted {
+  opacity: 0.78;
+  color: #94a3b8;
+}
+
+.leave-btn {
+  border-color: rgba(248, 113, 113, 0.42);
+  color: #fecaca;
+}
+
+.lang-switcher {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-base);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  height: 34px;
+  padding: 2px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.lang-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 0 8px;
+  height: 100%;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lang-btn.active {
+  background: rgba(0, 210, 133, 0.2);
+  color: #00d285;
+}
+
+@media (max-width: 1180px) {
+  .fan-summary {
+    display: none;
+  }
+}
+
+@media (max-width: 980px) {
+  .brand-badge {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    min-height: 46px;
+    padding: 6px 10px;
+    gap: 8px;
+  }
+
+  .brand {
+    gap: 7px;
+  }
+
+  .brand-logo {
+    width: 25px;
+    height: 25px;
+    border-radius: 6px;
+  }
+
+  .brand-title {
+    font-size: 0.86rem;
+  }
+
+  .topbar-actions {
+    gap: 5px;
+  }
+
+  .action-label {
+    display: none;
+  }
+
+  .topbar-actions .icon-action-btn {
+    width: 31px;
+    height: 31px;
+    min-height: 31px;
+    padding: 0;
+    border-radius: 8px;
+    white-space: nowrap;
+  }
+
+  .topbar-actions .room-code-btn {
+    height: 31px;
+    min-height: 31px;
+    padding: 0 8px;
+    font-size: 0.74rem;
+    border-radius: 8px;
+    gap: 4px;
+    white-space: nowrap;
+  }
+
+  .lang-switcher {
+    height: 31px;
+    border-radius: 8px;
+    padding: 2px;
+    gap: 1px;
+  }
+
+  .lang-btn {
+    padding: 0 5px;
+    font-size: 0.7rem;
+    border-radius: 6px;
+  }
+}

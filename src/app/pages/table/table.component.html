@@ -1,0 +1,532 @@
+@if (session.snapshot(); as snap) {
+  @if (snap.view && snap.lobby && seatLayout(); as layout) {
+    @let view = snap.view;
+    @let lobby = snap.lobby;
+    @let me = playerAt(layout.me);
+    @let isMyTurn = view.phase === 'turn' && view.turnSeat === layout.me;
+    @let canDiscard = view.legalActions !== null && view.legalActions.phase === 'turn' && view.legalActions.canDiscard;
+
+    <main class="table-stage" [class.mode-3p]="layout.top === null">
+      <!-- Top Seat (4P Across) or 3P Banner -->
+      <div class="top-seat-zone">
+        @if (layout.top !== null && playerAt(layout.top); as topP) {
+          <div class="top-opp-wrap">
+            <div class="opp-panel" [class.active-turn]="view.phase === 'turn' && view.turnSeat === layout.top">
+              <div class="player-header">
+                <div class="player-meta-group">
+                  <span class="seat-wind-pill">{{ windAt(topP.seatWind) }}</span>
+                  @if (view.dealerSeat === layout.top) {
+                    <span class="dealer-badge">
+                      {{ 'TABLE.DEALER' | translate }}{{ view.dealerStreak > 0 ? '+' + view.dealerStreak : '' }}
+                    </span>
+                  }
+                  <span class="player-name">{{ seatName(layout.top) }}</span>
+                  <span class="rel-label">{{ 'TABLE.REL_ACROSS' | translate }}</span>
+                </div>
+                <div class="opp-stats-group">
+                  @if (!topP.hand) {
+                    <span class="hand-count-pill">🀫 {{ topP.handCount }}</span>
+                  }
+                  <span class="score-pill">{{ 'TABLE.PTS' | translate: { score: seatScore(layout.top) } }}</span>
+                </div>
+              </div>
+
+              @if (topP.hand) {
+                <div class="opp-hand-row opp-top-row">
+                  @for (id of topP.hand; track id) {
+                    <mj-tile [tile]="id" size="xs" />
+                  }
+                </div>
+              } @else {
+                <div class="opp-hand-row opp-hand-backs opp-top-row">
+                  @for (idx of backPlaceholders(topP.handCount); track idx) {
+                    <mj-tile tile="back" size="xs" />
+                  }
+                </div>
+              }
+
+              @if (topP.melds.length || topP.bonus.length) {
+                <div class="melds-and-bonus opp-exposed">
+                  @for (m of topP.melds; track $index) {
+                    <div class="meld-group">
+                      @for (c of m.codes; track $index) {
+                        <mj-tile [tile]="c" size="xs" />
+                      }
+                    </div>
+                  }
+                  <div class="bonus-row">
+                    @for (b of topP.bonus; track b) {
+                      <mj-tile [tile]="b" size="xs" />
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        } @else {
+          <div class="authentic-3p-pill">
+            🇲🇾 {{ 'TABLE.BANNER_3P' | translate }}
+          </div>
+        }
+      </div>
+
+      <!-- Left Seat (Upper / 上家) -->
+      @if (playerAt(layout.left); as leftP) {
+        <div class="opp-panel opp-left" [class.active-turn]="view.phase === 'turn' && view.turnSeat === layout.left">
+          <div class="player-header">
+            <div class="player-meta-group">
+              <span class="seat-wind-pill">{{ windAt(leftP.seatWind) }}</span>
+              @if (view.dealerSeat === layout.left) {
+                <span class="dealer-badge">
+                  {{ 'TABLE.DEALER' | translate }}{{ view.dealerStreak > 0 ? '+' + view.dealerStreak : '' }}
+                </span>
+              }
+              <span class="player-name">{{ seatName(layout.left) }}</span>
+              <span class="rel-label">{{ 'TABLE.REL_LEFT' | translate }}</span>
+            </div>
+            <div class="opp-stats-group">
+              @if (!leftP.hand) {
+                <span class="hand-count-pill">🀫 {{ leftP.handCount }}</span>
+              }
+              <span class="score-pill">{{ 'TABLE.PTS' | translate: { score: seatScore(layout.left) } }}</span>
+            </div>
+          </div>
+
+          @if (leftP.hand) {
+            <div class="opp-hand-row opp-side-row">
+              @for (id of leftP.hand; track id) {
+                <mj-tile [tile]="id" size="xs" />
+              }
+            </div>
+          } @else {
+            <div class="opp-hand-row opp-hand-backs opp-side-row">
+              @for (idx of backPlaceholders(leftP.handCount); track idx) {
+                <mj-tile tile="back" size="xs" />
+              }
+            </div>
+          }
+
+          @if (leftP.melds.length || leftP.bonus.length) {
+            <div class="melds-and-bonus opp-exposed">
+              @for (m of leftP.melds; track $index) {
+                <div class="meld-group">
+                  @for (c of m.codes; track $index) {
+                    <mj-tile [tile]="c" size="xs" />
+                  }
+                </div>
+              }
+              <div class="bonus-row">
+                @for (b of leftP.bonus; track b) {
+                  <mj-tile [tile]="b" size="xs" />
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Center Arena: Compass & All Players' Complete Discard Rivers -->
+      <div class="center-arena">
+        <div class="arena-topbar">
+          <div class="compass-box">
+            <span class="compass-wind">
+              {{ 'TABLE.ROUND_LABEL' | translate: { wind: windAt(view.roundWind), hand: view.handNumber } }}
+            </span>
+            <span class="compass-meta">
+              {{ 'TABLE.WALL_LEFT' | translate }}
+              <strong class="wall-count">{{ view.wallCount }}</strong>
+              {{ 'TABLE.TILES_UNIT' | translate }}
+            </span>
+            <span class="compass-meta">
+              {{ 'TABLE.TURN_LABEL' | translate }}
+              <strong class="turn-name">{{ seatName(view.turnSeat) }}</strong>
+            </span>
+          </div>
+          @if (latestLog(); as logText) {
+            <div class="log-strip">{{ logText }}</div>
+          }
+        </div>
+
+        @let pool = discardPool();
+        <div class="discard-pool">
+          <div class="river-label">
+            <span>{{ 'TABLE.RIVER_SUFFIX' | translate }}</span>
+            <span class="river-count">{{ pool.length }}</span>
+          </div>
+          <div class="river-tiles">
+            @if (pool.length === 0) {
+              <span class="empty-river">{{ 'TABLE.NO_DISCARDS' | translate }}</span>
+            } @else {
+              @for (dId of pool; track $index) {
+                <mj-tile
+                  [tile]="dId"
+                  size="sm"
+                  [highlight]="isLastPoolDiscard(dId, $index, pool.length)"
+                />
+              }
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Seat (Next / 下家) -->
+      @if (playerAt(layout.right); as rightP) {
+        <div class="opp-panel opp-right" [class.active-turn]="view.phase === 'turn' && view.turnSeat === layout.right">
+          <div class="player-header">
+            <div class="player-meta-group">
+              <span class="seat-wind-pill">{{ windAt(rightP.seatWind) }}</span>
+              @if (view.dealerSeat === layout.right) {
+                <span class="dealer-badge">
+                  {{ 'TABLE.DEALER' | translate }}{{ view.dealerStreak > 0 ? '+' + view.dealerStreak : '' }}
+                </span>
+              }
+              <span class="player-name">{{ seatName(layout.right) }}</span>
+              <span class="rel-label">{{ 'TABLE.REL_RIGHT' | translate }}</span>
+            </div>
+            <div class="opp-stats-group">
+              @if (!rightP.hand) {
+                <span class="hand-count-pill">🀫 {{ rightP.handCount }}</span>
+              }
+              <span class="score-pill">{{ 'TABLE.PTS' | translate: { score: seatScore(layout.right) } }}</span>
+            </div>
+          </div>
+
+          @if (rightP.hand) {
+            <div class="opp-hand-row opp-side-row">
+              @for (id of rightP.hand; track id) {
+                <mj-tile [tile]="id" size="xs" />
+              }
+            </div>
+          } @else {
+            <div class="opp-hand-row opp-hand-backs opp-side-row">
+              @for (idx of backPlaceholders(rightP.handCount); track idx) {
+                <mj-tile tile="back" size="xs" />
+              }
+            </div>
+          }
+
+          @if (rightP.melds.length || rightP.bonus.length) {
+            <div class="melds-and-bonus opp-exposed">
+              @for (m of rightP.melds; track $index) {
+                <div class="meld-group">
+                  @for (c of m.codes; track $index) {
+                    <mj-tile [tile]="c" size="xs" />
+                  }
+                </div>
+              }
+              <div class="bonus-row">
+                @for (b of rightP.bonus; track b) {
+                  <mj-tile [tile]="b" size="xs" />
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Bottom Self Zone -->
+      @if (me) {
+        <section class="self-zone" [class.active-turn]="isMyTurn">
+          <div class="player-header">
+            <div class="player-meta-group">
+              <span class="seat-wind-pill">
+                {{ 'TABLE.REL_SELF' | translate: { wind: windAt(me.seatWind) } }}
+              </span>
+              @if (view.dealerSeat === layout.me) {
+                <span class="dealer-badge">
+                  {{ 'TABLE.DEALER' | translate }}{{ view.dealerStreak > 0 ? '+' + view.dealerStreak : '' }}
+                </span>
+              }
+              <span class="player-name">{{ seatName(layout.me) }}</span>
+              @if (isMyTurn) {
+                <span class="turn-hint">👉 {{ 'TABLE.YOUR_TURN_HINT' | translate }}</span>
+              }
+            </div>
+            <span class="score-pill">💰 {{ 'TABLE.PTS' | translate: { score: seatScore(layout.me) } }}</span>
+          </div>
+
+          <!-- Turn / Claim Action Bar -->
+          @if (view.legalActions; as legal) {
+            @if (
+              legal.phase === 'turn' &&
+              (legal.win || legal.exposeFly || legal.concealedKongs.length || legal.addedKongs.length)
+            ) {
+              <div class="action-bar">
+                @if (legal.win) {
+                  <button
+                    type="button"
+                    class="btn btn-crimson"
+                    (click)="session.sendAction({ type: 'win' })"
+                  >
+                    🎉 {{ 'TABLE.ACT_SELF_WIN' | translate: { fan: legal.win.cappedFan } }}
+                  </button>
+                }
+                @if (legal.exposeFly) {
+                  <button
+                    type="button"
+                    class="btn btn-gold"
+                    (click)="session.sendAction({ type: 'exposeFly' })"
+                  >
+                    ✨ {{ 'TABLE.ACT_EXPOSE_FLY' | translate }}
+                  </button>
+                }
+                @for (c of legal.concealedKongs; track c) {
+                  <button
+                    type="button"
+                    class="btn btn-jade"
+                    (click)="session.sendAction({ type: 'concealedKong', code: c })"
+                  >
+                    {{ 'TABLE.ACT_CONCEALED_KONG' | translate: { tile: tileName(c) } }}
+                  </button>
+                }
+                @for (c of legal.addedKongs; track c) {
+                  <button
+                    type="button"
+                    class="btn btn-jade"
+                    (click)="session.sendAction({ type: 'addedKong', code: c })"
+                  >
+                    {{ 'TABLE.ACT_ADDED_KONG' | translate: { tile: tileName(c) } }}
+                  </button>
+                }
+              </div>
+            }
+
+            @if (legal.phase === 'claim' || legal.phase === 'robKong') {
+              <div class="action-bar">
+                <span class="claim-prompt">
+                  {{ seatName(legal.fromSeat) }}
+                  {{ (legal.phase === 'robKong' ? 'TABLE.CLAIM_ROB_KONG' : 'TABLE.CLAIM_DISCARDED') | translate }}
+                </span>
+                <mj-tile [tile]="legal.tileId" size="sm" [highlight]="true" />
+                @if (legal.win) {
+                  <button
+                    type="button"
+                    class="btn btn-crimson"
+                    (click)="session.sendAction({ type: 'win' })"
+                  >
+                    🎉
+                    {{
+                      (legal.phase === 'robKong' ? 'TABLE.ACT_ROB_WIN' : 'TABLE.ACT_CLAIM_WIN')
+                        | translate: { fan: legal.win.cappedFan }
+                    }}
+                  </button>
+                }
+                @if (legal.phase === 'claim' && legal.canKong) {
+                  <button
+                    type="button"
+                    class="btn btn-jade"
+                    (click)="session.sendAction({ type: 'kong' })"
+                  >
+                    {{ 'TABLE.ACT_KONG' | translate }}
+                  </button>
+                }
+                @if (legal.phase === 'claim' && legal.canPong) {
+                  <button
+                    type="button"
+                    class="btn btn-gold"
+                    (click)="session.sendAction({ type: 'pong' })"
+                  >
+                    {{ 'TABLE.ACT_PONG' | translate }}
+                  </button>
+                }
+                @if (legal.phase === 'claim') {
+                  @for (ch of legal.chows; track $index) {
+                    <button
+                      type="button"
+                      class="btn btn-jade"
+                      (click)="session.sendAction({ type: 'chow', chowIndex: $index })"
+                    >
+                      {{ 'TABLE.ACT_CHOW' | translate: { meld: chowLabel(ch.meldCodes) } }}
+                    </button>
+                  }
+                }
+                <button
+                  type="button"
+                  class="btn"
+                  (click)="session.sendAction({ type: 'pass' })"
+                >
+                  {{ 'TABLE.ACT_PASS' | translate }}
+                </button>
+              </div>
+            }
+          }
+
+          <!-- Tenpai Helper Strip -->
+          @if (session.waitingTiles().length > 0) {
+            <div class="tenpai-bar">
+              <span>💡 {{ 'TABLE.TENPAI_HINT' | translate }}</span>
+              @for (w of session.waitingTiles(); track w.code) {
+                @if (w.canDiscardWin) {
+                  <span class="wait-pill">{{ tileName(w.code) }} ({{ w.discardFan }})</span>
+                } @else if (w.canSelfDrawWin) {
+                  <span class="wait-pill self-only">
+                    {{ tileName(w.code) }} ({{ 'TABLE.WAIT_SELF_ONLY' | translate: { fan: w.selfDrawFan } }})
+                  </span>
+                } @else {
+                  <span class="wait-pill low-fan">
+                    {{ tileName(w.code) }} ({{ 'TABLE.WAIT_LOW_FAN' | translate: { fan: w.discardFan } }})
+                  </span>
+                }
+              }
+            </div>
+          }
+
+          <div class="self-table-row">
+            @let rack = myRack();
+            <div class="hand-rack">
+              @for (id of rack.main; track id) {
+                <mj-tile [tile]="id" [clickable]="canDiscard" (click)="onDiscardClick(id)" />
+              }
+              @if (rack.drawn; as dId) {
+                <mj-tile
+                  [tile]="dId"
+                  [clickable]="canDiscard"
+                  [drawnGap]="true"
+                  (click)="onDiscardClick(dId)"
+                />
+              }
+            </div>
+
+            @if (me.melds.length > 0 || me.bonus.length > 0) {
+              <div class="melds-and-bonus self-exposed">
+                @for (m of me.melds; track $index) {
+                  <div class="meld-group">
+                    @for (c of m.codes; track $index) {
+                      <mj-tile [tile]="c" size="sm" />
+                    }
+                  </div>
+                }
+                @if (me.bonus.length > 0) {
+                  <div class="bonus-row">
+                    @for (b of me.bonus; track b) {
+                      <mj-tile [tile]="b" size="sm" />
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </section>
+      }
+    </main>
+
+    <!-- Settlement Modal (maxWidth: 95vw, maxHeight: 90vh, 55vh scroll body, bottom actions only) -->
+    @if (view.phase === 'handOver' && view.result; as res) {
+      <div class="modal-backdrop">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="settlement-title">
+          <div class="modal-header">
+            @if (res.outcome === 'draw') {
+              <h2 id="settlement-title" class="settlement-heading">
+                🌊 {{ 'TABLE.DRAW_TITLE' | translate }}
+              </h2>
+            } @else if (res.fanResult; as fr) {
+              <h2 id="settlement-title" class="settlement-heading">
+                🏆
+                {{
+                  'TABLE.WIN_TITLE'
+                    | translate: { winner: seatName(res.winnerSeat), fan: fr.cappedFan }
+                }}
+                @if (fr.rawFan > fr.cappedFan) {
+                  <span>{{ 'TABLE.CAPPED_FROM' | translate: { raw: fr.rawFan } }}</span>
+                }
+              </h2>
+              <p class="settlement-sub">
+                @if (res.selfDraw) {
+                  {{ 'TABLE.PAY_SELF_DRAW' | translate }}
+                } @else {
+                  {{ 'TABLE.PAY_DISCARDER' | translate: { loser: seatName(res.loserSeat) } }}
+                }
+              </p>
+            }
+          </div>
+
+          <div class="modal-body">
+            @if (res.outcome === 'win' && res.fanResult; as fr) {
+              <div class="fan-tags">
+                @for (it of fr.items; track $index) {
+                  <span class="fan-tag">{{ it.name }} +{{ it.fan }}</span>
+                }
+              </div>
+
+              <div class="winning-showcase">
+                <div class="winning-tiles-row">
+                  @for (id of res.winningHand ?? []; track id) {
+                    <mj-tile [tile]="id" size="sm" [highlight]="id === res.winningTileId" />
+                  }
+                  @for (m of res.winningMelds ?? []; track $index) {
+                    <div class="meld-group">
+                      @for (c of m.codes; track $index) {
+                        <mj-tile [tile]="c" size="sm" />
+                      }
+                    </div>
+                  }
+                </div>
+                @if (res.winningBonus?.length) {
+                  <div class="bonus-row">
+                    <span class="bonus-caption">{{ 'TABLE.BONUS_LABEL' | translate }}</span>
+                    @for (b of res.winningBonus ?? []; track b) {
+                      <mj-tile [tile]="b" size="xs" />
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            <table class="desktop-table">
+              <thead>
+                <tr>
+                  <th>{{ 'TABLE.COL_PLAYER' | translate }}</th>
+                  <th>{{ 'TABLE.COL_DELTA' | translate }}</th>
+                  <th>{{ 'TABLE.COL_TOTAL' | translate }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (s of lobby.seats; track s.seat) {
+                  @let delta = seatDelta(s.seat);
+                  <tr>
+                    <td>{{ s.windLabel }} · {{ s.name }}</td>
+                    <td [class.pos-delta]="delta > 0" [class.neg-delta]="delta < 0">
+                      {{ delta > 0 ? '+' + delta : delta }}
+                    </td>
+                    <td><strong>{{ seatScore(s.seat) }}</strong></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+
+            <div class="mobile-cards">
+              @for (s of lobby.seats; track s.seat) {
+                @let delta = seatDelta(s.seat);
+                <div class="mobile-app-card">
+                  <div class="mobile-card-row">
+                    <strong>{{ s.windLabel }} · {{ s.name }}</strong>
+                    <span [class.pos-delta]="delta > 0" [class.neg-delta]="delta < 0">
+                      {{ delta > 0 ? '+' + delta : delta }}
+                    </span>
+                  </div>
+                  <div class="mobile-card-row">
+                    <span>{{ 'TABLE.COL_TOTAL' | translate }}</span>
+                    <strong>{{ seatScore(s.seat) }}</strong>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            @if (snap.role === 'host') {
+              <button type="button" class="btn" (click)="session.returnToLobby()">
+                {{ 'TABLE.BTN_RETURN_LOBBY' | translate }}
+              </button>
+              <button type="button" class="btn btn-gold" (click)="session.nextHand()">
+                {{ 'TABLE.BTN_NEXT_HAND' | translate }} ▶
+              </button>
+            } @else {
+              <span class="wait-next-label">{{ 'TABLE.WAIT_NEXT_HAND' | translate }}</span>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  }
+}

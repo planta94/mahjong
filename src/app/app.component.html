@@ -1,0 +1,10 @@
+<div class="app-shell">
+  <app-header />
+  <div class="app-viewport">
+    <router-outlet />
+  </div>
+
+  @if (session.showRulebook()) {
+    <app-rulebook-dialog (closed)="session.showRulebook.set(false)" />
+  }
+</div>

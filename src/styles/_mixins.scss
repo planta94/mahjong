@@ -1,0 +1,13 @@
+@use 'breakpoints' as *;
+
+@mixin mobile-only {
+  @media (max-width: #{$bp-tablet}) {
+    @content;
+  }
+}
+
+@mixin desktop-up {
+  @media (min-width: #{$bp-tablet + 1px}) {
+    @content;
+  }
+}

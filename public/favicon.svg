@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="HK &amp; MY Mahjong">
+  <defs>
+    <linearGradient id="crestBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#115e46" />
+      <stop offset="100%" stop-color="#051c14" />
+    </linearGradient>
+    <linearGradient id="goldTrim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="55%" stop-color="#eab308" />
+      <stop offset="100%" stop-color="#a16207" />
+    </linearGradient>
+    <linearGradient id="ivoryFace" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fffef9" />
+      <stop offset="78%" stop-color="#f8f2e2" />
+      <stop offset="100%" stop-color="#e5dcc4" />
+    </linearGradient>
+  </defs>
+
+  <!-- Royal Jade & Gold Rounded Crest -->
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#crestBg)" stroke="url(#goldTrim)" stroke-width="2.5" />
+  <rect x="6" y="6" width="52" height="52" rx="11.5" fill="none" stroke="#eab308" stroke-opacity="0.24" stroke-width="1" />
+
+  <!-- 3D Mahjong Tile Base (Jade Back) -->
+  <rect x="14" y="12" width="36" height="44" rx="6.5" fill="#064e3b" opacity="0.55" />
+  <rect x="14" y="10.5" width="36" height="44" rx="6.5" fill="#15803d" />
+
+  <!-- Ivory Tile Face -->
+  <rect x="14" y="7.5" width="36" height="43" rx="6.5" fill="url(#ivoryFace)" stroke="#cfc5ab" stroke-width="1.2" />
+
+  <!-- Carved Red Dragon (紅中) Vector Glyph -->
+  <g fill="none" stroke="#c81e1e" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="22" y="20" width="20" height="13.5" rx="2" stroke-width="3.5" />
+    <path d="M32 13.5V45" stroke-width="3.9" />
+    <path d="M29.6 13.5H34.4" stroke-width="2.6" />
+  </g>
+</svg>

@@ -1,0 +1,30 @@
+// ==========================================
+// SCSS Design Tokens & Color Palette
+// Aligned with ocpi-hub-portal + Jade Felt Tabletop
+// ==========================================
+
+$primary-500: #00d285;
+$primary-600: #00b874;
+$gold-400: #facc15;
+$gold-500: #eab308;
+$gold-600: #ca8a04;
+$crimson-500: #dc2626;
+$crimson-700: #991b1b;
+$jade-600: #16a34a;
+$jade-700: #15803d;
+
+$bg-dark-base: #0d1117;
+$bg-felt-center: #125842;
+$bg-felt-edge: #07281e;
+$surface-panel: rgba(8, 30, 23, 0.88);
+$surface-card: #0f2920;
+$border-gold: rgba(234, 179, 8, 0.28);
+$border-subtle: rgba(255, 255, 255, 0.16);
+
+$text-main: #f8fafc;
+$text-sub: #cbd5e1;
+$text-muted: #94a3b8;
+
+$radius-sm: 8px;
+$radius-md: 12px;
+$radius-lg: 16px;

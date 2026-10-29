@@ -1,0 +1,84 @@
+<div class="modal-backdrop" (click)="close()">
+  <div
+    class="modal-card"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="rulebook-dialog-title"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="modal-header">
+      <h2 id="rulebook-dialog-title" class="dialog-title">
+        📖 {{ 'RULEBOOK.TITLE' | translate }}
+      </h2>
+    </div>
+
+    <div class="modal-body">
+      <div class="fan-tier-list">
+        <p>🔹 {{ 'RULEBOOK.TIER_1' | translate }}</p>
+        <p>🔹 {{ 'RULEBOOK.TIER_2' | translate }}</p>
+        <p>🔹 {{ 'RULEBOOK.TIER_3' | translate }}</p>
+        <p>🔹 {{ 'RULEBOOK.TIER_4' | translate }}</p>
+        <p>🔹 {{ 'RULEBOOK.TIER_5_8' | translate }}</p>
+        <p>🔹 {{ 'RULEBOOK.TIER_LIMIT' | translate }}</p>
+      </div>
+
+      <h3 class="schedule-title">💰 {{ 'RULEBOOK.PAYOUT_TITLE' | translate }}</h3>
+
+      <table class="desktop-table">
+        <thead>
+          <tr>
+            <th>{{ 'RULEBOOK.COL_FAN' | translate }}</th>
+            <th>{{ 'RULEBOOK.COL_BASE' | translate }}</th>
+            <th>{{ 'RULEBOOK.COL_DISCARD' | translate }}</th>
+            <th>{{ 'RULEBOOK.COL_SELFDRAW' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of payoutRows; track r.fan) {
+            <tr>
+              <td>
+                <strong>
+                  {{ r.fan }} {{ r.fan === 10 ? ('RULEBOOK.LIMIT_TAG' | translate) : '' }}
+                </strong>
+              </td>
+              <td>{{ r.base }}</td>
+              <td>4P: <strong>{{ 4 * r.base }}</strong> / 3P: <strong>{{ 3 * r.base }}</strong></td>
+              <td>
+                {{ 'RULEBOOK.EACH_PREFIX' | translate }} <strong>{{ 2 * r.base }}</strong>
+                (4P: {{ 6 * r.base }} / 3P: {{ 4 * r.base }})
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <div class="mobile-cards">
+        @for (r of payoutRows; track r.fan) {
+          <div class="mobile-app-card">
+            <div class="mobile-card-row">
+              <strong>
+                {{ 'RULEBOOK.COL_FAN' | translate }}: {{ r.fan }}
+                {{ r.fan === 10 ? ('RULEBOOK.LIMIT_TAG' | translate) : '' }}
+              </strong>
+              <span>{{ 'RULEBOOK.COL_BASE' | translate }}: {{ r.base }}</span>
+            </div>
+            <div class="mobile-card-row">
+              <span>{{ 'RULEBOOK.COL_DISCARD' | translate }}</span>
+              <strong>4P: {{ 4 * r.base }} · 3P: {{ 3 * r.base }}</strong>
+            </div>
+            <div class="mobile-card-row">
+              <span>{{ 'RULEBOOK.COL_SELFDRAW' | translate }}</span>
+              <strong>{{ 'RULEBOOK.EACH_PREFIX' | translate }} {{ 2 * r.base }}</strong>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-emerald" (click)="close()">
+        {{ 'RULEBOOK.CLOSE' | translate }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,11 @@
+.app-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.app-viewport {
+  flex: 1 1 auto;
+  width: 100%;
+}

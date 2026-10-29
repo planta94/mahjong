@@ -1,0 +1,268 @@
+.mj-tile {
+  position: relative;
+  width: var(--tile-w, 44px);
+  height: var(--tile-h, 62px);
+  background: linear-gradient(180deg, #fffef9 0%, var(--ivory) 78%, var(--ivory-shade) 100%);
+  border: 1px solid #cfc6ae;
+  border-bottom: 4px solid #15803d;
+  border-radius: 7px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.38);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--navy);
+  flex-shrink: 0;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.mj-tile.clickable {
+  cursor: pointer;
+}
+
+.mj-tile.clickable:active {
+  transform: scale(0.96);
+}
+
+.mj-tile.highlight-last {
+  box-shadow: 0 0 0 2px #facc15, 0 0 12px rgba(250, 204, 21, 0.85);
+}
+
+.mj-tile.drawn-gap {
+  margin-left: var(--drawn-gap, 12px);
+}
+
+.mj-tile.sm {
+  width: var(--tile-sm-w, 29px);
+  height: var(--tile-sm-h, 40px);
+  border-bottom-width: 3px;
+  border-radius: 5px;
+}
+
+.mj-tile.xs {
+  width: var(--tile-xs-w, 23px);
+  height: var(--tile-xs-h, 32px);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+}
+
+.mj-tile.tile-back {
+  background: linear-gradient(145deg, #198763, #0e543d);
+  border-color: #34d399;
+  border-bottom-color: #064e3b;
+}
+
+.mj-tile.tile-back::after {
+  content: '';
+  width: 72%;
+  height: 76%;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 3px;
+}
+
+.mj-tile.tile-joker {
+  background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 85%, #fde68a 100%);
+  border-color: #f59e0b;
+  border-bottom-color: #b45309;
+  box-shadow: 0 3px 10px rgba(245, 158, 11, 0.45);
+}
+
+.mj-tile.tile-bonus {
+  background: linear-gradient(180deg, #fffef9 0%, #fef9ee 82%, #f3e8d0 100%);
+}
+
+.t-corner {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.corner-gold {
+  color: #b45309;
+}
+
+.corner-navy {
+  color: #1d4ed8;
+}
+
+.corner-jade {
+  color: #15803d;
+}
+
+.corner-crimson {
+  color: #dc2626;
+}
+
+.t-man-top {
+  font-size: 1.02rem;
+  font-weight: 900;
+  color: #1e3a8a;
+  line-height: 1.05;
+}
+
+.t-man-bot {
+  font-size: 1.02rem;
+  font-weight: 900;
+  color: var(--crimson);
+  line-height: 1.05;
+}
+
+.t-honor {
+  font-size: 1.44rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.t-honor.red {
+  color: var(--crimson);
+}
+
+.t-honor.green {
+  color: var(--jade);
+}
+
+.t-honor.wind {
+  color: #0f172a;
+}
+
+.t-white-board {
+  width: 68%;
+  height: 70%;
+  border: 2.5px solid #1d4ed8;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #1d4ed8;
+}
+
+.t-bonus-icon {
+  font-size: 1.28rem;
+  line-height: 1;
+  margin-top: 4px;
+}
+
+.t-joker-main {
+  font-size: 1.28rem;
+  font-weight: 900;
+  color: var(--crimson);
+  line-height: 1;
+}
+
+.t-joker-sub {
+  font-size: 0.56rem;
+  font-weight: 800;
+  color: #92400e;
+  margin-top: 2px;
+}
+
+.tile-svg {
+  width: 82%;
+  height: 80%;
+  margin-top: 3px;
+}
+
+.mj-tile.sm .t-corner {
+  font-size: 0.48rem;
+  top: 1px;
+  left: 2px;
+}
+
+.mj-tile.sm .t-man-top,
+.mj-tile.sm .t-man-bot {
+  font-size: 0.74rem;
+}
+
+.mj-tile.sm .t-honor {
+  font-size: 0.98rem;
+}
+
+.mj-tile.sm .t-white-board {
+  font-size: 0.5rem;
+  border-width: 1.8px;
+}
+
+.mj-tile.sm .t-bonus-icon {
+  font-size: 0.92rem;
+  margin-top: 3px;
+}
+
+.mj-tile.sm .t-joker-main {
+  font-size: 0.9rem;
+}
+
+.mj-tile.sm .t-joker-sub {
+  font-size: 0.44rem;
+}
+
+.mj-tile.xs .t-corner {
+  font-size: 0.42rem;
+  top: 1px;
+  left: 2px;
+}
+
+.mj-tile.xs .t-man-top,
+.mj-tile.xs .t-man-bot {
+  font-size: 0.6rem;
+  line-height: 1.02;
+}
+
+.mj-tile.xs .t-honor {
+  font-size: 0.8rem;
+}
+
+.mj-tile.xs .t-white-board {
+  font-size: 0.42rem;
+  border-width: 1.5px;
+}
+
+.mj-tile.xs .t-bonus-icon {
+  font-size: 0.74rem;
+  margin-top: 2px;
+}
+
+.mj-tile.xs .t-joker-main {
+  font-size: 0.72rem;
+}
+
+.mj-tile.xs .t-joker-sub {
+  font-size: 0.36rem;
+  margin-top: 1px;
+}
+
+.mj-tile.xs .tile-svg {
+  width: 84%;
+  height: 82%;
+  margin-top: 2px;
+}
+
+@media (hover: hover) {
+  .mj-tile.clickable:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 10px 18px rgba(0, 0, 0, 0.5), 0 0 0 2px var(--gold);
+  }
+}
+
+@media (max-width: 768px) {
+  .mj-tile {
+    --tile-w: 39px;
+    --tile-h: 53px;
+    --drawn-gap: 8px;
+    border-bottom-width: 3px;
+  }
+
+  .t-man-top,
+  .t-man-bot {
+    font-size: 0.92rem;
+  }
+
+  .t-honor {
+    font-size: 1.26rem;
+  }
+}

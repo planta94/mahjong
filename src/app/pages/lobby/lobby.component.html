@@ -1,0 +1,303 @@
+<main class="page-container lobby-container">
+  @if (!session.snapshot()) {
+    <section class="portal-card">
+      <h1 class="hero-title">{{ 'LOBBY.HERO_TITLE' | translate }}</h1>
+      <p class="hero-sub">{{ 'LOBBY.HERO_SUB' | translate }}</p>
+
+      <div class="nickname-row">
+        <label class="field-label" for="nickname-input">{{ 'LOBBY.NICKNAME_LABEL' | translate }}</label>
+        <div class="nickname-input-wrap">
+          <input
+            id="nickname-input"
+            class="portal-input"
+            maxlength="14"
+            [(ngModel)]="nickname"
+            [placeholder]="'LOBBY.NICKNAME_PLACEHOLDER' | translate"
+          />
+        </div>
+      </div>
+
+      @if (hasUrlInvite() && joinCode) {
+        <div class="invite-banner">
+          <h3>🎉 {{ 'LOBBY.INVITE_TITLE' | translate: { code: joinCode } }}</h3>
+          <div class="join-row">
+            <label class="rule-item clickable-rule">
+              <span>💡 {{ 'LOBBY.RULE_HINTS' | translate }}</span>
+              <input type="checkbox" [(ngModel)]="homeShowHints" />
+            </label>
+            <button type="button" class="btn btn-gold" (click)="joinRoom()">
+              {{ 'LOBBY.INVITE_JOIN_BTN' | translate: { code: joinCode } }}
+            </button>
+          </div>
+        </div>
+      }
+
+      <div class="mode-grid">
+        <div
+          class="mode-card"
+          role="button"
+          tabindex="0"
+          [class.active]="selectedMode() === '3p'"
+          (click)="selectMode('3p')"
+          (keydown.enter)="selectMode('3p')"
+        >
+          <h3><span class="mode-tag">3P · MY</span>{{ 'LOBBY.MODE_3P_TITLE' | translate }}</h3>
+          <p>{{ 'LOBBY.MODE_3P_DESC' | translate }}</p>
+        </div>
+
+        <div
+          class="mode-card"
+          role="button"
+          tabindex="0"
+          [class.active]="selectedMode() === '4p'"
+          (click)="selectMode('4p')"
+          (keydown.enter)="selectMode('4p')"
+        >
+          <h3><span class="mode-tag mode-tag-hk">4P · HK</span>{{ 'LOBBY.MODE_4P_TITLE' | translate }}</h3>
+          <p>{{ 'LOBBY.MODE_4P_DESC' | translate }}</p>
+        </div>
+      </div>
+
+      <div class="rules-grid">
+        <div class="rule-item">
+          <span>{{ 'LOBBY.RULE_MIN_FAN' | translate }}</span>
+          <div class="select-box">
+            <select
+              class="portal-input"
+              aria-label="Minimum Fan"
+              [ngModel]="homeMinFan"
+              (ngModelChange)="onHomeMinFanChange($event)"
+            >
+              @for (n of minFanOptions; track n) {
+                <option [ngValue]="n">{{ 'LOBBY.RULE_MIN_OPT' | translate: { fan: n } }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="rule-item">
+          <span>{{ 'LOBBY.RULE_MAX_FAN' | translate }}</span>
+          <div class="select-box">
+            <select class="portal-input" aria-label="Maximum Fan" [(ngModel)]="homeMaxFan">
+              @for (n of maxFanOptions; track n) {
+                <option [ngValue]="n">{{ 'LOBBY.RULE_MAX_OPT' | translate: { fan: n } }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <label class="rule-item clickable-rule">
+          <span>{{ 'LOBBY.RULE_CONCEALED' | translate }}</span>
+          <input type="checkbox" [(ngModel)]="homeConcealed" />
+        </label>
+
+        <label class="rule-item clickable-rule">
+          <span>{{ 'LOBBY.RULE_SEVEN_PAIRS' | translate }}</span>
+          <input type="checkbox" [(ngModel)]="homeSevenPairs" />
+        </label>
+
+        <label class="rule-item clickable-rule">
+          <span>💡 {{ 'LOBBY.RULE_HINTS' | translate }}</span>
+          <input type="checkbox" [(ngModel)]="homeShowHints" />
+        </label>
+      </div>
+
+      <div class="cta-row">
+        <button type="button" class="btn btn-gold" (click)="startSolo()">
+          ⚡ {{ 'LOBBY.BTN_START_SOLO' | translate }}
+        </button>
+        <button type="button" class="btn btn-emerald" (click)="createOnlineRoom()">
+          🏠 {{ 'LOBBY.BTN_CREATE_ROOM' | translate }}
+        </button>
+      </div>
+    </section>
+
+    <section class="portal-card">
+      <h2 class="section-heading">🔑 {{ 'LOBBY.JOIN_SECTION_TITLE' | translate }}</h2>
+      <div class="join-row">
+        <div class="join-code-wrap">
+          <input
+            class="portal-input uppercase-input"
+            maxlength="8"
+            [(ngModel)]="joinCode"
+            [placeholder]="'LOBBY.JOIN_PLACEHOLDER' | translate"
+          />
+        </div>
+        <label class="rule-item clickable-rule">
+          <span>💡 {{ 'LOBBY.RULE_HINTS' | translate }}</span>
+          <input type="checkbox" [(ngModel)]="homeShowHints" />
+        </label>
+        <button type="button" class="btn btn-gold" (click)="joinRoom()">
+          {{ 'LOBBY.BTN_JOIN_ROOM' | translate }}
+        </button>
+      </div>
+    </section>
+  }
+
+  @if (session.snapshot(); as snap) {
+    @if (!snap.view) {
+      @if (!snap.lobby) {
+        <section class="portal-card">
+          <h2 class="section-heading">{{ snap.status }}</h2>
+          @if (snap.error) {
+            <div class="banner-alert">{{ snap.error }}</div>
+          }
+        </section>
+      } @else {
+        <section class="portal-card">
+          <div class="waiting-header">
+            <div>
+              <h1 class="hero-title">
+                {{ 'LOBBY.WAITING_ROOM_TITLE' | translate: { code: snap.roomCode } }}
+              </h1>
+              <p class="hero-sub">{{ snap.status }} — {{ 'LOBBY.WAITING_SHARE_HINT' | translate }}</p>
+            </div>
+            @if (snap.role === 'host') {
+              <div class="mode-switch-btns">
+                <button
+                  type="button"
+                  class="btn"
+                  [class.btn-gold]="snap.lobby.mode === '3p'"
+                  (click)="session.setLobbyMode('3p')"
+                >
+                  {{ 'LOBBY.SWITCH_3P' | translate }}
+                </button>
+                <button
+                  type="button"
+                  class="btn"
+                  [class.btn-gold]="snap.lobby.mode === '4p'"
+                  (click)="session.setLobbyMode('4p')"
+                >
+                  {{ 'LOBBY.SWITCH_4P' | translate }}
+                </button>
+              </div>
+            }
+          </div>
+
+          @if (snap.error) {
+            <div class="banner-alert">{{ snap.error }}</div>
+          }
+
+          <div class="seats-grid" [class.seats-3p]="snap.lobby.mode === '3p'">
+            @for (s of snap.lobby.seats; track s.seat) {
+              <div class="seat-slot" [class.open]="s.kind === 'open'">
+                <div class="seat-top-row">
+                  <span class="seat-wind-pill">
+                    {{ 'LOBBY.SEAT_HEADER' | translate: { wind: s.windLabel, num: s.seat + 1 } }}
+                  </span>
+                  @if (s.seat === snap.mySeat) {
+                    <span class="you-tag">{{ 'LOBBY.YOU_TAG' | translate }}</span>
+                  }
+                </div>
+
+                <div class="seat-player-name">{{ s.name }}</div>
+
+                <div class="seat-status-text">
+                  @if (s.kind === 'bot') {
+                    🤖 {{ 'LOBBY.SEAT_BOT' | translate }}
+                  } @else if (s.kind === 'open') {
+                    ⏳ {{ 'LOBBY.SEAT_OPEN' | translate }}
+                  } @else {
+                    {{ s.connected ? '🟢 ' + ('LOBBY.SEAT_CONNECTED' | translate) : '🟠 ' + ('LOBBY.SEAT_OFFLINE' | translate) }}
+                  }
+                </div>
+
+                @if (snap.role === 'host' && s.seat > 0 && s.kind !== 'human') {
+                  <button
+                    type="button"
+                    class="btn seat-toggle-btn"
+                    (click)="session.toggleSeatBot(s.seat)"
+                  >
+                    {{ (s.kind === 'bot' ? 'LOBBY.TOGGLE_TO_OPEN' : 'LOBBY.TOGGLE_TO_BOT') | translate }}
+                  </button>
+                }
+              </div>
+            }
+          </div>
+
+          <div class="rules-grid">
+            <div class="rule-item">
+              <span>{{ 'LOBBY.RULE_MIN_FAN' | translate }}</span>
+              @if (snap.role === 'host') {
+                <div class="select-box">
+                  <select
+                    class="portal-input"
+                    aria-label="Lobby Minimum Fan"
+                    [ngModel]="snap.lobby.rules.minFan"
+                    (ngModelChange)="session.updateLobbyRules({ minFan: +$event })"
+                  >
+                    @for (n of minFanOptions; track n) {
+                      <option [ngValue]="n">{{ 'LOBBY.RULE_MIN_OPT' | translate: { fan: n } }}</option>
+                    }
+                  </select>
+                </div>
+              } @else {
+                <strong>{{ snap.lobby.rules.minFan }}</strong>
+              }
+            </div>
+
+            <div class="rule-item">
+              <span>{{ 'LOBBY.RULE_MAX_FAN' | translate }}</span>
+              @if (snap.role === 'host') {
+                <div class="select-box">
+                  <select
+                    class="portal-input"
+                    aria-label="Lobby Maximum Fan"
+                    [ngModel]="snap.lobby.rules.maxFan"
+                    (ngModelChange)="session.updateLobbyRules({ maxFan: +$event })"
+                  >
+                    @for (n of maxFanOptions; track n) {
+                      <option [ngValue]="n">{{ 'LOBBY.RULE_MAX_OPT' | translate: { fan: n } }}</option>
+                    }
+                  </select>
+                </div>
+              } @else {
+                <strong>{{ snap.lobby.rules.maxFan }}</strong>
+              }
+            </div>
+
+            <label class="rule-item clickable-rule">
+              <span>{{ 'LOBBY.RULE_CONCEALED' | translate }}</span>
+              <input
+                type="checkbox"
+                [checked]="snap.lobby.rules.concealedFan"
+                [disabled]="snap.role !== 'host'"
+                (change)="onLobbyConcealedChange($event)"
+              />
+            </label>
+
+            <label class="rule-item clickable-rule">
+              <span>{{ 'LOBBY.RULE_SEVEN_PAIRS' | translate }}</span>
+              <input
+                type="checkbox"
+                [checked]="snap.lobby.rules.sevenPairs"
+                [disabled]="snap.role !== 'host'"
+                (change)="onLobbySevenPairsChange($event)"
+              />
+            </label>
+
+            <label class="rule-item clickable-rule">
+              <span>💡 {{ 'LOBBY.RULE_HINTS' | translate }}</span>
+              <input
+                type="checkbox"
+                [checked]="snap.lobby.rules.showHints !== false && session.hintsEnabled()"
+                [disabled]="snap.role !== 'host' && snap.lobby.rules.showHints === false"
+                (change)="onLobbyHintsChange($event)"
+              />
+            </label>
+          </div>
+
+          <div class="cta-row">
+            @if (snap.role === 'host') {
+              <button type="button" class="btn btn-gold" (click)="session.startMatch()">
+                🀄 {{ 'LOBBY.BTN_START_MATCH' | translate }}
+              </button>
+            } @else {
+              <span class="wait-host-label">{{ 'LOBBY.WAIT_FOR_HOST' | translate }}</span>
+            }
+          </div>
+        </section>
+      }
+    }
+  }
+</main>

@@ -1,0 +1,122 @@
+<header class="topbar">
+  <div class="brand">
+    <img class="brand-logo" src="favicon.svg" alt="" width="28" height="28" />
+    <span class="brand-title">{{ 'HEADER.BRAND' | translate }}</span>
+    <span class="brand-badge">
+      @if (session.snapshot()?.lobby; as lob) {
+        {{ (lob.mode === '3p' ? 'HEADER.BADGE_3P' : 'HEADER.BADGE_4P') | translate }}
+      } @else {
+        {{ 'HEADER.BADGE_P2P' | translate }}
+      }
+    </span>
+    <span class="fan-summary">
+      {{ 'HEADER.FAN_SUMMARY' | translate: { min: activeRules().minFan, max: activeRules().maxFan } }}
+    </span>
+  </div>
+
+  <div class="topbar-actions">
+    @if (session.snapshot()?.online && session.snapshot()?.roomCode; as code) {
+      <button
+        type="button"
+        class="btn btn-gold room-code-btn"
+        [attr.title]="(session.copiedToast() ? 'HEADER.COPIED' : 'HEADER.COPY_LINK') | translate"
+        (click)="session.copyInviteLink()"
+      >
+        <svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2.2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+        </svg>
+        <span class="room-code-short">{{ code }}</span>
+        <span class="action-label">
+          · {{ (session.copiedToast() ? 'HEADER.COPIED' : 'HEADER.COPY_LINK') | translate }}
+        </span>
+      </button>
+    }
+
+    <div class="lang-switcher" role="group" aria-label="Language Switcher">
+      @for (lang of languages; track lang.code) {
+        <button
+          type="button"
+          class="lang-btn"
+          [class.active]="translate.currentLang() === lang.code"
+          (click)="setLang(lang.code)"
+        >
+          {{ lang.label }}
+        </button>
+      }
+    </div>
+
+    <button
+      type="button"
+      class="btn icon-action-btn"
+      [attr.aria-label]="'HEADER.RULEBOOK' | translate"
+      [attr.title]="'HEADER.RULEBOOK' | translate"
+      (click)="session.showRulebook.set(true)"
+    >
+      <svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5V5.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+        <path d="M8 7h8M8 11h8M6.5 19H20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      <span class="action-label">{{ 'HEADER.RULEBOOK' | translate }}</span>
+    </button>
+
+    <button
+      type="button"
+      class="btn icon-action-btn bgm-toggle-btn"
+      [class.toggle-on]="session.bgmEnabled()"
+      [class.toggle-muted]="!session.bgmEnabled()"
+      [attr.aria-label]="(session.bgmEnabled() ? 'HEADER.BGM_ON' : 'HEADER.BGM_OFF') | translate"
+      [attr.title]="(session.bgmEnabled() ? 'HEADER.BGM_ON' : 'HEADER.BGM_OFF') | translate"
+      (click)="session.toggleBgm()"
+    >
+      <svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M9 18V6l11-2v12" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+        <circle cx="6.5" cy="18" r="2.5" fill="none" stroke="currentColor" stroke-width="2.1" />
+        <circle cx="17.5" cy="16" r="2.5" fill="none" stroke="currentColor" stroke-width="2.1" />
+        @if (!session.bgmEnabled()) {
+          <path d="M3 3l18 18" fill="none" stroke="#f87171" stroke-width="2.4" stroke-linecap="round" />
+        }
+      </svg>
+      <span class="action-label">
+        {{ (session.bgmEnabled() ? 'HEADER.BGM_ON' : 'HEADER.BGM_OFF') | translate }}
+      </span>
+    </button>
+
+    <button
+      type="button"
+      class="btn icon-action-btn"
+      [class.toggle-on]="session.soundEnabled()"
+      [class.toggle-muted]="!session.soundEnabled()"
+      [attr.aria-label]="(session.soundEnabled() ? 'HEADER.SOUND_ON' : 'HEADER.SOUND_OFF') | translate"
+      [attr.title]="(session.soundEnabled() ? 'HEADER.SOUND_ON' : 'HEADER.SOUND_OFF') | translate"
+      (click)="session.soundEnabled.set(!session.soundEnabled())"
+    >
+      <svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M11 5L6 9H3v6h3l5 4V5Z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" />
+        @if (session.soundEnabled()) {
+          <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
+        } @else {
+          <path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="#f87171" stroke-width="2.3" stroke-linecap="round" />
+        }
+      </svg>
+      <span class="action-label">
+        {{ (session.soundEnabled() ? 'HEADER.SOUND_ON' : 'HEADER.SOUND_OFF') | translate }}
+      </span>
+    </button>
+
+    @if (session.snapshot()) {
+      <button
+        type="button"
+        class="btn icon-action-btn leave-btn"
+        [attr.aria-label]="'HEADER.LEAVE_ROOM' | translate"
+        [attr.title]="'HEADER.LEAVE_ROOM' | translate"
+        (click)="session.leaveSession()"
+      >
+        <svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5M16 17l5-5-5-5M21 12H9" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span class="action-label">{{ 'HEADER.LEAVE_ROOM' | translate }}</span>
+      </button>
+    }
+  </div>
+</header>

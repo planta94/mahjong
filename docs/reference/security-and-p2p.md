@@ -13,4 +13,4 @@
 
 - `eslint-plugin-security` (`security/detect-object-injection`) is active across `src/**/*.ts` with **zero warnings** and **zero `eslint-disable` comments**.
 - Use `Map<K, V>` (`TILE_SPEC_MAP`, `CODE_INDEX_MAP`, `MODE_PLAYABLE_MAP`, `bySeat` maps) and `Array.prototype.at()` rather than dynamic `obj[key]` or `arr[idx]` bracket indexing.
-- Sanitize room codes read from URL query parameters (`?room=`) to alphanumeric uppercase (`<= 8` chars), and clear query strings via `window.history.replaceState()` when leaving a table.
+- Sanitize room codes and invite URLs via `extractRoomCode()` to alphanumeric uppercase (`<= 8` chars), isolate Host (`host_*`) vs room-scoped Guest (`hkmj_guest_token_*`) tokens to prevent duplicated-tab seat collisions, configure explicit HTTPS `0.peerjs.com:443` + STUN/TURN (`openrelay.metered.ca` 80/443 TCP/TLS) + JSON DataChannel serialization with auto-reconnect, and clear query strings via `window.history.replaceState()` when leaving a table.

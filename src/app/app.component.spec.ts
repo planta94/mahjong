@@ -175,7 +175,63 @@ describe('AppComponent, LobbyComponent, TableComponent & Modals', () => {
      expect(rootEl.querySelectorAll('.tenpai-bar').length).toBe(0);
      session.hintsEnabled.set(true);
      appFixture.detectChanges();
-     expect(rootEl.querySelectorAll('.action-bar button').length).toBe(5);
+
+     // Always-available action buttons in 3P claim phase: Chow, Pong, Kong, Fly, Hu, Pass = 6
+     const actionBtns = rootEl.querySelectorAll('.action-bar button');
+     expect(actionBtns.length).toBe(6);
+
+     // Click Pong button to enter manual tile-selection mode, toggle 2 tiles, then Confirm
+     (actionBtns.item(1) as HTMLButtonElement).click();
+     appFixture.detectChanges();
+     expect(rootEl.querySelectorAll('.selection-strip').length).toBe(1);
+
+     const rackTiles = rootEl.querySelectorAll('.hand-rack mj-tile');
+     (rackTiles.item(0) as HTMLElement).click();
+     (rackTiles.item(1) as HTMLElement).click();
+     appFixture.detectChanges();
+     expect(rootEl.querySelectorAll('.hand-rack .mj-tile.selected').length).toBe(2);
+
+     const confirmBtn = rootEl.querySelector('.selection-actions .btn-emerald') as HTMLButtonElement;
+     confirmBtn.click();
+     appFixture.detectChanges();
+     expect(rootEl.querySelectorAll('.selection-strip').length).toBe(0);
+
+     // Toggle selection mode and cancel it, toggle Auto-Pass checkbox, and render Penalty Banner
+     (rootEl.querySelectorAll('.action-bar button').item(0) as HTMLButtonElement).click();
+     appFixture.detectChanges();
+     expect(rootEl.querySelectorAll('.selection-strip').length).toBe(1);
+     const cancelBtn = rootEl.querySelectorAll('.selection-actions button').item(1) as HTMLButtonElement;
+     cancelBtn.click();
+     appFixture.detectChanges();
+     expect(rootEl.querySelectorAll('.selection-strip').length).toBe(0);
+
+     const autoPassInput = rootEl.querySelector('.auto-pass-toggle input') as HTMLInputElement;
+     autoPassInput.click();
+     appFixture.detectChanges();
+     expect(session.autoPass()).toBe(true);
+     autoPassInput.click();
+     appFixture.detectChanges();
+     expect(session.autoPass()).toBe(false);
+
+     const penSnap = session.snapshot()!;
+     session.snapshot.set({
+       ...penSnap,
+       view: {
+         ...penSnap.view!,
+         lastPenalty: {
+           seat: 0,
+           actionType: 'win',
+           isFalseWin: true,
+           reasonCode: 'FALSE_WIN_FAN',
+           rawFan: 3,
+           minFan: 5,
+           eachGain: 48,
+           totalLost: 96,
+         },
+       },
+     });
+     appFixture.detectChanges();
+     expect(rootEl.querySelectorAll('.penalty-banner').length).toBe(1);
 
     // Trigger Settlement modal (win state) and verify desktop table + mobile cards + bottom actions
     const curSnap = session.snapshot()!;

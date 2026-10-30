@@ -1,10 +1,12 @@
-import { Component, OnInit, computed, inject } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { PlayerPublicState } from '../../core/models/mahjong.model';
+import { Meld, PlayerPublicState } from '../../core/models/mahjong.model';
 import { MahjongSessionService } from '../../core/services/mahjong-session.service';
 import { tileSpec, windLabel } from '../../core/utils/tiles.util';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { TileComponent } from '../../shared/tile/tile.component';
+
+export type SelectionMode = 'chow' | 'pong' | 'kong' | 'exposeFly';
 
 @Component({
   selector: 'app-table',
@@ -16,6 +18,26 @@ import { TileComponent } from '../../shared/tile/tile.component';
 export class TableComponent implements OnInit {
   readonly session = inject(MahjongSessionService);
   private readonly router = inject(Router);
+
+  readonly selectionMode = signal<SelectionMode | null>(null);
+  readonly selectedTileIds = signal<string[]>([]);
+  private lastContextKey = '';
+
+  constructor() {
+    effect(() => {
+      const view = this.session.snapshot()?.view;
+      const legal = view?.legalActions;
+      const claimTile =
+        legal && (legal.phase === 'claim' || legal.phase === 'robKong') ? legal.tileId : '';
+      const key = view ? `${view.handNumber}|${view.phase}|${view.turnSeat}|${claimTile}` : 'none';
+      if (key !== this.lastContextKey) {
+        this.lastContextKey = key;
+        this.selectionMode.set(null);
+        this.selectedTileIds.set([]);
+        this.session.selectionPaused.set(false);
+      }
+    });
+  }
 
   readonly seatLayout = computed(() => {
     const view = this.session.snapshot()?.view;
@@ -82,7 +104,66 @@ export class TableComponent implements OnInit {
     return this.session.snapshot()?.view?.log.at(-1) ?? '';
   }
 
-  onDiscardClick(tileId: string): void {
+  meldTiles(m: Meld): readonly string[] {
+    return m.tileIds ?? m.codes;
+  }
+
+  startSelection(mode: SelectionMode): void {
+    if (this.selectionMode() === mode) {
+      this.cancelSelection();
+      return;
+    }
+    this.selectionMode.set(mode);
+    this.selectedTileIds.set([]);
+    this.session.selectionPaused.set(true);
+    this.session.playClack(700);
+  }
+
+  cancelSelection(): void {
+    this.selectionMode.set(null);
+    this.selectedTileIds.set([]);
+    this.session.selectionPaused.set(false);
+  }
+
+  confirmSelection(): void {
+    const mode = this.selectionMode();
+    const tileIds = [...this.selectedTileIds()];
+    this.cancelSelection();
+    if (!mode) return;
+    this.session.sendAction({ type: mode, tileIds });
+  }
+
+  declareWin(): void {
+    this.cancelSelection();
+    this.session.sendAction({ type: 'win' });
+  }
+
+  passClaim(): void {
+    this.cancelSelection();
+    this.session.sendAction({ type: 'pass' });
+  }
+
+  onToggleAutoPass(event: Event): void {
+    const target = event.target as HTMLInputElement | null;
+    if (target) {
+      this.session.toggleAutoPass(target.checked);
+    }
+  }
+
+  isTileSelected(tileId: string): boolean {
+    return this.selectedTileIds().includes(tileId);
+  }
+
+  onHandTileClick(tileId: string): void {
+    if (this.selectionMode() !== null) {
+      const cur = this.selectedTileIds();
+      this.selectedTileIds.set(
+        cur.includes(tileId) ? cur.filter((id) => id !== tileId) : [...cur, tileId]
+      );
+      this.session.playClack(680);
+      return;
+    }
+
     const legal = this.session.snapshot()?.view?.legalActions;
     if (legal?.phase === 'turn' && legal.canDiscard) {
       this.session.sendAction({ type: 'discard', tileId });
@@ -91,10 +172,6 @@ export class TableComponent implements OnInit {
 
   tileName(code: string): string {
     return tileSpec(code).name;
-  }
-
-  chowLabel(codes: readonly string[]): string {
-    return codes.map((c) => this.tileName(c)).join('');
   }
 
   backPlaceholders(count: number): number[] {

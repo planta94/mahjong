@@ -118,8 +118,9 @@
         <div class="join-code-wrap">
           <input
             class="portal-input uppercase-input"
-            maxlength="8"
+            maxlength="120"
             [(ngModel)]="joinCode"
+            (keydown.enter)="joinRoom()"
             [placeholder]="'LOBBY.JOIN_PLACEHOLDER' | translate"
           />
         </div>

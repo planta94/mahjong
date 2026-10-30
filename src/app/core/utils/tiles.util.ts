@@ -223,7 +223,17 @@ export function sortHandIds(ids: readonly string[]): string[] {
   });
 }
 
+function cryptoRandom(): number {
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const buf = new Uint32Array(1);
+    crypto.getRandomValues(buf);
+    return (buf.at(0) ?? 0) / 4294967296;
+  }
+  return Math.random();
+}
+
 export function createDeck(mode: GameMode = '4p', rng: () => number = Math.random): string[] {
+  const rand = rng === Math.random ? cryptoRandom : rng;
   const tiles: string[] = [];
 
   if (mode === '4p') {
@@ -246,14 +256,26 @@ export function createDeck(mode: GameMode = '4p', rng: () => number = Math.rando
     for (let copy = 0; copy < 4; copy++) tiles.push(`jk_${copy}`);
   }
 
-  for (let i = tiles.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    const vi = tiles.at(i);
-    const vj = tiles.at(j);
-    if (vi !== undefined && vj !== undefined) {
-      tiles.splice(i, 1, vj);
-      tiles.splice(j, 1, vi);
+  for (let pass = 0; pass < 3; pass++) {
+    for (let i = tiles.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      if (i === j) continue;
+      const vi = tiles.at(i);
+      const vj = tiles.at(j);
+      if (vi !== undefined && vj !== undefined) {
+        tiles.splice(i, 1, vj);
+        tiles.splice(j, 1, vi);
+      }
     }
+  }
+
+  const diceSum =
+    (Math.floor(rand() * 6) + 1) +
+    (Math.floor(rand() * 6) + 1) +
+    (Math.floor(rand() * 6) + 1);
+  const cutOffset = (diceSum * 2) % tiles.length;
+  if (cutOffset > 0) {
+    return [...tiles.slice(cutOffset), ...tiles.slice(0, cutOffset)];
   }
   return tiles;
 }

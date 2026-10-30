@@ -2,34 +2,43 @@ import { TestBed } from '@angular/core/testing';
 import { BotService, chooseBotAction } from './bot.service';
 import { applyAction, createMatch, getPlayerView } from './engine.service';
 
-describe('BotService & 5-Fan AI Decisions', () => {
-  it('chooses win, robKong pass, fan-honor pong, chow, kong, and off-suit discard', () => {
+describe('BotService & Tactical 5-Fan AI Decisions', () => {
+  it('locks onto exact 5-Fan Tenpai discards, preserves All-Pongs, exposes 3P Fly strategically, and completes simulations', () => {
     TestBed.configureTestingModule({});
     const bot = TestBed.inject(BotService);
 
+    // 1. Exact 1-ply Tenpai search: discards off-suit m9_0 to maintain Pure One Suit Tenpai
     const m = createMatch({ mode: '4p' });
     const p0 = m.players.at(0)!;
     const p1 = m.players.at(1)!;
-
-    // 1. Turn with off-suit singleton + jokers + danger mode
+    p0.bonus = [];
     p0.hand = [
-      'jk_0', 'm1_0',
+      'm9_0',
       'p1_0', 'p2_0', 'p3_0',
-      'p4_0', 'p4_1', 'p5_0', 'p6_0',
+      'p4_0', 'p5_0', 'p6_0',
       'p7_0', 'p8_0', 'p9_0',
+      'p2_1', 'p3_1',
+      'p5_1', 'p5_2',
+    ];
+    const tenpaiAct = bot.chooseAction(getPlayerView(m, 0));
+    expect(tenpaiAct).toEqual({ type: 'discard', tileId: 'm9_0' });
+
+    // 2. Multi-suit All-Pongs + Dragon pairs: discards isolated singleton instead of breaking off-suit triplets!
+    const mPongs = createMatch({ mode: '4p' });
+    const mp0 = mPongs.players.at(0)!;
+    mp0.hand = [
+      'm2_0', 'm2_1', 'm2_2',
+      'p6_0', 'p6_1', 'p6_2',
+      's8_0', 's8_1',
       'dr_0', 'dr_1',
+      'dg_0', 'dg_1',
+      'm9_0', 'ws_0',
     ];
-    p1.melds = [
-      { type: 'pong', codes: ['s1', 's1', 's1'], concealed: false },
-      { type: 'pong', codes: ['s2', 's2', 's2'], concealed: false },
-      { type: 'pong', codes: ['s3', 's3', 's3'], concealed: false },
-    ];
+    const pongPlanAct = chooseBotAction(getPlayerView(mPongs, 0));
+    expect(pongPlanAct?.type).toBe('discard');
+    expect(['m9_0', 'ws_0'].includes(pongPlanAct?.tileId ?? '')).toBe(true);
 
-    const turnAct = bot.chooseAction(getPlayerView(m, 0));
-    expect(turnAct?.type).toBe('discard');
-    expect(turnAct?.tileId).toBe('m1_0');
-
-    // 2. Claim: fan honor pong accepted
+    // 3. Claim: fan honor pong accepted
     p0.hand = [
       'dr_0', 'p1_0', 'p2_0', 'p3_0', 'p4_0', 'p5_0', 'p6_0',
       'p7_0', 'p8_0', 'p9_0', 's1_0', 's2_0', 's3_0', 's4_0',
@@ -43,7 +52,7 @@ describe('BotService & 5-Fan AI Decisions', () => {
     const claimPong = chooseBotAction(getPlayerView(m, 1));
     expect(claimPong?.type).toBe('pong');
 
-    // 3. Claim: chow on pure flush path
+    // 4. Claim: chow on pure flush path
     const m2 = createMatch({ mode: '4p' });
     m2.players.at(0)!.hand = [
       'p3_0', 'm1_0', 'm2_0', 'm3_0', 's1_0', 's2_0', 's3_0',
@@ -57,9 +66,63 @@ describe('BotService & 5-Fan AI Decisions', () => {
     const claimChow = chooseBotAction(getPlayerView(m2, 1));
     expect(claimChow?.type).toBe('chow');
 
-    // 4. Complete full 3P bot simulation for 25 plies without illegal moves
+    // 5. 3P exposeFly when surplus jokers need extra Fan
+    const m3 = createMatch({ mode: '3p' });
+    const m3p0 = m3.players.at(0)!;
+    m3p0.bonus = ['f2_0'];
+    m3p0.melds = [{ type: 'chow', codes: ['p1', 'p2', 'p3'], concealed: false, fromSeat: 2 }];
+    m3p0.hand = [
+      'jk_0', 'jk_1', 'p4_0', 'p5_0', 'p7_0', 'p9_0',
+      'ws_0', 'ww_0', 'dr_0', 'dg_0', 'dw_0',
+    ];
+    const flyAct = chooseBotAction(getPlayerView(m3, 0));
+    expect(flyAct?.type).toBe('exposeFly');
+
+    // 5b. Seven Pairs preservation + Concealed Kong + Added Kong + RobKong Pass + Self Win
+    const m7 = createMatch({ mode: '4p' });
+    const p7 = m7.players.at(0)!;
+    p7.hand = [
+      'm1_0', 'm1_1', 'm5_0', 'm5_1', 'p2_0', 'p2_1',
+      'p8_0', 'p8_1', 's4_0', 's4_1', 'dr_0', 'dr_1',
+      'we_0', 'wn_0',
+    ];
+    const sevenAct = chooseBotAction(getPlayerView(m7, 0));
+    expect(sevenAct?.type).toBe('discard');
+    expect(['we_0', 'wn_0'].includes(sevenAct?.tileId ?? '')).toBe(true);
+
+    // Concealed Kong on turn
+    p7.hand = [
+      'dr_0', 'dr_1', 'dr_2', 'dr_3',
+      'p1_0', 'p2_0', 'p3_0', 'p5_0', 'p6_0', 'p8_0',
+      's2_0', 's5_0', 'we_0', 'ws_0',
+    ];
+    expect(chooseBotAction(getPlayerView(m7, 0))).toEqual({ type: 'concealedKong', code: 'dr' });
+
+    // Added Kong on turn + opponent robKong pass
+    p7.melds = [{ type: 'pong', codes: ['dg', 'dg', 'dg'], tileIds: ['dg_0', 'dg_1', 'dg_2'], concealed: false }];
+    p7.hand = [
+      'dg_3', 'p1_0', 'p2_0', 'p3_0', 'p5_0', 'p6_0', 'p8_0',
+      's2_0', 's5_0', 'we_0', 'ws_0',
+    ];
+    expect(chooseBotAction(getPlayerView(m7, 0))).toEqual({ type: 'addedKong', code: 'dg' });
+    applyAction(m7, 0, { type: 'addedKong', code: 'dg' });
+    expect(chooseBotAction(getPlayerView(m7, 1))).toEqual({ type: 'pass' });
+
+    // Self-draw Win immediately taken
+    const mWin = createMatch({ mode: '3p' });
+    mWin.players.at(0)!.bonus = [];
+    mWin.players.at(0)!.hand = [
+      'p1_0', 'p2_0', 'p3_0',
+      'p4_0', 'p5_0', 'p6_0',
+      'p7_0', 'p8_0', 'p9_0',
+      'p2_1', 'p3_1', 'p4_1',
+      'p9_1', 'p9_2',
+    ];
+    expect(chooseBotAction(getPlayerView(mWin, 0))).toEqual({ type: 'win' });
+
+    // 6. Complete 3P bot simulation for 40 plies without any wrong-call penalties
     const sim = createMatch({ mode: '3p' });
-    for (let step = 0; step < 25 && sim.phase !== 'handOver'; step++) {
+    for (let step = 0; step < 40 && sim.phase !== 'handOver'; step++) {
       let progressed = false;
       for (let s = 0; s < sim.numSeats; s++) {
         const v = getPlayerView(sim, s);
@@ -71,6 +134,7 @@ describe('BotService & 5-Fan AI Decisions', () => {
         }
       }
       expect(progressed).toBe(true);
+      expect(sim.lastPenalty).toBeNull();
     }
   });
 });

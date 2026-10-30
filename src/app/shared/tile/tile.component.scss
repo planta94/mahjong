@@ -28,6 +28,12 @@
   box-shadow: 0 0 0 2px #facc15, 0 0 12px rgba(250, 204, 21, 0.85);
 }
 
+.mj-tile.selected {
+  transform: translateY(-10px);
+  border-color: #00d285;
+  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.55), 0 0 0 2.5px #00d285;
+}
+
 .mj-tile.drawn-gap {
   margin-left: var(--drawn-gap, 12px);
 }

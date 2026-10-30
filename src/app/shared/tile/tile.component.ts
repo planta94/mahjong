@@ -41,6 +41,7 @@ export class TileComponent {
   readonly size = input<'' | 'sm' | 'xs'>('');
   readonly clickable = input<boolean>(false);
   readonly highlight = input<boolean>(false);
+  readonly selected = input<boolean>(false);
   readonly drawnGap = input<boolean>(false);
 
   readonly spec = computed(() => {

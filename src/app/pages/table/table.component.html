@@ -3,8 +3,11 @@
     @let view = snap.view;
     @let lobby = snap.lobby;
     @let me = playerAt(layout.me);
+    @let legal = view.legalActions;
     @let isMyTurn = view.phase === 'turn' && view.turnSeat === layout.me;
-    @let canDiscard = view.legalActions !== null && view.legalActions.phase === 'turn' && view.legalActions.canDiscard;
+    @let canDiscard = legal !== null && legal.phase === 'turn' && legal.canDiscard;
+    @let selMode = selectionMode();
+    @let tileClickable = canDiscard || selMode !== null;
 
     <main class="table-stage" [class.mode-3p]="layout.top === null">
       <!-- Top Seat (4P Across) or 3P Banner -->
@@ -49,7 +52,7 @@
                 <div class="melds-and-bonus opp-exposed">
                   @for (m of topP.melds; track $index) {
                     <div class="meld-group">
-                      @for (c of m.codes; track $index) {
+                      @for (c of meldTiles(m); track $index) {
                         <mj-tile [tile]="c" size="xs" />
                       }
                     </div>
@@ -110,7 +113,7 @@
             <div class="melds-and-bonus opp-exposed">
               @for (m of leftP.melds; track $index) {
                 <div class="meld-group">
-                  @for (c of m.codes; track $index) {
+                  @for (c of meldTiles(m); track $index) {
                     <mj-tile [tile]="c" size="xs" />
                   }
                 </div>
@@ -146,6 +149,35 @@
             <div class="log-strip">{{ logText }}</div>
           }
         </div>
+
+        @if (view.lastPenalty; as pen) {
+          <div class="penalty-banner" role="alert">
+            ⚠️
+            @if (pen.reasonCode === 'FALSE_WIN_FAN') {
+              {{
+                'TABLE.PENALTY_FALSE_FAN'
+                  | translate:
+                    {
+                      name: seatName(pen.seat),
+                      raw: pen.rawFan ?? 0,
+                      min: pen.minFan,
+                      each: pen.eachGain,
+                      total: pen.totalLost,
+                    }
+              }}
+            } @else if (pen.isFalseWin) {
+              {{
+                'TABLE.PENALTY_FALSE_SHAPE'
+                  | translate: { name: seatName(pen.seat), each: pen.eachGain, total: pen.totalLost }
+              }}
+            } @else {
+              {{
+                'TABLE.PENALTY_WRONG_CALL'
+                  | translate: { name: seatName(pen.seat), each: pen.eachGain, total: pen.totalLost }
+              }}
+            }
+          </div>
+        }
 
         @let pool = discardPool();
         <div class="discard-pool">
@@ -209,7 +241,7 @@
             <div class="melds-and-bonus opp-exposed">
               @for (m of rightP.melds; track $index) {
                 <div class="meld-group">
-                  @for (c of m.codes; track $index) {
+                  @for (c of meldTiles(m); track $index) {
                     <mj-tile [tile]="c" size="xs" />
                   }
                 </div>
@@ -238,117 +270,119 @@
                 </span>
               }
               <span class="player-name">{{ seatName(layout.me) }}</span>
-              @if (isMyTurn) {
+              @if (isMyTurn && selMode === null) {
                 <span class="turn-hint">👉 {{ 'TABLE.YOUR_TURN_HINT' | translate }}</span>
               }
             </div>
             <span class="score-pill">💰 {{ 'TABLE.PTS' | translate: { score: seatScore(layout.me) } }}</span>
           </div>
 
-          <!-- Turn / Claim Action Bar -->
-          @if (view.legalActions; as legal) {
-            @if (
-              legal.phase === 'turn' &&
-              (legal.win || legal.exposeFly || legal.concealedKongs.length || legal.addedKongs.length)
-            ) {
-              <div class="action-bar">
-                @if (legal.win) {
-                  <button
-                    type="button"
-                    class="btn btn-crimson"
-                    (click)="session.sendAction({ type: 'win' })"
-                  >
-                    🎉 {{ 'TABLE.ACT_SELF_WIN' | translate: { fan: legal.win.cappedFan } }}
-                  </button>
-                }
-                @if (legal.exposeFly) {
-                  <button
-                    type="button"
-                    class="btn btn-gold"
-                    (click)="session.sendAction({ type: 'exposeFly' })"
-                  >
-                    ✨ {{ 'TABLE.ACT_EXPOSE_FLY' | translate }}
-                  </button>
-                }
-                @for (c of legal.concealedKongs; track c) {
-                  <button
-                    type="button"
-                    class="btn btn-jade"
-                    (click)="session.sendAction({ type: 'concealedKong', code: c })"
-                  >
-                    {{ 'TABLE.ACT_CONCEALED_KONG' | translate: { tile: tileName(c) } }}
-                  </button>
-                }
-                @for (c of legal.addedKongs; track c) {
-                  <button
-                    type="button"
-                    class="btn btn-jade"
-                    (click)="session.sendAction({ type: 'addedKong', code: c })"
-                  >
-                    {{ 'TABLE.ACT_ADDED_KONG' | translate: { tile: tileName(c) } }}
-                  </button>
-                }
-              </div>
-            }
-
-            @if (legal.phase === 'claim' || legal.phase === 'robKong') {
-              <div class="action-bar">
+          <!-- Always-Available Action Bar (Manual Tile Selection + Wrong-Call Penalty) -->
+          @if (view.phase !== 'handOver') {
+            <div class="action-bar">
+              @if (legal && (legal.phase === 'claim' || legal.phase === 'robKong')) {
                 <span class="claim-prompt">
                   {{ seatName(legal.fromSeat) }}
                   {{ (legal.phase === 'robKong' ? 'TABLE.CLAIM_ROB_KONG' : 'TABLE.CLAIM_DISCARDED') | translate }}
                 </span>
                 <mj-tile [tile]="legal.tileId" size="sm" [highlight]="true" />
-                @if (legal.win) {
-                  <button
-                    type="button"
-                    class="btn btn-crimson"
-                    (click)="session.sendAction({ type: 'win' })"
-                  >
-                    🎉
-                    {{
-                      (legal.phase === 'robKong' ? 'TABLE.ACT_ROB_WIN' : 'TABLE.ACT_CLAIM_WIN')
-                        | translate: { fan: legal.win.cappedFan }
-                    }}
-                  </button>
-                }
-                @if (legal.phase === 'claim' && legal.canKong) {
-                  <button
-                    type="button"
-                    class="btn btn-jade"
-                    (click)="session.sendAction({ type: 'kong' })"
-                  >
-                    {{ 'TABLE.ACT_KONG' | translate }}
-                  </button>
-                }
-                @if (legal.phase === 'claim' && legal.canPong) {
-                  <button
-                    type="button"
-                    class="btn btn-gold"
-                    (click)="session.sendAction({ type: 'pong' })"
-                  >
-                    {{ 'TABLE.ACT_PONG' | translate }}
-                  </button>
-                }
-                @if (legal.phase === 'claim') {
-                  @for (ch of legal.chows; track $index) {
-                    <button
-                      type="button"
-                      class="btn btn-jade"
-                      (click)="session.sendAction({ type: 'chow', chowIndex: $index })"
-                    >
-                      {{ 'TABLE.ACT_CHOW' | translate: { meld: chowLabel(ch.meldCodes) } }}
-                    </button>
-                  }
-                }
+              }
+
+              <button
+                type="button"
+                class="btn btn-jade"
+                [class.active-call]="selMode === 'chow'"
+                (click)="startSelection('chow')"
+              >
+                {{ 'TABLE.BTN_CHOW' | translate }}
+              </button>
+
+              <button
+                type="button"
+                class="btn btn-gold"
+                [class.active-call]="selMode === 'pong'"
+                (click)="startSelection('pong')"
+              >
+                {{ 'TABLE.BTN_PONG' | translate }}
+              </button>
+
+              <button
+                type="button"
+                class="btn btn-jade"
+                [class.active-call]="selMode === 'kong'"
+                (click)="startSelection('kong')"
+              >
+                {{ 'TABLE.BTN_KONG' | translate }}
+              </button>
+
+              @if (view.mode === '3p') {
+                <button
+                  type="button"
+                  class="btn btn-gold"
+                  [class.active-call]="selMode === 'exposeFly'"
+                  (click)="startSelection('exposeFly')"
+                >
+                  ✨ {{ 'TABLE.BTN_FLY' | translate }}
+                </button>
+              }
+
+              <button
+                type="button"
+                class="btn btn-crimson"
+                (click)="declareWin()"
+              >
+                🎉 {{ 'TABLE.BTN_HU' | translate }}
+              </button>
+
+              @if (legal && (legal.phase === 'claim' || legal.phase === 'robKong')) {
                 <button
                   type="button"
                   class="btn"
-                  (click)="session.sendAction({ type: 'pass' })"
+                  (click)="passClaim()"
                 >
                   {{ 'TABLE.ACT_PASS' | translate }}
                 </button>
+              }
+
+              <label class="auto-pass-toggle">
+                <input
+                  type="checkbox"
+                  [checked]="session.autoPass()"
+                  (change)="onToggleAutoPass($event)"
+                />
+                <span>{{ 'TABLE.AUTO_PASS' | translate }}</span>
+              </label>
+            </div>
+          }
+
+          @if (selMode !== null) {
+            @let selCount = selectedTileIds().length;
+            <div class="selection-strip">
+              <span class="selection-prompt">
+                @switch (selMode) {
+                  @case ('chow') {
+                    {{ 'TABLE.SELECT_HINT_CHOW' | translate: { count: selCount } }}
+                  }
+                  @case ('pong') {
+                    {{ 'TABLE.SELECT_HINT_PONG' | translate: { count: selCount } }}
+                  }
+                  @case ('kong') {
+                    {{ 'TABLE.SELECT_HINT_KONG' | translate: { count: selCount } }}
+                  }
+                  @case ('exposeFly') {
+                    {{ 'TABLE.SELECT_HINT_FLY' | translate: { count: selCount } }}
+                  }
+                }
+              </span>
+              <div class="selection-actions">
+                <button type="button" class="btn btn-emerald" (click)="confirmSelection()">
+                  ✓ {{ 'TABLE.BTN_CONFIRM_CALL' | translate }}
+                </button>
+                <button type="button" class="btn" (click)="cancelSelection()">
+                  {{ 'TABLE.BTN_CANCEL_CALL' | translate }}
+                </button>
               </div>
-            }
+            </div>
           }
 
           <!-- Tenpai Helper Strip -->
@@ -375,14 +409,20 @@
             @let rack = myRack();
             <div class="hand-rack">
               @for (id of rack.main; track id) {
-                <mj-tile [tile]="id" [clickable]="canDiscard" (click)="onDiscardClick(id)" />
+                <mj-tile
+                  [tile]="id"
+                  [clickable]="tileClickable"
+                  [selected]="isTileSelected(id)"
+                  (click)="onHandTileClick(id)"
+                />
               }
               @if (rack.drawn; as dId) {
                 <mj-tile
                   [tile]="dId"
-                  [clickable]="canDiscard"
+                  [clickable]="tileClickable"
+                  [selected]="isTileSelected(dId)"
                   [drawnGap]="true"
-                  (click)="onDiscardClick(dId)"
+                  (click)="onHandTileClick(dId)"
                 />
               }
             </div>
@@ -391,7 +431,7 @@
               <div class="melds-and-bonus self-exposed">
                 @for (m of me.melds; track $index) {
                   <div class="meld-group">
-                    @for (c of m.codes; track $index) {
+                    @for (c of meldTiles(m); track $index) {
                       <mj-tile [tile]="c" size="sm" />
                     }
                   </div>
@@ -455,7 +495,7 @@
                   }
                   @for (m of res.winningMelds ?? []; track $index) {
                     <div class="meld-group">
-                      @for (c of m.codes; track $index) {
+                      @for (c of meldTiles(m); track $index) {
                         <mj-tile [tile]="c" size="sm" />
                       }
                     </div>

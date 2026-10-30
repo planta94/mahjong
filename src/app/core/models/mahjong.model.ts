@@ -145,6 +145,26 @@ export type LegalActions =
       win: WinEvalResult | null;
     };
 
+export type PenaltyReasonCode =
+  | 'FALSE_WIN_FAN'
+  | 'FALSE_WIN_SHAPE'
+  | 'WRONG_PONG'
+  | 'WRONG_KONG'
+  | 'WRONG_CHOW'
+  | 'WRONG_FLY'
+  | 'OUT_OF_TURN';
+
+export interface PenaltyEvent {
+  seat: number;
+  actionType: GameAction['type'];
+  isFalseWin: boolean;
+  reasonCode: PenaltyReasonCode;
+  rawFan?: number;
+  minFan: number;
+  eachGain: number;
+  totalLost: number;
+}
+
 export interface PlayerView {
   mode: GameMode;
   numSeats: number;
@@ -158,6 +178,7 @@ export interface PlayerView {
   wallCount: number;
   turnSeat: number;
   lastDiscard: { seat: number; tileId: string } | null;
+  lastPenalty?: PenaltyEvent | null;
   discardPool?: string[];
   viewerSeat: number;
   legalActions: LegalActions | null;
@@ -178,6 +199,7 @@ export interface GameAction {
     | 'chow'
     | 'pass';
   tileId?: string;
+  tileIds?: string[];
   code?: string;
   chowIndex?: number;
 }
@@ -187,11 +209,16 @@ export interface ClaimSeatEntry {
   canKong: boolean;
   canPong: boolean;
   chows: ChowOption[];
-  decision: { type: GameAction['type']; chowIndex: number } | null;
+  decision: {
+    type: GameAction['type'];
+    chowIndex: number;
+    tileIds?: string[];
+    meldCodes?: string[];
+  } | null;
 }
 
 export interface RobKongSeatEntry {
-  winEval: WinEvalResult;
+  winEval: WinEvalResult | null;
   decision: { type: 'win' | 'pass' } | null;
 }
 
@@ -212,6 +239,7 @@ export interface MatchState {
   isFirstGoAround: boolean;
   turnsTaken: number[];
   lastDiscard: { seat: number; tileId: string } | null;
+  lastPenalty?: PenaltyEvent | null;
   discardPool: string[];
   pendingRobKong: {
     seat: number;

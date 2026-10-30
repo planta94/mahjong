@@ -1,7 +1,11 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { GameMode } from '../../core/models/mahjong.model';
-import { MahjongSessionService } from '../../core/services/mahjong-session.service';
+import {
+  MahjongSessionService,
+  extractRoomCode,
+} from '../../core/services/mahjong-session.service';
 import { DEFAULT_RULES } from '../../core/services/scorer.service';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
@@ -14,6 +18,7 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 })
 export class LobbyComponent {
   readonly session = inject(MahjongSessionService);
+  private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly minFanOptions: readonly number[] = [3, 5, 7, 8];
@@ -31,6 +36,16 @@ export class LobbyComponent {
   homeShowHints = DEFAULT_RULES.showHints !== false;
 
   constructor() {
+    const sub = this.route.queryParamMap.subscribe((params) => {
+      if (this.session.snapshot()) return;
+      const room = extractRoomCode(params.get('room') ?? '');
+      if (room) {
+        this.joinCode = room;
+        this.hasUrlInvite.set(true);
+      }
+    });
+    this.destroyRef.onDestroy(() => sub.unsubscribe());
+
     if (typeof window !== 'undefined') {
       const onLeave = () => {
         this.hasUrlInvite.set(false);
@@ -51,8 +66,7 @@ export class LobbyComponent {
 
   private loadUrlRoom(): string {
     try {
-      const raw = new URLSearchParams(window.location.search).get('room') ?? '';
-      return raw.replace(/[^A-Za-z0-9]/g, '').slice(0, 8).toUpperCase();
+      return extractRoomCode(window.location.search);
     } catch {
       return '';
     }
@@ -128,6 +142,8 @@ export class LobbyComponent {
 
   joinRoom(): void {
     const name = this.persistNickname();
-    this.session.joinOnlineRoom(this.joinCode, name, this.homeShowHints);
+    const cleanCode = extractRoomCode(this.joinCode);
+    this.joinCode = cleanCode;
+    this.session.joinOnlineRoom(cleanCode, name, this.homeShowHints);
   }
 }

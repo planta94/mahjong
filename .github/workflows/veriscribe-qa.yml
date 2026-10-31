@@ -1,0 +1,52 @@
+name: VeriScribe QA Gate
+
+on:
+  pull_request:
+  push:
+    branches: ['main']
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify Agent Context & Repo Invariants
+        run: npm run qa:agent-docs
+
+      - name: TypeScript & ESLint Checks
+        run: |
+          npx tsc --noEmit
+          npm run lint
+
+      - name: Run Unit Tests & Coverage
+        run: npm run test:ci
+
+      - name: Run VeriScribe AST Scan & Evidence Gate
+        run: |
+          npm run qa:scan
+          npm run qa:gate
+
+      - name: Upload VeriScribe QA Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: veriscribe-qa-reports
+          path: |
+            qa-system/reports
+            test-results

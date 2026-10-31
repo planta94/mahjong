@@ -14,6 +14,7 @@ describe('ShellUiService', () => {
   });
 
   afterEach(() => {
+    service.ngOnDestroy();
     localStorage.clear();
     sessionStorage.clear();
   });
@@ -34,10 +35,12 @@ describe('ShellUiService', () => {
     localStorage.setItem('hkmj_nickname', 'OldMaster');
     const migratedService = new ShellUiService();
     expect(migratedService.playerNickname()).toBe('OldMaster');
+    migratedService.ngOnDestroy();
 
     localStorage.setItem('party_pavilion_nickname', 'NewTycoon');
     const directService = new ShellUiService();
     expect(directService.playerNickname()).toBe('NewTycoon');
+    directService.ngOnDestroy();
   });
 
   it('updates and persists player nickname in dual storage keys', () => {
@@ -169,6 +172,7 @@ describe('ShellUiService', () => {
       audioSvc.toggleSound();
       audioSvc.playSfx('click');
       expect(audioSvc.soundEnabled()).toBe(false);
+      audioSvc.ngOnDestroy();
     } finally {
       globalThis.AudioContext = originalCtx;
     }
@@ -348,8 +352,143 @@ describe('ShellUiService', () => {
       bgmSvc.setActiveGame('hub');
       expect(createdAudios.at(2)?.paused).toBe(true);
       expect(createdAudios.at(2)?.currentTime).toBe(0);
+      bgmSvc.ngOnDestroy();
     } finally {
       globalThis.Audio = originalAudio;
+    }
+  });
+
+  it('auto-suspends idle AudioContext and pauses/resumes audio on tab visibilitychange', () => {
+    vi.useFakeTimers();
+    let suspendCalls = 0;
+    let resumeCalls = 0;
+    let speechCancels = 0;
+    let ctxState: AudioContextState = 'running';
+
+    const mockGain = {
+      gain: {
+        setValueAtTime: () => undefined,
+        exponentialRampToValueAtTime: () => undefined,
+      },
+      connect: () => mockGain,
+    };
+    const mockOsc = {
+      type: 'triangle',
+      frequency: {
+        setValueAtTime: () => undefined,
+        exponentialRampToValueAtTime: () => undefined,
+      },
+      connect: () => mockGain,
+      start: () => undefined,
+      stop: () => undefined,
+    };
+    const mockCtx = {
+      get state() {
+        return ctxState;
+      },
+      currentTime: 1,
+      destination: {},
+      createOscillator: () => mockOsc,
+      createGain: () => mockGain,
+      suspend: () => {
+        suspendCalls += 1;
+        ctxState = 'suspended';
+        return Promise.resolve();
+      },
+      resume: () => {
+        resumeCalls += 1;
+        ctxState = 'running';
+        return Promise.resolve();
+      },
+    };
+
+    let bgmPaused = true;
+    const MockAudio = function () {
+      return {
+        src: '',
+        loop: false,
+        volume: 1,
+        get paused() {
+          return bgmPaused;
+        },
+        currentTime: 0,
+        play() {
+          bgmPaused = false;
+          return Promise.resolve();
+        },
+        pause() {
+          bgmPaused = true;
+        },
+      };
+    };
+    MockAudio.isMockAudio = true;
+
+    const originalCtx = globalThis.AudioContext;
+    const originalAudio = globalThis.Audio;
+    const originalSpeech = globalThis.speechSynthesis;
+    const hiddenDescriptor = Object.getOwnPropertyDescriptor(document, 'hidden');
+
+    (globalThis as unknown as Record<string, unknown>)['AudioContext'] = function () {
+      return mockCtx;
+    };
+    (globalThis as unknown as Record<string, unknown>)['Audio'] = MockAudio;
+    (globalThis as unknown as Record<string, unknown>)['speechSynthesis'] = {
+      cancel: () => {
+        speechCancels += 1;
+      },
+      getVoices: () => [],
+      speak: () => undefined,
+    };
+
+    try {
+      service.ngOnDestroy();
+      const powerSvc = new ShellUiService();
+      powerSvc.setActiveGame('monopoly');
+      powerSvc.toggleBgm();
+      expect(bgmPaused).toBe(false);
+
+      powerSvc.playSfx('click');
+      expect(suspendCalls).toBe(0);
+
+      // Idle timeout (1500ms) suspends AudioContext
+      vi.advanceTimersByTime(1600);
+      expect(suspendCalls).toBe(1);
+      expect(ctxState).toBe('suspended');
+
+      // Playing SFX again resumes suspended AudioContext
+      powerSvc.playSfx('click');
+      expect(resumeCalls).toBe(1);
+      expect(ctxState).toBe('running');
+
+      // Backgrounding tab pauses BGM, suspends AudioContext immediately, and cancels TTS
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(bgmPaused).toBe(true);
+      expect(suspendCalls).toBe(2);
+      expect(speechCancels).toBe(1);
+
+      // Foregrounding tab resumes BGM when bgmEnabled is true
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+      document.dispatchEvent(new Event('visibilitychange'));
+      expect(bgmPaused).toBe(false);
+
+      // Muting sound suspends active AudioContext immediately
+      powerSvc.playSfx('click');
+      expect(ctxState).toBe('running');
+      powerSvc.toggleSound();
+      expect(ctxState).toBe('suspended');
+
+      powerSvc.ngOnDestroy();
+    } finally {
+      globalThis.AudioContext = originalCtx;
+      globalThis.Audio = originalAudio;
+      (globalThis as unknown as Record<string, unknown>)['speechSynthesis'] = originalSpeech;
+      if (hiddenDescriptor) {
+        Object.defineProperty(document, 'hidden', hiddenDescriptor);
+      } else {
+        Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+      }
+      vi.useRealTimers();
     }
   });
 });

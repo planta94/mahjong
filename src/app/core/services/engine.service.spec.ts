@@ -366,4 +366,510 @@ describe('EngineService & Match State Machine', () => {
     expect(m.result?.winnerSeat).toBe(3);
     expect(m.result?.loserSeat).toBe(2);
   });
+
+  it('handles EngineService wrapper methods, self-draw win, dealer streak retention, roundWind wrap, spectator view, and 40-line log cap', () => {
+    TestBed.configureTestingModule({});
+    const engine = TestBed.inject(EngineService);
+
+    const m = engine.createMatch();
+    expect(m.mode).toBe('4p');
+    expect(m.numSeats).toBe(4);
+
+    // Spectator view (viewerSeat < 0) hides all hands and sets legalActions to null
+    const specView = engine.getPlayerView(m, -1);
+    expect(specView.legalActions).toBeNull();
+    expect(specView.players.at(0)?.hand).toBeNull();
+
+    // Open meld without tileIds / fromSeat serializes cleanly and skips addedKong when 4th tile is absent
+    const p0 = m.players.at(0)!;
+    p0.melds = [{ type: 'pong', codes: ['dr', 'dr', 'dr'], concealed: false }];
+    p0.hand = [
+      'p1_0', 'p2_0', 'p3_0', 'p4_0', 'p5_0',
+      'p6_0', 'p7_0', 'p8_0', 'p9_0', 'p9_1', 'p9_2',
+    ];
+    const view0 = engine.getPlayerView(m, 0);
+    expect(view0.players.at(0)?.melds.at(0)?.tileIds).toBeUndefined();
+    expect(view0.players.at(0)?.melds.at(0)?.fromSeat).toBeNull();
+
+    const legal0 = getLegalActions(m, 0);
+    expect(legal0?.phase).toBe('turn');
+    if (legal0?.phase === 'turn') {
+      expect(legal0.addedKongs).toEqual([]);
+    }
+
+    // Dealer self-draw win with lastDrawnId === null and 40-entry log buffer shift
+    p0.melds = [];
+    p0.bonus = [];
+    p0.lastDrawnId = null;
+    p0.hand = [
+      'p1_0', 'p2_0', 'p3_0',
+      'p4_0', 'p5_0', 'p6_0',
+      'p7_0', 'p8_0', 'p9_0',
+      'p2_1', 'p3_1', 'p4_1',
+      'p9_1', 'p9_2',
+    ];
+    m.log = Array.from({ length: 40 }, (_, idx) => `entry-${idx}`);
+
+    engine.applyAction(m, 0, { type: 'win' });
+    expect(m.phase).toBe('handOver');
+    expect(m.result?.outcome).toBe('win');
+    expect(m.result?.selfDraw).toBe(true);
+    expect(m.result?.winnerSeat).toBe(0);
+    expect(m.result?.winningTileId).toBe('p9_2');
+    expect(m.log.length).toBe(40);
+    expect(m.log.at(0)).toBe('entry-1');
+    expect(m.log.at(-1)).toContain('自摸');
+
+    // Dealer win retains dealerSeat and increments dealerStreak
+    engine.startNewHand(m);
+    expect(m.dealerSeat).toBe(0);
+    expect(m.dealerStreak).toBe(1);
+    expect(m.roundWind).toBe(0);
+
+    // Exhaustive draw also retains dealerSeat and increments dealerStreak
+    m.phase = 'handOver';
+    m.result = {
+      outcome: 'draw',
+      winnerSeat: null,
+      loserSeat: null,
+      selfDraw: false,
+      fanResult: null,
+      deltas: [0, 0, 0, 0],
+    };
+    engine.startNewHand(m);
+    expect(m.dealerSeat).toBe(0);
+    expect(m.dealerStreak).toBe(2);
+
+    // Non-dealer win when dealerSeat === 3 wraps dealerSeat to 0 and advances roundWind
+    m.dealerSeat = 3;
+    m.phase = 'handOver';
+    m.result = {
+      outcome: 'win',
+      winnerSeat: 1,
+      loserSeat: 3,
+      selfDraw: false,
+      fanResult: null,
+      deltas: [0, 96, 0, -96],
+    };
+    engine.startNewHand(m);
+    expect(m.dealerSeat).toBe(0);
+    expect(m.dealerStreak).toBe(0);
+    expect(m.roundWind).toBe(1);
+  });
+
+  it('resolves multi-seat claim priority (Pong beats Chow, closer Hu intercepts farther Hu) and closer robKong priority', () => {
+    // 1. Pong (Seat 2) beats Chow (Seat 1) using chowIndex and auto-matched Pong without tileIds
+    const m = createMatch({ mode: '4p' });
+    const p0 = m.players.at(0)!;
+    const p1 = m.players.at(1)!;
+    const p2 = m.players.at(2)!;
+    const p3 = m.players.at(3)!;
+
+    p0.hand = [
+      'm2_0', 'm5_0', 'm6_0', 'p1_0', 'p2_0', 'p3_0', 's1_0',
+      's2_0', 's3_0', 'we_0', 'ws_0', 'ww_0', 'wn_0', 'dr_0',
+    ];
+    p1.hand = [
+      'm1_0', 'm3_0', 'p4_0', 'p5_0', 'p6_0', 's4_0', 's5_0',
+      's6_0', 'we_1', 'ws_1', 'ww_1', 'wn_1', 'dr_1',
+    ];
+    p2.hand = [
+      'm2_1', 'm2_2', 'p7_0', 'p8_0', 'p9_0', 's7_0', 's8_0',
+      's9_0', 'we_2', 'ws_2', 'ww_2', 'dg_0', 'dw_0',
+    ];
+    p3.hand = [
+      'm7_0', 'm8_0', 'm9_0', 'p7_1', 'p8_1', 'p9_1', 'we_3',
+      'ws_3', 'ww_3', 'wn_3', 'dr_3', 'dg_1', 'dw_1',
+    ];
+
+    applyAction(m, 0, { type: 'discard', tileId: 'm2_0' });
+    applyAction(m, 1, { type: 'chow', chowIndex: 0 });
+    expect(m.phase).toBe('claim');
+    applyAction(m, 2, { type: 'pong' });
+    expect(m.phase).toBe('claim');
+    applyAction(m, 3, { type: 'pass' });
+
+    expect(m.phase).toBe('turn');
+    expect(m.turnSeat).toBe(2);
+    expect(p2.melds.at(0)?.type).toBe('pong');
+    expect(p1.melds.length).toBe(0);
+
+    // 2. Closer Hu (Seat 1, dist 1) intercepts farther Hu (Seat 2, dist 2) even when Seat 2 claims first
+    const mHu = createMatch({ mode: '4p' });
+    const h0 = mHu.players.at(0)!;
+    const h1 = mHu.players.at(1)!;
+    const h2 = mHu.players.at(2)!;
+
+    h0.hand = [
+      'p9_0', 'm1_0', 'm3_0', 'm5_0', 'm7_0', 's1_0', 's3_0',
+      's5_0', 's7_0', 'we_0', 'ws_0', 'ww_0', 'wn_0', 'dr_0',
+    ];
+    h1.melds = [];
+    h1.bonus = [];
+    h1.hand = [
+      'p1_0', 'p2_0', 'p3_0',
+      'p2_1', 'p3_1', 'p4_1',
+      'p4_0', 'p5_0', 'p6_0',
+      'p7_0', 'p8_0', 'p9_1',
+      'p9_2',
+    ];
+    h2.melds = [];
+    h2.bonus = [];
+    h2.hand = [
+      'p1_1', 'p1_2', 'p1_3',
+      'p2_2', 'p3_2', 'p4_2',
+      'p5_1', 'p6_1', 'p7_1',
+      'p6_2', 'p7_2', 'p8_1',
+      'p9_3',
+    ];
+
+    applyAction(mHu, 0, { type: 'discard', tileId: 'p9_0' });
+    applyAction(mHu, 2, { type: 'win' });
+    expect(mHu.phase).toBe('claim');
+
+    applyAction(mHu, 1, { type: 'win' });
+    expect(mHu.phase).toBe('handOver');
+    expect(mHu.result?.winnerSeat).toBe(1);
+    expect(mHu.result?.loserSeat).toBe(0);
+
+    // 3. Closer Robber (Seat 1, dist 1) intercepts farther Robber (Seat 2, dist 2) in robKong
+    const mRob = createMatch({ mode: '4p' });
+    const r0 = mRob.players.at(0)!;
+    const r1 = mRob.players.at(1)!;
+    const r2 = mRob.players.at(2)!;
+
+    r0.melds = [
+      {
+        type: 'pong',
+        codes: ['p9', 'p9', 'p9'],
+        tileIds: ['p9_0', 'p9_1', 'p9_2'],
+        concealed: false,
+        fromSeat: 3,
+      },
+    ];
+    r0.hand = [
+      'p9_3', 'm1_0', 'm2_0', 'm3_0', 's1_0', 's2_0',
+      's3_0', 'we_0', 'ws_0', 'ww_0', 'wn_0',
+    ];
+    r1.melds = [];
+    r1.bonus = [];
+    r1.hand = [
+      'p1_0', 'p1_1',
+      'p2_0', 'p3_0', 'p4_0',
+      'p2_1', 'p3_1', 'p4_1',
+      'p5_0', 'p6_0', 'p7_0',
+      'p7_1', 'p8_0',
+    ];
+    r2.melds = [];
+    r2.bonus = [];
+    r2.hand = [
+      'p1_2', 'p1_3',
+      'p2_2', 'p3_2', 'p4_2',
+      'p3_3', 'p4_3', 'p5_1',
+      'p5_2', 'p6_1', 'p7_2',
+      'p7_3', 'p8_1',
+    ];
+    mRob.wall = ['s9_0', 's9_1'];
+
+    applyAction(mRob, 0, { type: 'addedKong', code: 'p9' });
+    expect(mRob.phase).toBe('robKong');
+    expect(getLegalActions(mRob, 1)?.phase).toBe('robKong');
+
+    applyAction(mRob, 2, { type: 'win' });
+    expect(mRob.phase).toBe('robKong');
+    expect(getLegalActions(mRob, 2)).toBeNull();
+
+    applyAction(mRob, 1, { type: 'win' });
+    expect(mRob.phase).toBe('handOver');
+    expect(mRob.result?.winnerSeat).toBe(1);
+    expect(mRob.result?.loserSeat).toBe(0);
+  });
+
+  it('enforces turn, claim, robKong, and 3P joker edge-case validations, penalties, and bonus-replacement wall exhaustion', () => {
+    // 1. Turn-phase error & penalty guards
+    const m = createMatch({ mode: '4p', startingScore: 1000 });
+    expect(() => applyAction(m, 99, { type: 'pass' })).toThrow('Invalid seat');
+    expect(() => applyAction(m, 1, { type: 'discard', tileId: 'm1_0' })).toThrow(
+      'Not this seat turn'
+    );
+    expect(() => applyAction(m, 1, { type: 'pass' })).toThrow('Not this seat turn');
+
+    applyAction(m, 1, { type: 'win' });
+    expect(m.lastPenalty?.reasonCode).toBe('FALSE_WIN_SHAPE');
+    expect(() => applyAction(m, 0, { type: 'discard' })).toThrow('Tile not in hand');
+
+    // Non-dealer first turn false win + Kong guards in turn phase
+    m.turnSeat = 1;
+    m.players.at(1)!.hand = [
+      'p1_0', 'p1_1', 'p1_2', 'p1_3', 'p2_0', 'm1_0', 'm3_0',
+      'm5_0', 's1_0', 's3_0', 'we_0', 'ws_0', 'ww_0', 'dr_0',
+    ];
+    applyAction(m, 1, { type: 'win' });
+    expect(m.lastPenalty?.reasonCode).toBe('FALSE_WIN_SHAPE');
+
+    m.canSelfAct = false;
+    applyAction(m, 1, { type: 'concealedKong', code: 'p1' });
+    expect(m.lastPenalty?.reasonCode).toBe('WRONG_KONG');
+
+    m.canSelfAct = true;
+    m.wall = [];
+    applyAction(m, 1, { type: 'kong', tileIds: ['p1_0'] });
+    expect(m.lastPenalty?.reasonCode).toBe('WRONG_KONG');
+
+    m.wall = ['s8_0', 's9_0'];
+    applyAction(m, 1, { type: 'kong', tileIds: ['p1_0', 'p1_1', 'p1_2', 'p2_0'] });
+    expect(m.lastPenalty?.reasonCode).toBe('WRONG_KONG');
+    applyAction(m, 1, { type: 'kong', tileIds: ['m9_0', 'm9_1', 'm9_2', 'm9_3'] });
+    expect(m.lastPenalty?.reasonCode).toBe('WRONG_KONG');
+    applyAction(m, 1, { type: 'kong', tileIds: ['p2_0'] });
+    expect(m.lastPenalty?.reasonCode).toBe('WRONG_KONG');
+    applyAction(m, 1, { type: 'kong', tileIds: ['m9_0'] });
+    expect(m.lastPenalty?.reasonCode).toBe('WRONG_KONG');
+
+    applyAction(m, 1, { type: 'concealedKong', code: 'p1' });
+    expect(m.players.at(1)?.melds.at(0)?.concealed).toBe(true);
+
+    // 2. 3P auto-pick exposeFly / retrieveFly, duplicate-pos chow swap guard, and Joker discard claims
+    const m3 = createMatch({ mode: '3p', startingScore: 1000 });
+    const q0 = m3.players.at(0)!;
+    const q1 = m3.players.at(1)!;
+    const q2 = m3.players.at(2)!;
+
+    m3.wall = ['p9_0', 'p9_1', 'p9_2'];
+    q0.melds = [
+      {
+        type: 'pong',
+        codes: ['p5', 'p5', 'p5'],
+        tileIds: ['p5_0', 'p5_1', 'jk_1'],
+        concealed: false,
+        fromSeat: 2,
+      },
+      {
+        type: 'chow',
+        codes: ['p4', 'p5', 'p6'],
+        tileIds: ['p4_0', 'p5_2', 'jk_3'],
+        concealed: false,
+        fromSeat: 2,
+      },
+    ];
+    q0.hand = ['jk_0', 'jk_2', 'p5_3', 'p4_1', 'p1_0', 'p2_0', 'we_0', 'ws_0'];
+    q1.hand = [
+      'p1_1', 'p2_1', 'p3_1', 'p6_0', 'p7_0', 'p8_0',
+      'we_1', 'ws_1', 'ww_1', 'wn_1', 'dr_1', 'dg_1', 'dw_1',
+    ];
+    q2.hand = [
+      'p1_2', 'p2_2', 'p3_2', 'p6_1', 'p7_1', 'p8_1',
+      'we_2', 'ws_2', 'ww_2', 'wn_2', 'dr_2', 'dg_2', 'dw_2',
+    ];
+
+    applyAction(m3, 0, { type: 'exposeFly' });
+    expect(q0.bonus.includes('jk_0')).toBe(true);
+
+    applyAction(m3, 0, { type: 'retrieveFly' });
+    expect(q0.melds.at(0)?.tileIds).toEqual(['p5_0', 'p5_1', 'p5_3']);
+
+    applyAction(m3, 0, { type: 'retrieveFly', tileIds: ['jk_2'] });
+    expect(m3.lastPenalty?.reasonCode).toBe('WRONG_FLY');
+
+    applyAction(m3, 0, { type: 'discard', tileId: 'jk_2' });
+    expect(m3.phase).toBe('claim');
+    applyAction(m3, 1, { type: 'pong' });
+    expect(m3.lastPenalty?.reasonCode).toBe('WRONG_PONG');
+    applyAction(m3, 2, { type: 'kong' });
+    expect(m3.lastPenalty?.reasonCode).toBe('WRONG_KONG');
+    expect(m3.phase).toBe('turn');
+
+    m3.turnSeat = 0;
+    applyAction(m3, 0, { type: 'discard', tileId: 'jk_1' });
+    applyAction(m3, 1, { type: 'chow' });
+    expect(m3.lastPenalty?.reasonCode).toBe('WRONG_CHOW');
+    applyAction(m3, 2, { type: 'pass' });
+    expect(m3.phase).toBe('turn');
+
+    // 3. Claim-phase guards, FALSE_WIN_FAN / FALSE_WIN_SHAPE, exposeFly/retrieveFly, and Pong/Kong/Chow validators
+    const mc = createMatch({ mode: '4p', startingScore: 1000 });
+    const c0 = mc.players.at(0)!;
+    const c1 = mc.players.at(1)!;
+    const c2 = mc.players.at(2)!;
+    const c3 = mc.players.at(3)!;
+
+    c0.hand = [
+      'ws_0', 'm1_0', 'm1_2', 'm1_3', 'm2_0', 'm3_0', 'p1_0',
+      'dr_0', 'p2_0', 'p3_0', 's1_0', 's2_0', 's3_0', 'we_0',
+    ];
+    c1.melds = [{ type: 'chow', codes: ['m4', 'm5', 'm6'], concealed: false, fromSeat: 0 }];
+    c1.bonus = ['f4_0'];
+    c1.hand = [
+      'p2_1', 'p3_1', 'p4_1',
+      's5_0', 's6_0', 's7_0',
+      'm7_0', 'm8_0', 'm9_0',
+      'ws_1',
+    ];
+    c2.hand = [
+      'm2_1', 'm3_1', 'p5_0', 'p6_0', 'p7_0', 's4_0', 's8_0',
+      's9_0', 'we_1', 'ww_1', 'wn_1', 'dg_0', 'dw_0',
+    ];
+    c3.hand = [
+      'dr_1', 'dr_2', 'dr_3', 'p8_0', 'p9_0', 's1_1', 's2_1',
+      'we_2', 'ws_2', 'ww_2', 'wn_2', 'dg_1', 'dw_1',
+    ];
+    mc.wall = ['s9_0', 's9_1', 's9_2', 's9_3', 'p9_1', 'p9_2', 'p9_3', 'p8_1', 'p8_2'];
+
+    applyAction(mc, 0, { type: 'discard', tileId: 'ws_0' });
+    expect(() => applyAction(mc, 99, { type: 'pass' })).toThrow('Invalid claim state');
+
+    applyAction(mc, 0, { type: 'pass' });
+    expect(mc.lastPenalty).toBeNull();
+    applyAction(mc, 0, { type: 'win' });
+    expect(mc.lastPenalty?.reasonCode).toBe('FALSE_WIN_SHAPE');
+
+    applyAction(mc, 1, { type: 'win' });
+    expect(mc.lastPenalty?.reasonCode).toBe('FALSE_WIN_FAN');
+    expect(mc.lastPenalty?.rawFan).toBe(1);
+
+    applyAction(mc, 1, { type: 'pong' });
+    expect(mc.lastPenalty?.reasonCode).toBe('OUT_OF_TURN');
+
+    applyAction(mc, 2, { type: 'chow', tileIds: ['m2_1', 'm3_1'] });
+    expect(mc.lastPenalty?.reasonCode).toBe('WRONG_CHOW');
+
+    expect(() => applyAction(mc, 3, { type: 'discard', tileId: 'dr_1' })).toThrow('Unknown claim');
+    applyAction(mc, 3, { type: 'win' });
+    expect(mc.lastPenalty?.reasonCode).toBe('FALSE_WIN_SHAPE');
+    expect(mc.phase).toBe('turn');
+
+    mc.turnSeat = 0;
+    applyAction(mc, 0, { type: 'discard', tileId: 'm1_0' });
+    applyAction(mc, 1, { type: 'exposeFly' });
+    expect(mc.lastPenalty?.reasonCode).toBe('WRONG_FLY');
+    applyAction(mc, 2, { type: 'retrieveFly' });
+    expect(mc.lastPenalty?.reasonCode).toBe('WRONG_FLY');
+    applyAction(mc, 3, { type: 'pong' });
+    expect(mc.lastPenalty?.reasonCode).toBe('WRONG_PONG');
+
+    mc.turnSeat = 0;
+    c1.hand = [
+      'm1_1', 'm2_2', 'm6_0', 'm9_0', 'p2_1',
+      'p3_1', 'p4_1', 's5_0', 's6_0', 's7_0',
+    ];
+    applyAction(mc, 0, { type: 'discard', tileId: 'm1_2' });
+    applyAction(mc, 1, { type: 'chow', tileIds: ['m1_1'] });
+    expect(mc.lastPenalty?.reasonCode).toBe('WRONG_CHOW');
+    applyAction(mc, 2, { type: 'pong', tileIds: ['m2_1'] });
+    expect(mc.lastPenalty?.reasonCode).toBe('WRONG_PONG');
+    applyAction(mc, 3, { type: 'kong', tileIds: ['dr_1'] });
+    expect(mc.lastPenalty?.reasonCode).toBe('WRONG_KONG');
+
+    mc.turnSeat = 0;
+    applyAction(mc, 0, { type: 'discard', tileId: 'm1_3' });
+    applyAction(mc, 1, { type: 'chow', tileIds: ['m2_2', 'm2_2'] });
+    expect(mc.lastPenalty?.reasonCode).toBe('WRONG_CHOW');
+    applyAction(mc, 2, { type: 'kong' });
+    expect(mc.lastPenalty?.reasonCode).toBe('WRONG_KONG');
+    applyAction(mc, 3, { type: 'pass' });
+
+    mc.turnSeat = 0;
+    applyAction(mc, 0, { type: 'discard', tileId: 'm2_0' });
+    applyAction(mc, 1, { type: 'chow', tileIds: ['m2_2', 'm6_0'] });
+    expect(mc.lastPenalty?.reasonCode).toBe('WRONG_CHOW');
+    applyAction(mc, 2, { type: 'pass' });
+    applyAction(mc, 3, { type: 'pass' });
+
+    mc.turnSeat = 0;
+    applyAction(mc, 0, { type: 'discard', tileId: 'm3_0' });
+    applyAction(mc, 1, { type: 'chow', tileIds: ['m6_0', 'm9_0'] });
+    expect(mc.lastPenalty?.reasonCode).toBe('WRONG_CHOW');
+    applyAction(mc, 2, { type: 'pass' });
+    applyAction(mc, 3, { type: 'pass' });
+
+    mc.turnSeat = 0;
+    applyAction(mc, 0, { type: 'discard', tileId: 'p1_0' });
+    applyAction(mc, 1, { type: 'chow', chowIndex: 9 });
+    expect(mc.lastPenalty?.reasonCode).toBe('WRONG_CHOW');
+    mc.wall = [];
+    applyAction(mc, 2, { type: 'kong' });
+    expect(mc.lastPenalty?.reasonCode).toBe('WRONG_KONG');
+    mc.wall = ['p9_3', 'p8_1', 'p8_2'];
+    applyAction(mc, 3, { type: 'pass' });
+
+    mc.turnSeat = 0;
+    applyAction(mc, 0, { type: 'discard', tileId: 'dr_0' });
+    applyAction(mc, 1, { type: 'pass' });
+    applyAction(mc, 2, { type: 'pass' });
+    applyAction(mc, 3, { type: 'kong' });
+    expect(c3.melds.at(0)?.type).toBe('kong');
+    expect(mc.turnSeat).toBe(3);
+
+    // 4. robKong guards, FALSE_WIN_FAN, fallback OUT_OF_TURN, bonus-replacement wall exhaustion, and handOver guard
+    const mr = createMatch({ mode: '4p', startingScore: 1000 });
+    const k0 = mr.players.at(0)!;
+    const k1 = mr.players.at(1)!;
+    const k2 = mr.players.at(2)!;
+    const k3 = mr.players.at(3)!;
+
+    k0.melds = [
+      {
+        type: 'pong',
+        codes: ['p2', 'p2', 'p2'],
+        tileIds: ['p2_0', 'p2_1', 'p2_2'],
+        concealed: false,
+        fromSeat: 3,
+      },
+    ];
+    k0.hand = [
+      'p2_3', 'p5_0', 'p5_1', 'p5_2', 'p5_3', 'm1_0',
+      'm2_0', 'm3_0', 'we_0', 'ws_2', 'ww_0',
+    ];
+    k1.melds = [{ type: 'chow', codes: ['m1', 'm2', 'm3'], concealed: false, fromSeat: 0 }];
+    k1.bonus = ['f4_0'];
+    k1.hand = [
+      'p3_0', 'p4_0',
+      's5_0', 's6_0', 's7_0',
+      'm7_0', 'm8_0', 'm9_0',
+      'ws_0', 'ws_1',
+    ];
+    k2.hand = [
+      'm4_0', 'm5_0', 'm6_0', 'p7_0', 'p8_0', 'p9_0', 's1_0',
+      's2_0', 'we_1', 'ws_3', 'ww_1', 'wn_1', 'dr_0',
+    ];
+    k3.hand = [
+      'm4_1', 'm5_1', 'm6_1', 'p7_1', 'p8_1', 'p9_1', 's3_0',
+      's4_0', 'we_2', 'ww_2', 'wn_2', 'dr_1', 'dg_0',
+    ];
+    mr.wall = ['s8_0', 's9_0'];
+
+    applyAction(mr, 0, { type: 'addedKong', code: 'p2' });
+    expect(mr.phase).toBe('robKong');
+    expect(() => applyAction(mr, 99, { type: 'pass' })).toThrow('Invalid rob-kong state');
+
+    applyAction(mr, 0, { type: 'pass' });
+    expect(mr.lastPenalty).toBeNull();
+    applyAction(mr, 0, { type: 'win' });
+    expect(mr.lastPenalty?.reasonCode).toBe('FALSE_WIN_SHAPE');
+
+    applyAction(mr, 1, { type: 'win' });
+    expect(mr.lastPenalty?.reasonCode).toBe('FALSE_WIN_FAN');
+    expect(mr.lastPenalty?.rawFan).toBe(2);
+
+    applyAction(mr, 1, { type: 'pong' });
+    expect(mr.lastPenalty?.reasonCode).toBe('OUT_OF_TURN');
+
+    applyAction(mr, 2, { type: 'discard', tileId: 'm4_0' });
+    expect(mr.lastPenalty?.reasonCode).toBe('OUT_OF_TURN');
+
+    applyAction(mr, 3, { type: 'pass' });
+    expect(mr.phase).toBe('turn');
+    expect(mr.turnSeat).toBe(0);
+
+    // Exhaustive draw when replacement tile is a bonus tile and dead wall is empty
+    mr.wall = ['f1_0'];
+    applyAction(mr, 0, { type: 'concealedKong', code: 'p5' });
+    expect(mr.phase).toBe('handOver');
+    expect(mr.result?.outcome).toBe('draw');
+    expect(k0.bonus.includes('f1_0')).toBe(true);
+
+    expect(() => applyAction(mr, 0, { type: 'pass' })).toThrow(
+      'Cannot apply action in phase handOver'
+    );
+  });
 });

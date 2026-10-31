@@ -11,7 +11,14 @@
     "test:ci": "ng test --watch=false",
     "test:watch": "ng test",
     "lint": "eslint src",
-    "qa:agent-docs": "node scripts/verify-agent-context.mjs"
+    "qa:agent-docs": "node scripts/verify-agent-context.mjs",
+    "qa:scan": "veriscribe scan",
+    "qa:impact": "veriscribe impact",
+    "qa:gate": "veriscribe gate",
+    "qa:doctor": "veriscribe doctor",
+    "qa:openapi-slice": "veriscribe openapi-slice",
+    "qa:scaffold": "veriscribe scaffold",
+    "qa:verify": "npm run test:ci && npm run qa:scan && npm run qa:gate"
   },
   "prettier": {
     "printWidth": 100,
@@ -49,6 +56,7 @@
     "jsdom": "^30.1.3",
     "typescript": "6.0.3",
     "typescript-eslint": "^8.72.1",
+    "veriscribe": "^1.5.1",
     "vitest": "^5.0.5"
   },
   "overrides": {

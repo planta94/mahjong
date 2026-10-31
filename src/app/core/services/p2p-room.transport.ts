@@ -201,6 +201,7 @@ export interface GenericHostOptions<TState, TView, TAction> {
   buildPlayerView: (state: TState, seatIdx: number) => TView;
   applyAction: (state: TState, seatIdx: number, action: TAction) => void;
   onSeatConnectedChange?: (seatIdx: number, connected: boolean) => void;
+  peerLoader?: () => Promise<PeerConstructorLike>;
 }
 
 export class GenericHostSession<TState, TView, TAction> {
@@ -225,6 +226,7 @@ export class GenericHostSession<TState, TView, TAction> {
   private readonly buildPlayerView: (state: TState, seatIdx: number) => TView;
   private readonly applyActionFn: (state: TState, seatIdx: number, action: TAction) => void;
   private readonly onSeatConnectedChange?: (seatIdx: number, connected: boolean) => void;
+  private readonly peerLoader: () => Promise<PeerConstructorLike>;
 
   constructor(opts: GenericHostOptions<TState, TView, TAction>) {
     this.online = opts.online ?? false;
@@ -236,6 +238,7 @@ export class GenericHostSession<TState, TView, TAction> {
     this.buildPlayerView = opts.buildPlayerView;
     this.applyActionFn = opts.applyAction;
     this.onSeatConnectedChange = opts.onSeatConnectedChange;
+    this.peerLoader = opts.peerLoader ?? loadPeerClass;
 
     // Ensure host seat is configured
     const hostSeat = this.lobby.seats.at(0);
@@ -349,7 +352,7 @@ export class GenericHostSession<TState, TView, TAction> {
     }
 
     try {
-      const PeerCtor = await loadPeerClass();
+      const PeerCtor = await this.peerLoader();
       if (this.destroyed) return;
       const peer = new PeerCtor(`${PEER_ID_PREFIX}${this.roomCode}`, PEER_OPTIONS);
       this.peer = peer;
@@ -483,6 +486,7 @@ export interface GenericGuestOptions {
   roomCode: string;
   guestName?: string;
   token?: string;
+  peerLoader?: () => Promise<PeerConstructorLike>;
 }
 
 export class GenericGuestSession<TView, TAction> {
@@ -492,6 +496,7 @@ export class GenericGuestSession<TView, TAction> {
   readonly myToken: string;
 
   private readonly guestName: string;
+  private readonly peerLoader: () => Promise<PeerConstructorLike>;
   private readonly listeners = new Set<(snap: GenericSessionSnapshot<TView>) => void>();
   private snapshot: GenericSessionSnapshot<TView>;
   private bc: BroadcastChannel | null = null;
@@ -508,6 +513,7 @@ export class GenericGuestSession<TView, TAction> {
     this.roomCode = parseUniversalRoomCode(opts.roomCode).roomCode;
     this.guestName = opts.guestName?.trim() || '玩家';
     this.myToken = opts.token ?? getPartyGuestToken(this.roomCode);
+    this.peerLoader = opts.peerLoader ?? loadPeerClass;
     this.snapshot = {
       role: 'guest',
       online: true,
@@ -529,11 +535,18 @@ export class GenericGuestSession<TView, TAction> {
 
   destroy(): void {
     this.destroyed = true;
-    clearInterval(this.joinRetryTimer);
-    clearTimeout(this.connectTimeoutTimer);
-    clearTimeout(this.peerRetryTimer);
+    this.clearHandshakeTimers();
     this.bc?.close();
     this.peer?.destroy();
+  }
+
+  private clearHandshakeTimers(): void {
+    clearInterval(this.joinRetryTimer);
+    this.joinRetryTimer = undefined;
+    clearTimeout(this.connectTimeoutTimer);
+    this.connectTimeoutTimer = undefined;
+    clearTimeout(this.peerRetryTimer);
+    this.peerRetryTimer = undefined;
   }
 
   sendAction(action: TAction): void {
@@ -570,6 +583,7 @@ export class GenericGuestSession<TView, TAction> {
     if (this.destroyed || !isRecord(raw)) return;
     const type = typeof raw['type'] === 'string' ? raw['type'] : '';
     if (type === 'error') {
+      this.clearHandshakeTimers();
       const msg = typeof raw['message'] === 'string' ? raw['message'] : '连接错误';
       this.snapshot = { ...this.snapshot, error: msg, status: msg };
       this.emitUpdate();
@@ -577,6 +591,7 @@ export class GenericGuestSession<TView, TAction> {
     }
 
     if (type === 'sync' && isRecord(raw['snapshot'])) {
+      this.clearHandshakeTimers();
       const snap = raw['snapshot'] as unknown as GenericSessionSnapshot<TView>;
       this.snapshot = {
         ...snap,
@@ -601,14 +616,20 @@ export class GenericGuestSession<TView, TAction> {
     }
 
     this.sendJoin();
+    let joinAttempts = 0;
     this.joinRetryTimer = setInterval(() => {
-      if (this.destroyed) return;
-      if (!this.snapshot.lobby) {
-        this.sendJoin();
+      joinAttempts++;
+      if (this.destroyed || this.snapshot.lobby || this.snapshot.error || joinAttempts > 10) {
+        clearInterval(this.joinRetryTimer);
+        this.joinRetryTimer = undefined;
+        return;
       }
+      this.sendJoin();
     }, 1000);
 
     this.connectTimeoutTimer = setTimeout(() => {
+      clearInterval(this.joinRetryTimer);
+      this.joinRetryTimer = undefined;
       if (this.destroyed || this.snapshot.lobby) return;
       if (!this.connectedViaBc && !this.conn?.open) {
         this.snapshot = {
@@ -629,7 +650,7 @@ export class GenericGuestSession<TView, TAction> {
 
   private async initPeerJs(): Promise<void> {
     try {
-      const PeerCtor = await loadPeerClass();
+      const PeerCtor = await this.peerLoader();
       if (this.destroyed) return;
       const guestId = `${PEER_ID_PREFIX}g-${createRandomToken('tok').slice(0, 12)}`;
       const peer = new PeerCtor(guestId, PEER_OPTIONS);

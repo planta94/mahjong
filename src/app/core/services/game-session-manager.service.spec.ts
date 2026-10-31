@@ -178,13 +178,70 @@ describe('GameSessionManagerService, ExitConfirmDialog, Multi-Game Rulebook & Re
       expect(hubEl.querySelectorAll('.saved-game-card').length).toBe(0);
     });
 
-    it('gracefully ignores malformed saved game JSON in localStorage', () => {
+    it('gracefully ignores malformed saved game JSON in localStorage and covers storage/fallback branches', () => {
+      // 1. Invalid version object
       localStorage.setItem(SAVED_GAME_STORAGE_KEY, '{"version":99,"invalid":true}');
       TestBed.configureTestingModule({
         providers: [provideRouter(routes)],
       });
       const manager = TestBed.inject(GameSessionManagerService);
       expect(manager.savedGame()).toBeNull();
+
+      // 2. Non-object JSON, corrupted JSON, null payload, and valid pre-seeded save on startup
+      TestBed.resetTestingModule();
+      localStorage.setItem(SAVED_GAME_STORAGE_KEY, '"not-an-object"');
+      TestBed.configureTestingModule({ providers: [provideRouter(routes)] });
+      expect(TestBed.inject(GameSessionManagerService).savedGame()).toBeNull();
+
+      TestBed.resetTestingModule();
+      localStorage.setItem(SAVED_GAME_STORAGE_KEY, '{corrupted-json');
+      TestBed.configureTestingModule({ providers: [provideRouter(routes)] });
+      expect(TestBed.inject(GameSessionManagerService).savedGame()).toBeNull();
+
+      TestBed.resetTestingModule();
+      localStorage.setItem(
+        SAVED_GAME_STORAGE_KEY,
+        '{"version":1,"game":"mahjong","savedAt":100,"summary":"x","payload":null}'
+      );
+      TestBed.configureTestingModule({ providers: [provideRouter(routes)] });
+      expect(TestBed.inject(GameSessionManagerService).savedGame()).toBeNull();
+
+      // 3. Fallback save ordering when activeGame is 'hub' while Monopoly/Avalon is active + storage errors
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({ providers: [provideRouter(routes)] });
+      const mgr2 = TestBed.inject(GameSessionManagerService);
+      const shellUi = TestBed.inject(ShellUiService);
+      const monopoly = TestBed.inject(MonopolySessionService);
+
+      monopoly.createSoloMatch(4);
+      shellUi.setActiveGame('hub');
+      expect(mgr2.saveCurrentProgress()).toBe(true);
+      expect(mgr2.savedGame()?.game).toBe('monopoly');
+
+      // Startup hydration from valid pre-existing localStorage record
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({ providers: [provideRouter(routes)] });
+      const hydratedMgr = TestBed.inject(GameSessionManagerService);
+      expect(hydratedMgr.savedGame()?.game).toBe('monopoly');
+
+      // Storage quota error on persistRecord & removeItem error on deleteSavedGame
+      const setSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('QuotaExceeded');
+      });
+      const removeSpy = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+        throw new Error('StorageLocked');
+      });
+      try {
+        const hydMonopoly = TestBed.inject(MonopolySessionService);
+        hydMonopoly.createSoloMatch(4);
+        expect(hydratedMgr.saveCurrentProgress()).toBe(false);
+        hydratedMgr.deleteSavedGame();
+        expect(hydratedMgr.savedGame()).toBeNull();
+        hydMonopoly.leaveRoom();
+      } finally {
+        setSpy.mockRestore();
+        removeSpy.mockRestore();
+      }
     });
   });
 

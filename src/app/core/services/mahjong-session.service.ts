@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, OnDestroy, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   ClaimSeatEntry,
@@ -68,18 +68,18 @@ const PEER_OPTIONS = {
   },
 };
 
-interface PeerConnectionLike {
+export interface PeerConnectionLike {
   readonly open: boolean;
   send(data: unknown): void;
   on(event: string, cb: (arg?: unknown) => void): void;
   close?(): void;
 }
 
-interface PeerErrorLike {
+export interface PeerErrorLike {
   readonly type?: string;
 }
 
-interface PeerInstanceLike {
+export interface PeerInstanceLike {
   readonly disconnected?: boolean;
   readonly destroyed?: boolean;
   connect(
@@ -91,7 +91,7 @@ interface PeerInstanceLike {
   destroy(): void;
 }
 
-type PeerConstructorLike = new (
+export type PeerConstructorLike = new (
   idOrOpts?: string | Record<string, unknown>,
   opts?: Record<string, unknown>
 ) => PeerInstanceLike;
@@ -241,6 +241,7 @@ export class HostSession {
   match: MatchState | null = null;
 
   private readonly listeners = new Set<(snap: SessionSnapshot) => void>();
+  private readonly peerLoader: () => Promise<PeerConstructorLike>;
   private peer: PeerInstanceLike | null = null;
   private readonly peerConns = new Map<string, PeerConnectionLike>();
   private bc: BroadcastChannel | null = null;
@@ -256,6 +257,7 @@ export class HostSession {
     fillBots = false,
     rules = {},
     token,
+    peerLoader,
   }: {
     hostName?: string;
     mode?: GameMode;
@@ -263,11 +265,13 @@ export class HostSession {
     fillBots?: boolean;
     rules?: Partial<GameRules>;
     token?: string;
+    peerLoader?: () => Promise<PeerConstructorLike>;
   } = {}) {
     this.online = online;
     this.roomCode = online ? generateRoomCode() : 'LOCAL';
     this.myToken = token ?? createRandomToken('host');
     this.status = online ? '正在建立 P2P 房间…' : '单机模式就绪';
+    this.peerLoader = peerLoader ?? loadPeerClass;
 
     this.lobby = {
       mode,
@@ -329,7 +333,7 @@ export class HostSession {
     }
 
     try {
-      const PeerCtor = await loadPeerClass();
+      const PeerCtor = await this.peerLoader();
       if (this.destroyed) return;
       const peer = new PeerCtor(`${PEER_PREFIX}${this.roomCode}`, PEER_OPTIONS);
       this.peer = peer;
@@ -656,6 +660,7 @@ export class GuestSession {
   readonly myToken: string;
 
   private readonly guestName: string;
+  private readonly peerLoader: () => Promise<PeerConstructorLike>;
   private readonly listeners = new Set<(snap: SessionSnapshot) => void>();
   private snapshot: SessionSnapshot;
   private bc: BroadcastChannel | null = null;
@@ -672,14 +677,17 @@ export class GuestSession {
     roomCode,
     guestName = '雀友',
     token,
+    peerLoader,
   }: {
     roomCode: string;
     guestName?: string;
     token?: string;
+    peerLoader?: () => Promise<PeerConstructorLike>;
   }) {
     this.roomCode = extractRoomCode(roomCode);
     this.guestName = guestName.trim() || '雀友';
     this.myToken = token ?? getGuestToken(this.roomCode);
+    this.peerLoader = peerLoader ?? loadPeerClass;
     this.snapshot = {
       role: 'guest',
       online: true,
@@ -830,7 +838,7 @@ export class GuestSession {
     }, 15000);
 
     try {
-      const PeerCtor = await loadPeerClass();
+      const PeerCtor = await this.peerLoader();
       if (this.destroyed || this.connectedViaBc) return;
       const peer = new PeerCtor(PEER_OPTIONS);
       this.peer = peer;
@@ -874,7 +882,7 @@ export class GuestSession {
 }
 
 @Injectable({ providedIn: 'root' })
-export class MahjongSessionService {
+export class MahjongSessionService implements OnDestroy {
   private readonly router = inject(Router);
   private readonly shellUi = inject(ShellUiService);
 
@@ -889,8 +897,28 @@ export class MahjongSessionService {
 
   private session: HostSession | GuestSession | null = null;
   private audioCtx: AudioContext | null = null;
+  private audioIdleTimer: ReturnType<typeof setTimeout> | undefined;
   private autoPassTimer: ReturnType<typeof setTimeout> | undefined;
   private lastLogSeen = '';
+  private readonly visibilityHandler = (): void => {
+    if (typeof document !== 'undefined' && document.hidden) {
+      this.suspendAudioContextNow();
+    }
+  };
+
+  constructor() {
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.visibilityHandler);
+    }
+  }
+
+  ngOnDestroy(): void {
+    clearTimeout(this.autoPassTimer);
+    this.suspendAudioContextNow();
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+    }
+  }
 
   toggleBgm(): void {
     this.shellUi.toggleBgm();
@@ -942,14 +970,35 @@ export class MahjongSessionService {
     });
   });
 
+  private wakeAudioContext(ctx: AudioContext): void {
+    if (ctx.state === 'suspended' && typeof ctx.resume === 'function') {
+      void Promise.resolve(ctx.resume()).catch(() => {});
+    }
+    clearTimeout(this.audioIdleTimer);
+    this.audioIdleTimer = setTimeout(() => {
+      this.suspendAudioContextNow();
+    }, 1500);
+  }
+
+  private suspendAudioContextNow(): void {
+    clearTimeout(this.audioIdleTimer);
+    this.audioIdleTimer = undefined;
+    const ctx = this.audioCtx;
+    if (ctx && ctx.state !== 'suspended' && ctx.state !== 'closed' && typeof ctx.suspend === 'function') {
+      void Promise.resolve(ctx.suspend()).catch(() => {});
+    }
+  }
+
   playClack(freq = 620): void {
     if (!this.soundEnabled() || typeof window === 'undefined') return;
+    if (typeof document !== 'undefined' && document.hidden) return;
     try {
       const win = window as WindowWithWebkitAudio;
       const Ctx = globalThis.AudioContext ?? win.webkitAudioContext;
       if (!Ctx) return;
       const ctx = this.audioCtx ?? new Ctx();
       this.audioCtx = ctx;
+      this.wakeAudioContext(ctx);
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'triangle';
@@ -967,12 +1016,14 @@ export class MahjongSessionService {
 
   playPenaltyBuzzer(): void {
     if (!this.soundEnabled() || typeof window === 'undefined') return;
+    if (typeof document !== 'undefined' && document.hidden) return;
     try {
       const win = window as WindowWithWebkitAudio;
       const Ctx = globalThis.AudioContext ?? win.webkitAudioContext;
       if (!Ctx) return;
       const ctx = this.audioCtx ?? new Ctx();
       this.audioCtx = ctx;
+      this.wakeAudioContext(ctx);
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sawtooth';
@@ -1117,6 +1168,7 @@ export class MahjongSessionService {
 
   terminateSession(): void {
     clearTimeout(this.autoPassTimer);
+    this.suspendAudioContextNow();
     this.autoPass.set(false);
     this.selectionPaused.set(false);
     this.session?.destroy();

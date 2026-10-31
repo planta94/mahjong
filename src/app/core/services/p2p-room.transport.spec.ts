@@ -5,6 +5,9 @@ import {
   GenericGuestSession,
   GenericHostSession,
   P2PRoomTransportService,
+  PeerConnectionLike,
+  PeerConstructorLike,
+  PeerInstanceLike,
   clearBrowserUrlRoom,
   createRandomToken,
   dispatchP2pLeaveEvent,
@@ -740,7 +743,313 @@ describe('P2PRoomTransport & Universal Transport Protocol', () => {
       });
       expect(syncedPot).toBe(333);
 
+      const guestTimers = guest as unknown as {
+        joinRetryTimer: ReturnType<typeof setInterval> | undefined;
+        connectTimeoutTimer: ReturnType<typeof setTimeout> | undefined;
+      };
+      expect(guestTimers.joinRetryTimer).toBe(undefined);
+      expect(guestTimers.connectTimeoutTimer).toBe(undefined);
+
       guest.destroy();
+    });
+
+    it('stops guest joinRetryTimer after connection timeout when room is unreachable', () => {
+      vi.useFakeTimers();
+      try {
+        const guest = new GenericGuestSession<TestView, TestAction>({
+          roomCode: 'PNONE1',
+          guestName: 'TimeoutGuest',
+        });
+
+        vi.advanceTimersByTime(12500);
+
+        let errSeen = '';
+        guest.onUpdate((snap) => {
+          errSeen = snap.error ?? '';
+        });
+        expect(errSeen).toContain('PNONE1');
+
+        const guestTimers = guest as unknown as {
+          joinRetryTimer: ReturnType<typeof setInterval> | undefined;
+        };
+        expect(guestTimers.joinRetryTimer).toBe(undefined);
+
+        guest.destroy();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('covers sendConnSafe queued open delivery and P2PRoomTransportService wrapper methods', () => {
+      const sentItems: unknown[] = [];
+      const openListeners: Array<() => void> = [];
+      let isConnOpen = false;
+      const queuedConn: PeerConnectionLike = {
+        get open() {
+          return isConnOpen;
+        },
+        send: (data: unknown) => {
+          sentItems.push(data);
+        },
+        on: (ev: string, cb: () => void) => {
+          if (ev === 'open') openListeners.push(cb);
+        },
+      };
+
+      sendConnSafe(queuedConn, { msg: 'queued' });
+      expect(sentItems.length).toBe(0);
+      isConnOpen = true;
+      for (const fn of openListeners) fn();
+      for (const fn of openListeners) fn();
+      expect(sentItems).toEqual([{ msg: 'queued' }]);
+
+      sendConnSafe(queuedConn, { msg: 'immediate' });
+      expect(sentItems.length).toBe(2);
+
+      // P2PRoomTransportService facade methods
+      const code = transportService.generateCode('M', 5);
+      expect(code.startsWith('M')).toBe(true);
+      expect(transportService.parseRoomCode(code)).toEqual({ game: 'mahjong', roomCode: code });
+      const tok = transportService.getGuestToken(code);
+      expect(tok.startsWith('guest_')).toBe(true);
+
+      transportService.updateUrl(code, 'mahjong');
+      expect(window.location.search).toContain(`room=${code}`);
+      transportService.clearUrl();
+      expect(window.location.search).toBe('');
+
+      let leaveCount = 0;
+      const onLeave = () => {
+        leaveCount += 1;
+      };
+      window.addEventListener('p2p:leave', onLeave);
+      transportService.dispatchLeave(code, 'mahjong');
+      window.removeEventListener('p2p:leave', onLeave);
+      expect(leaveCount).toBe(1);
+
+      const hostViaSvc = transportService.createHost<TestState, TestView, TestAction>({
+        gamePrefix: 'P',
+        online: false,
+        initialState: { pot: 10, secretDeck: [], playerHands: {} },
+        initialLobby: createTestLobby(),
+        buildPlayerView: (s) => ({ pot: s.pot, hand: [], deckCount: 0 }),
+        applyAction: () => undefined,
+      });
+      expect(hostViaSvc.role).toBe('host');
+      hostViaSvc.destroy();
+
+      const guestViaSvc = transportService.createGuest<TestView, TestAction>({
+        roomCode: 'P4444',
+        guestName: 'FacadeGuest',
+      });
+      expect(guestViaSvc.role).toBe('guest');
+      guestViaSvc.destroy();
+    });
+
+    it('covers GenericHostSession and GenericGuestSession WebRTC PeerJS signaling, DataChannel, reconnects, and error fallbacks', async () => {
+      vi.useFakeTimers();
+      const origRtc = (globalThis as unknown as Record<string, unknown>)['RTCPeerConnection'];
+      (globalThis as unknown as Record<string, unknown>)['RTCPeerConnection'] = function () {
+        return {};
+      };
+
+      class FakeConn implements PeerConnectionLike {
+        open = false;
+        sent: unknown[] = [];
+        private readonly handlers = new Map<string, Array<(arg?: unknown) => void>>();
+        send(data: unknown): void {
+          this.sent.push(data);
+        }
+        on(event: string, cb: (arg?: unknown) => void): void {
+          const list = this.handlers.get(event) ?? [];
+          list.push(cb);
+          this.handlers.set(event, list);
+        }
+        emit(event: string, arg?: unknown): void {
+          for (const cb of this.handlers.get(event) ?? []) cb(arg);
+        }
+        close(): void {
+          this.open = false;
+        }
+      }
+
+      class FakePeer implements PeerInstanceLike {
+        disconnected = false;
+        destroyed = false;
+        reconnectCalls = 0;
+        lastConnectConn: FakeConn | null = null;
+        private readonly handlers = new Map<string, Array<(arg?: unknown) => void>>();
+        connect(): PeerConnectionLike {
+          const c = new FakeConn();
+          this.lastConnectConn = c;
+          return c;
+        }
+        on(event: string, cb: (arg?: unknown) => void): void {
+          const list = this.handlers.get(event) ?? [];
+          list.push(cb);
+          this.handlers.set(event, list);
+        }
+        emit(event: string, arg?: unknown): void {
+          for (const cb of this.handlers.get(event) ?? []) cb(arg);
+        }
+        reconnect(): void {
+          this.reconnectCalls += 1;
+        }
+        destroy(): void {
+          this.destroyed = true;
+        }
+      }
+
+      const createdPeers: FakePeer[] = [];
+      const FakePeerCtor: PeerConstructorLike = function () {
+        const p = new FakePeer();
+        createdPeers.push(p);
+        return p;
+      } as unknown as PeerConstructorLike;
+
+      try {
+        const seatEvents: Array<{ seat: number; connected: boolean }> = [];
+        const host = new GenericHostSession<TestState, TestView, TestAction>({
+          gamePrefix: 'P',
+          roomCode: 'PRTC1',
+          online: true,
+          peerLoader: () => Promise.resolve(FakePeerCtor),
+          initialState: { pot: 200, secretDeck: ['a'], playerHands: {} },
+          initialLobby: createTestLobby(),
+          buildPlayerView: (s) => ({ pot: s.pot, hand: [], deckCount: s.secretDeck.length }),
+          applyAction: (s, _seat, act) => {
+            if (act.type === 'bid' && act.amount) s.pot += act.amount;
+          },
+          onSeatConnectedChange: (seat, connected) => {
+            seatEvents.push({ seat, connected });
+          },
+        });
+
+        await Promise.resolve();
+        await Promise.resolve();
+        const hostPeer = createdPeers.at(0)!;
+
+        // 1. Host Peer open
+        hostPeer.emit('open');
+        expect(host.status).toContain('WebRTC P2P 就绪');
+
+        // 2. Host Peer disconnected -> reconnect timer (600ms) & visibilitychange reconnect
+        hostPeer.disconnected = true;
+        hostPeer.emit('disconnected');
+        vi.advanceTimersByTime(650);
+        expect(hostPeer.reconnectCalls).toBe(1);
+
+        document.dispatchEvent(new Event('visibilitychange'));
+        expect(hostPeer.reconnectCalls).toBe(2);
+
+        // 3. Host Peer network error -> reconnect timer (800ms) vs fatal signaling error
+        hostPeer.emit('error', { type: 'network' });
+        vi.advanceTimersByTime(850);
+        expect(hostPeer.reconnectCalls).toBe(3);
+
+        hostPeer.emit('error', { type: 'unavailable-id' });
+        expect(host.status).toContain('unavailable-id');
+
+        // 4. Incoming guest DataChannel connection, join, action, and close
+        const inboundConn = new FakeConn();
+        inboundConn.open = true;
+        hostPeer.emit('connection', inboundConn);
+        inboundConn.emit('data', { type: 'join', token: 'rtc_guest_1', name: 'RtcPlayer' });
+        expect(host.lobby.seats.at(1)?.name).toBe('RtcPlayer');
+        expect(inboundConn.sent.length).toBeGreaterThanOrEqual(1);
+
+        inboundConn.emit('data', { type: 'action', token: 'rtc_guest_1', action: { type: 'bid', amount: 25 } });
+        expect(host.state.pot).toBe(225);
+
+        inboundConn.emit('close');
+        expect(host.lobby.seats.at(1)?.connected).toBe(false);
+        expect(seatEvents).toContainEqual({ seat: 1, connected: false });
+
+        // 5. Host peerLoader failure fallback
+        const offlineHost = new GenericHostSession<TestState, TestView, TestAction>({
+          gamePrefix: 'P',
+          roomCode: 'POFF1',
+          online: true,
+          peerLoader: () => Promise.reject(new Error('load failed')),
+          initialState: { pot: 0, secretDeck: [], playerHands: {} },
+          initialLobby: createTestLobby(),
+          buildPlayerView: (s) => ({ pot: s.pot, hand: [], deckCount: 0 }),
+          applyAction: () => undefined,
+        });
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(offlineHost.status).toContain('离线局域模式');
+        offlineHost.destroy();
+
+        // 6. Guest WebRTC PeerJS connection, sendAction over conn, close, and peer-unavailable retries
+        const peerStartIdx = createdPeers.length;
+        const guest = new GenericGuestSession<TestView, TestAction>({
+          roomCode: 'PRTC2',
+          guestName: 'RtcGuest',
+          peerLoader: () => Promise.resolve(FakePeerCtor),
+        });
+        await Promise.resolve();
+        await Promise.resolve();
+
+        const guestPeer = createdPeers.at(peerStartIdx)!;
+        guestPeer.emit('open');
+        const outConn = guestPeer.lastConnectConn!;
+        outConn.open = true;
+        outConn.emit('open');
+
+        let guestStatus = '';
+        let guestError: string | null = null;
+        guest.onUpdate((snap) => {
+          guestStatus = snap.status;
+          guestError = snap.error;
+        });
+        expect(guestStatus).toContain('已连接至房主（P2P）');
+
+        guest.sendAction({ type: 'bid', amount: 15 });
+        expect(outConn.sent.length).toBe(2); // join + action
+
+        outConn.emit('data', {
+          type: 'sync',
+          snapshot: host.buildSnapshotForSeat(1),
+        });
+        expect(guestStatus).toContain('unavailable-id');
+
+        outConn.emit('close');
+        expect(guestError).toBe('与房主连接已断开');
+        guest.destroy();
+
+        // 7. Guest peer-unavailable retry loop (3 retries -> fallback status on 4th)
+        const retryStartIdx = createdPeers.length;
+        const retryGuest = new GenericGuestSession<TestView, TestAction>({
+          roomCode: 'PRTC3',
+          guestName: 'RetryGuest',
+          peerLoader: () => Promise.resolve(FakePeerCtor),
+        });
+        await Promise.resolve();
+        await Promise.resolve();
+
+        for (let i = 0; i < 3; i++) {
+          const curPeer = createdPeers.at(retryStartIdx + i)!;
+          curPeer.emit('error', { type: 'peer-unavailable' });
+          vi.advanceTimersByTime(1600);
+          await Promise.resolve();
+          await Promise.resolve();
+        }
+        const fourthPeer = createdPeers.at(retryStartIdx + 3)!;
+        fourthPeer.emit('error', { type: 'peer-unavailable' });
+
+        let retryStatus = '';
+        retryGuest.onUpdate((s) => {
+          retryStatus = s.status;
+        });
+        expect(retryStatus).toContain('WebRTC 信令错误');
+
+        retryGuest.destroy();
+        host.destroy();
+      } finally {
+        (globalThis as unknown as Record<string, unknown>)['RTCPeerConnection'] = origRtc;
+        vi.useRealTimers();
+      }
     });
   });
 });

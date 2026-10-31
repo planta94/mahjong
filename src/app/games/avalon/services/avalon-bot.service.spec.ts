@@ -743,5 +743,701 @@ describe('AvalonBotService & Bayesian Deduction Engine', () => {
     });
     expect(botService.decideQuestCard(dualEvilSeat2View)).toBe('fail');
   });
+
+  it('computes role priors and cross-deductions for Oberon, sole-Merlin Percival, and first-candidate Morgana', () => {
+    // 1. Oberon (evil loyalty, blind to allies) starts others at 0.0 and does not self-exclude on failed quests
+    const oberonNightVision = createSerializableMap<number, NightVisionClue>([
+      [2, 'self'],
+      [0, 'unknown'],
+      [1, 'unknown'],
+      [3, 'unknown'],
+      // Seat 4 intentionally omitted to verify ?? 'unknown' fallback
+    ]);
+    const oberonView = createMockView({
+      viewerSeat: 2,
+      myRole: 'oberon',
+      myLoyalty: 'evil',
+      nightVision: oberonNightVision,
+      questHistory: [
+        { questNumber: 1, team: [2, 3], successCount: 1, failCount: 1, requiredFails: 1, outcome: 'fail' },
+      ],
+    });
+    const oberonScores = botService.computeTrustScores(oberonView, 2);
+    expect(oberonScores.get(0)).toBe(0.0);
+    expect(oberonScores.get(4)).toBe(0.0);
+    expect(oberonScores.get(2)).toBeCloseTo(0.725, 5);
+    expect(oberonScores.get(3)).toBeCloseTo(-0.275, 5);
+
+    // 2. Percival with Morgana disabled sees exactly 1 candidate -> 100% confirmed Merlin (1.0)
+    const soleMerlinNv = createSerializableMap<number, NightVisionClue>([
+      [1, 'self'],
+      [3, 'merlin_or_morgana'],
+      [0, 'unknown'],
+      [2, 'unknown'],
+      [4, 'unknown'],
+    ]);
+    const soleMerlinView = createMockView({
+      viewerSeat: 1,
+      myRole: 'percival',
+      myLoyalty: 'good',
+      nightVision: soleMerlinNv,
+    });
+    const soleMerlinScores = botService.computeTrustScores(soleMerlinView, 1);
+    expect(soleMerlinScores.get(1)).toBe(1.0);
+    expect(soleMerlinScores.get(3)).toBe(1.0);
+    expect(soleMerlinScores.get(0)).toBe(0.0);
+
+    // 3. Percival cross-deduction when first candidate c0 (seat 0) is suspicious -> boosts c1 (seat 4)
+    const dualCandidatesNv = createSerializableMap<number, NightVisionClue>([
+      [1, 'self'],
+      [0, 'merlin_or_morgana'],
+      [2, 'unknown'],
+      [3, 'unknown'],
+      [4, 'merlin_or_morgana'],
+    ]);
+    const c0SuspiciousView = createMockView({
+      viewerSeat: 1,
+      myRole: 'percival',
+      myLoyalty: 'good',
+      nightVision: dualCandidatesNv,
+      questHistory: [
+        { questNumber: 1, team: [0, 1], successCount: 1, failCount: 1, requiredFails: 1, outcome: 'fail' },
+      ],
+    });
+    const c0SuspiciousScores = botService.computeTrustScores(c0SuspiciousView, 1);
+    expect(c0SuspiciousScores.get(0)).toBe(-1.0);
+    expect(c0SuspiciousScores.get(4)).toBeCloseTo(0.85, 5);
+
+    // 4. Percival cross-deduction when both candidates c0 and c1 are equally confirmed evil (-1.0) -> neither boosted
+    const bothSuspiciousView = createMockView({
+      viewerSeat: 1,
+      myRole: 'percival',
+      myLoyalty: 'good',
+      nightVision: dualCandidatesNv,
+      questHistory: [
+        { questNumber: 1, team: [0, 4], successCount: 0, failCount: 2, requiredFails: 1, outcome: 'fail' },
+      ],
+    });
+    const bothSuspiciousScores = botService.computeTrustScores(bothSuspiciousView, 1);
+    expect(bothSuspiciousScores.get(0)).toBe(-1.0);
+    expect(bothSuspiciousScores.get(4)).toBe(-1.0);
+  });
+
+  it('updates trust scores across succeeded quests, rejected proposals, self-led proposals, and Lady claims', () => {
+    const view = createMockView({
+      viewerSeat: 0,
+      myRole: 'loyal_servant',
+      myLoyalty: 'good',
+      questHistory: [
+        { questNumber: 1, team: [0, 1], successCount: 2, failCount: 0, requiredFails: 1, outcome: 'success' },
+        { questNumber: 2, team: [0, 2], successCount: 2, failCount: 0, requiredFails: 1, outcome: 'success' },
+        { questNumber: 3, team: [3, 4], successCount: 1, failCount: 1, requiredFails: 1, outcome: 'fail' },
+      ],
+      proposalHistory: [
+        // Rejected attempt on succeeded Quest 1 -> no bonus/penalty
+        {
+          questNumber: 1,
+          attemptNumber: 1,
+          leaderSeat: 3,
+          proposedTeam: [3, 4],
+          votes: createSerializableMap<number, ProposalVote>([
+            [0, 'reject'],
+            [3, 'approve'],
+          ]),
+          approved: false,
+        },
+        // Approved attempt on succeeded Quest 1 led by seat 1 -> leader +0.25, approvers +0.15
+        {
+          questNumber: 1,
+          attemptNumber: 2,
+          leaderSeat: 1,
+          proposedTeam: [0, 1],
+          votes: createSerializableMap<number, ProposalVote>([
+            [0, 'approve'],
+            [1, 'approve'],
+            [2, 'approve'],
+            [3, 'reject'],
+            [4, 'reject'],
+          ]),
+          approved: true,
+        },
+        // Approved attempt on succeeded Quest 2 led by botSeat 0 -> self-leader skipped, approvers +0.15
+        {
+          questNumber: 2,
+          attemptNumber: 1,
+          leaderSeat: 0,
+          proposedTeam: [0, 2],
+          votes: createSerializableMap<number, ProposalVote>([
+            [0, 'approve'],
+            [1, 'approve'],
+            [2, 'approve'],
+            [3, 'reject'],
+            [4, 'reject'],
+          ]),
+          approved: true,
+        },
+        // Rejected attempt on failed Quest 3 -> no penalty
+        {
+          questNumber: 3,
+          attemptNumber: 1,
+          leaderSeat: 1,
+          proposedTeam: [1, 2],
+          votes: createSerializableMap<number, ProposalVote>([[0, 'approve']]),
+          approved: false,
+        },
+        // Approved attempt on failed Quest 3 led by botSeat 0 (seat 2 missing vote entry)
+        {
+          questNumber: 3,
+          attemptNumber: 2,
+          leaderSeat: 0,
+          proposedTeam: [3, 4],
+          votes: createSerializableMap<number, ProposalVote>([
+            [0, 'approve'],
+            [1, 'reject'],
+            [3, 'approve'],
+            [4, 'approve'],
+          ]),
+          approved: true,
+        },
+        // Pending Quest 4 proposal without questHistory outcome -> skipped
+        {
+          questNumber: 4,
+          attemptNumber: 1,
+          leaderSeat: 2,
+          proposedTeam: [1, 2],
+          votes: createSerializableMap<number, ProposalVote>(),
+          approved: false,
+        },
+      ],
+    });
+
+    const scores = botService.computeTrustScores(view, 0);
+    expect(scores.get(0)).toBe(1.0);
+    expect(scores.get(1)).toBeCloseTo(0.9, 5);
+    expect(scores.get(2)).toBeCloseTo(0.45, 5);
+    expect(scores.get(3)).toBeCloseTo(-0.525, 5);
+    expect(scores.get(4)).toBeCloseTo(-0.525, 5);
+
+    // Lady of the Lake: Good private result (1.0), self-investigation skip, unclaimed entry skip, and Evil accuser inversion
+    const merlinNv = createSerializableMap<number, NightVisionClue>([
+      [0, 'self'],
+      [1, 'unknown'],
+      [2, 'unknown'],
+      [3, 'evil'],
+      [4, 'unknown'],
+    ]);
+    const merlinLadyView = createMockView({
+      viewerSeat: 0,
+      myRole: 'merlin',
+      myLoyalty: 'good',
+      nightVision: merlinNv,
+      privateLadyResult: {
+        targetSeat: 4,
+        loyalty: 'good',
+      },
+      ladyHistory: [
+        { questNumber: 2, investigatorSeat: 0, targetSeat: 4, claimedLoyalty: 'good' },
+        { questNumber: 3, investigatorSeat: 1, targetSeat: 2 },
+        { questNumber: 4, investigatorSeat: 3, targetSeat: 1, claimedLoyalty: 'evil' },
+      ],
+    });
+    const merlinLadyScores = botService.computeTrustScores(merlinLadyView, 0);
+    expect(merlinLadyScores.get(4)).toBe(1.0);
+    expect(merlinLadyScores.get(2)).toBeCloseTo(0.3, 5);
+    expect(merlinLadyScores.get(1)).toBeCloseTo(0.7, 5);
+  });
+
+  it('returns null from evaluateAvalonBotAction when phase is terminal, lobby, or action is illegal', () => {
+    expect(botService.evaluateAvalonBotAction(createMockView({ phase: 'game_over' }), 0)).toBe(null);
+    expect(botService.evaluateAvalonBotAction(createMockView({ phase: 'lobby' }), 0)).toBe(null);
+
+    const baseLegal = createMockView().legalActions;
+
+    // team_proposal guards
+    expect(
+      botService.evaluateAvalonBotAction(
+        createMockView({
+          phase: 'team_proposal',
+          currentLeader: 0,
+          legalActions: { ...baseLegal, canPropose: false },
+        }),
+        0
+      )
+    ).toBe(null);
+    expect(
+      botService.evaluateAvalonBotAction(
+        createMockView({
+          phase: 'team_proposal',
+          currentLeader: 2,
+          legalActions: { ...baseLegal, canPropose: true },
+        }),
+        0
+      )
+    ).toBe(null);
+
+    // team_voting guards
+    expect(
+      botService.evaluateAvalonBotAction(
+        createMockView({
+          phase: 'team_voting',
+          legalActions: { ...baseLegal, canVote: false, hasVoted: false },
+        }),
+        0
+      )
+    ).toBe(null);
+    expect(
+      botService.evaluateAvalonBotAction(
+        createMockView({
+          phase: 'team_voting',
+          legalActions: { ...baseLegal, canVote: true, hasVoted: true },
+        }),
+        0
+      )
+    ).toBe(null);
+
+    // quest_execution guards
+    expect(
+      botService.evaluateAvalonBotAction(
+        createMockView({
+          phase: 'quest_execution',
+          proposedTeam: [0, 1],
+          legalActions: { ...baseLegal, canSubmitQuestCard: false, hasSubmittedQuestCard: false },
+        }),
+        0
+      )
+    ).toBe(null);
+    expect(
+      botService.evaluateAvalonBotAction(
+        createMockView({
+          phase: 'quest_execution',
+          proposedTeam: [0, 1],
+          legalActions: { ...baseLegal, canSubmitQuestCard: true, hasSubmittedQuestCard: true },
+        }),
+        0
+      )
+    ).toBe(null);
+    expect(
+      botService.evaluateAvalonBotAction(
+        createMockView({
+          phase: 'quest_execution',
+          proposedTeam: [1, 2],
+          legalActions: { ...baseLegal, canSubmitQuestCard: true, hasSubmittedQuestCard: false },
+        }),
+        0
+      )
+    ).toBe(null);
+
+    // lady_of_lake guards
+    expect(
+      botService.evaluateAvalonBotAction(
+        createMockView({
+          phase: 'lady_of_lake',
+          legalActions: { ...baseLegal, canUseLady: false, eligibleLadyTargets: [1, 2] },
+        }),
+        0
+      )
+    ).toBe(null);
+    expect(
+      botService.evaluateAvalonBotAction(
+        createMockView({
+          phase: 'lady_of_lake',
+          legalActions: { ...baseLegal, canUseLady: true, eligibleLadyTargets: [] },
+        }),
+        0
+      )
+    ).toBe(null);
+
+    // assassination guards
+    expect(
+      botService.evaluateAvalonBotAction(
+        createMockView({
+          phase: 'assassination',
+          legalActions: { ...baseLegal, canAssassinate: false, eligibleAssassinationTargets: [0, 1] },
+        }),
+        4
+      )
+    ).toBe(null);
+    expect(
+      botService.evaluateAvalonBotAction(
+        createMockView({
+          phase: 'assassination',
+          legalActions: { ...baseLegal, canAssassinate: true, eligibleAssassinationTargets: [] },
+        }),
+        4
+      )
+    ).toBe(null);
+  });
+
+  it('decides Evil regular team proposals and deterministic Hammer ally-inclusion branches', () => {
+    const baseLegal = createMockView().legalActions;
+    const goodEmptyMapTeam = botService.decideTeamProposal(
+      createMockView({ legalActions: { ...baseLegal, requiredTeamSize: 2 } }),
+      0,
+      new Map()
+    );
+    expect(goodEmptyMapTeam).toEqual([0, 1]);
+
+    const evilNv = createSerializableMap<number, NightVisionClue>([
+      [4, 'self'],
+      [3, 'evil_ally'],
+      [0, 'unknown'],
+      [1, 'unknown'],
+      [2, 'unknown'],
+    ]);
+
+    // Evil regular proposal (voteTrack 0): proposes self (4) + highest-trust Good opponent (2), hiding ally (3)
+    const evilRegularView = createMockView({
+      viewerSeat: 4,
+      myRole: 'morgana',
+      myLoyalty: 'evil',
+      nightVision: evilNv,
+      currentLeader: 4,
+      voteTrack: 0,
+      legalActions: { ...baseLegal, canPropose: true, requiredTeamSize: 2 },
+    });
+    const regularTeam = botService.decideTeamProposal(
+      evilRegularView,
+      4,
+      new Map<number, number>([
+        [2, 0.8],
+        [0, 0.1],
+      ])
+    );
+    expect(regularTeam).toEqual([2, 4]);
+
+    // Evil Hammer proposal (voteTrack 4, requiredTeamSize 3): stub Math.random for both < 0.5 and >= 0.5
+    const evilHammerView = createMockView({
+      viewerSeat: 4,
+      myRole: 'mordred',
+      myLoyalty: 'evil',
+      nightVision: evilNv,
+      currentLeader: 4,
+      voteTrack: 4,
+      legalActions: { ...baseLegal, canPropose: true, requiredTeamSize: 3 },
+    });
+    const hammerTrust = new Map<number, number>([
+      [2, 0.9],
+      [1, 0.5],
+      [0, -0.2],
+    ]);
+
+    const randomSpy = vi.spyOn(Math, 'random');
+    try {
+      randomSpy.mockReturnValueOnce(0.2);
+      const teamWithAlly = botService.decideTeamProposal(evilHammerView, 4, hammerTrust);
+      expect(teamWithAlly).toEqual([2, 3, 4]);
+
+      randomSpy.mockReturnValueOnce(0.8);
+      const teamWithoutAlly = botService.decideTeamProposal(evilHammerView, 4, hammerTrust);
+      expect(teamWithoutAlly).toEqual([1, 2, 4]);
+    } finally {
+      randomSpy.mockRestore();
+    }
+  });
+
+  it('evaluates nuanced Evil and Good voting thresholds across Hammer, blend-in, and decisive quests', () => {
+    const evilNv = createSerializableMap<number, NightVisionClue>([
+      [4, 'self'],
+      [3, 'evil_ally'],
+      [0, 'unknown'],
+      [1, 'unknown'],
+      [2, 'unknown'],
+    ]);
+
+    // 1. Evil Hammer when Evil ally IS on team -> approves so quest can be sabotaged
+    const evilHammerWithAlly = createMockView({
+      viewerSeat: 4,
+      myRole: 'minion',
+      myLoyalty: 'evil',
+      nightVision: evilNv,
+      voteTrack: 4,
+      proposedTeam: [3, 0],
+    });
+    expect(botService.decideProposalVote(evilHammerWithAlly, 4, new Map())).toBe('approve');
+
+    // 2. Evil regular proposal with heavily distrusted Evil ally (avgTrust < -0.2) -> rejects to avoid exposure
+    const evilExposedAlly = createMockView({
+      viewerSeat: 4,
+      myRole: 'minion',
+      myLoyalty: 'evil',
+      nightVision: evilNv,
+      voteTrack: 1,
+      proposedTeam: [3, 0],
+    });
+    expect(
+      botService.decideProposalVote(
+        evilExposedAlly,
+        4,
+        new Map<number, number>([
+          [3, -0.6],
+          [0, -0.4],
+        ])
+      )
+    ).toBe('reject');
+
+    // 3. Evil regular proposal with pure-Good high-trust team (avgTrust > 0.4) -> approves to blend in
+    const evilBlendIn = createMockView({
+      viewerSeat: 4,
+      myRole: 'mordred',
+      myLoyalty: 'evil',
+      nightVision: evilNv,
+      voteTrack: 1,
+      proposedTeam: [0, 1],
+    });
+    expect(
+      botService.decideProposalVote(
+        evilBlendIn,
+        4,
+        new Map<number, number>([
+          [0, 0.6],
+          [1, 0.5],
+        ])
+      )
+    ).toBe('approve');
+
+    // 4. Good bot rejects immediately if any team member has confirmed/strong Evil suspicion (<= -0.7)
+    const goodConfirmedEvilView = createMockView({
+      viewerSeat: 0,
+      myRole: 'merlin',
+      myLoyalty: 'good',
+      voteTrack: 0,
+      proposedTeam: [0, 3],
+    });
+    expect(
+      botService.decideProposalVote(
+        goodConfirmedEvilView,
+        0,
+        new Map<number, number>([
+          [0, 1.0],
+          [3, -0.7],
+        ])
+      )
+    ).toBe('reject');
+
+    // 5. Good bot early quest threshold (0.05) vs decisive quest threshold (0.15 when evilWins >= 2 or goodWins >= 2)
+    const earlyGoodView = createMockView({
+      viewerSeat: 0,
+      myLoyalty: 'good',
+      voteTrack: 0,
+      proposedTeam: [1, 2],
+      questHistory: [
+        { questNumber: 1, team: [0, 1], successCount: 2, failCount: 0, requiredFails: 1, outcome: 'success' },
+        { questNumber: 2, team: [2, 3], successCount: 1, failCount: 1, requiredFails: 1, outcome: 'fail' },
+      ],
+    });
+    expect(botService.decideProposalVote(earlyGoodView, 0, new Map())).toBe('reject');
+    const moderateTrust = new Map<number, number>([
+      [1, 0.1],
+      [2, 0.1],
+    ]);
+    expect(botService.decideProposalVote(earlyGoodView, 0, moderateTrust)).toBe('approve');
+
+    // Decisive: 2 Evil wins -> threshold rises to 0.15, so avgTrust 0.10 now rejects
+    const twoEvilWinsView = createMockView({
+      viewerSeat: 0,
+      myLoyalty: 'good',
+      voteTrack: 0,
+      proposedTeam: [1, 2],
+      questHistory: [
+        { questNumber: 1, team: [2, 3], successCount: 1, failCount: 1, requiredFails: 1, outcome: 'fail' },
+        { questNumber: 2, team: [3, 4], successCount: 1, failCount: 1, requiredFails: 1, outcome: 'fail' },
+      ],
+    });
+    expect(botService.decideProposalVote(twoEvilWinsView, 0, moderateTrust)).toBe('reject');
+
+    // Decisive: 2 Good wins -> threshold is also 0.15; avgTrust 0.10 rejects, avgTrust 0.20 approves
+    const twoGoodWinsView = createMockView({
+      viewerSeat: 0,
+      myLoyalty: 'good',
+      voteTrack: 0,
+      proposedTeam: [1, 2],
+      questHistory: [
+        { questNumber: 1, team: [0, 1], successCount: 2, failCount: 0, requiredFails: 1, outcome: 'success' },
+        { questNumber: 2, team: [0, 2], successCount: 2, failCount: 0, requiredFails: 1, outcome: 'success' },
+      ],
+    });
+    expect(botService.decideProposalVote(twoGoodWinsView, 0, moderateTrust)).toBe('reject');
+    expect(
+      botService.decideProposalVote(
+        twoGoodWinsView,
+        0,
+        new Map<number, number>([
+          [1, 0.2],
+          [2, 0.2],
+        ])
+      )
+    ).toBe('approve');
+  });
+
+  it('deterministically exercises Quest 1 Evil bluffing probabilities and 5-player Quest 4 coordination', () => {
+    const evilNv = createSerializableMap<number, NightVisionClue>([
+      [4, 'self'],
+      [2, 'evil_ally'],
+      [0, 'unknown'],
+      [1, 'unknown'],
+      [3, 'unknown'],
+    ]);
+
+    const quest1EvilView = createMockView({
+      viewerSeat: 4,
+      myRole: 'morgana',
+      myLoyalty: 'evil',
+      nightVision: evilNv,
+      currentQuest: 1,
+      proposedTeam: [0, 4],
+    });
+
+    const randomSpy = vi.spyOn(Math, 'random');
+    try {
+      randomSpy.mockReturnValueOnce(0.5);
+      expect(botService.decideQuestCard(quest1EvilView)).toBe('fail');
+
+      randomSpy.mockReturnValueOnce(0.85);
+      expect(botService.decideQuestCard(quest1EvilView)).toBe('success');
+    } finally {
+      randomSpy.mockRestore();
+    }
+
+    // Quest 4 with 5 players (< 7) only requires 1 fail -> defers to lower-seat Evil ally (seat 2)
+    const quest4FivePlayerView = createMockView({
+      viewerSeat: 4,
+      numPlayers: 5,
+      myRole: 'morgana',
+      myLoyalty: 'evil',
+      nightVision: evilNv,
+      currentQuest: 4,
+      proposedTeam: [0, 2, 4],
+      questHistory: [
+        { questNumber: 1, team: [0, 1], successCount: 2, failCount: 0, requiredFails: 1, outcome: 'success' },
+        { questNumber: 2, team: [0, 2, 3], successCount: 2, failCount: 1, requiredFails: 1, outcome: 'fail' },
+        { questNumber: 3, team: [0, 1], successCount: 2, failCount: 0, requiredFails: 1, outcome: 'success' },
+      ],
+    });
+    expect(botService.decideQuestCard(quest4FivePlayerView)).toBe('success');
+  });
+
+  it('deduces Merlin assassination target using clean-proposal approvals, clean leadership, and Quest 2+ fail penalties', () => {
+    const evilNv = createSerializableMap<number, NightVisionClue>([
+      [4, 'self'],
+      [3, 'evil_ally'],
+      [0, 'unknown'],
+      [1, 'unknown'],
+      [2, 'unknown'],
+    ]);
+    const baseLegal = createMockView().legalActions;
+
+    // Fallback when eligibleAssassinationTargets contains only self and evil_ally
+    const onlyEvilTargetsView = createMockView({
+      viewerSeat: 4,
+      myRole: 'assassin',
+      myLoyalty: 'evil',
+      nightVision: evilNv,
+      legalActions: {
+        ...baseLegal,
+        canAssassinate: true,
+        eligibleAssassinationTargets: [3, 4],
+      },
+    });
+    expect(botService.decideAssassinationTarget(onlyEvilTargetsView, 4)).toBe(0);
+
+    // Full history deduction: seat 2 rejects Evil teams, leads clean teams, and avoids Quest 2 failed-team approval
+    const fullDeductionView = createMockView({
+      viewerSeat: 4,
+      myRole: 'assassin',
+      myLoyalty: 'evil',
+      nightVision: evilNv,
+      phase: 'assassination',
+      questHistory: [
+        { questNumber: 1, team: [0, 3], successCount: 1, failCount: 1, requiredFails: 1, outcome: 'fail' },
+        { questNumber: 2, team: [1, 2, 3], successCount: 2, failCount: 1, requiredFails: 1, outcome: 'fail' },
+        { questNumber: 3, team: [1, 2], successCount: 2, failCount: 0, requiredFails: 1, outcome: 'success' },
+      ],
+      proposalHistory: [
+        // Quest 1 failed dirty team led by seat 0
+        {
+          questNumber: 1,
+          attemptNumber: 1,
+          leaderSeat: 0,
+          proposedTeam: [0, 3],
+          votes: createSerializableMap<number, ProposalVote>([
+            [0, 'approve'],
+            [1, 'approve'],
+            [2, 'reject'],
+            [3, 'approve'],
+            [4, 'approve'],
+          ]),
+          approved: true,
+        },
+        // Quest 2 rejected clean team led by seat 2 (seat 0 rejects clean team; seats 1 & 2 approve clean team)
+        {
+          questNumber: 2,
+          attemptNumber: 1,
+          leaderSeat: 2,
+          proposedTeam: [1, 2],
+          votes: createSerializableMap<number, ProposalVote>([
+            [0, 'reject'],
+            [1, 'approve'],
+            [2, 'approve'],
+            [3, 'reject'],
+            [4, 'reject'],
+          ]),
+          approved: false,
+        },
+        // Quest 2 approved failed dirty team led by seat 1 (seats 0 & 1 approve Quest 2+ fail -> -2.2 penalty; seat 2 rejects)
+        {
+          questNumber: 2,
+          attemptNumber: 2,
+          leaderSeat: 1,
+          proposedTeam: [1, 2, 3],
+          votes: createSerializableMap<number, ProposalVote>([
+            [0, 'approve'],
+            [1, 'approve'],
+            [2, 'reject'],
+            [3, 'approve'],
+            [4, 'approve'],
+          ]),
+          approved: true,
+        },
+        // Quest 3 approved succeeded clean team led by seat 2
+        {
+          questNumber: 3,
+          attemptNumber: 1,
+          leaderSeat: 2,
+          proposedTeam: [1, 2],
+          votes: createSerializableMap<number, ProposalVote>([
+            [0, 'approve'],
+            [1, 'approve'],
+            [2, 'approve'],
+            [3, 'reject'],
+            [4, 'reject'],
+          ]),
+          approved: true,
+        },
+        // Approved proposal without matching questHistory record (verifies questRes?.outcome optional chain)
+        {
+          questNumber: 4,
+          attemptNumber: 1,
+          leaderSeat: 2,
+          proposedTeam: [1, 2],
+          votes: createSerializableMap<number, ProposalVote>([
+            [0, 'approve'],
+            [1, 'approve'],
+            [2, 'approve'],
+            [3, 'reject'],
+            [4, 'reject'],
+          ]),
+          approved: true,
+        },
+      ],
+      legalActions: {
+        ...baseLegal,
+        canAssassinate: true,
+        eligibleAssassinationTargets: [0, 1, 2, 3, 4],
+      },
+    });
+
+    expect(botService.decideAssassinationTarget(fullDeductionView, 4)).toBe(2);
+  });
 });
+
 

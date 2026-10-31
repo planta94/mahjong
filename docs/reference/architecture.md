@@ -1,15 +1,23 @@
 # Architecture & Domain Services Reference
 
-## 1. Directory Structure
+## 1. Core Shell, Routing & Shared Transport (`src/app/core/`)
 
-Following `ocpi-hub-portal` conventions:
+- `src/app/pages/hub/`: `HubComponent` — Pavilion landing page with 3 game launchers, nickname editor, universal P2P room join bar, and local saved-game resume/delete banner.
+- `src/app/layout/header/`: `AppHeaderComponent` — Contextual top navigation bar with game badge, `简中 / EN` language switcher, room invite copy pill, contextual rulebook trigger, and SFX/BGM toggles.
+- `src/app/core/services/shell-ui.service.ts`: `ShellUiService` — Root signal store for active game theming (`data-theme`), nickname/audio preferences, synthesized Web Audio SFX (auto-suspending `AudioContext` `1500ms` after playback and on mute), and `document` `visibilitychange` BGM/audio power management.
+- `src/app/core/services/game-session-manager.service.ts`: `GameSessionManagerService` — Cross-game `localStorage` (`party_saved_game_v1`) serialization, hydration, and `ExitConfirmDialogComponent` coordination across Mahjong, Monopoly, and Avalon.
+- `src/app/core/services/p2p-room.transport.ts`: `P2PRoomTransportService`, `GenericHostSession`, and `GenericGuestSession` — Universal game-prefixed room code parser/generator (`M*` Mahjong, `P*` Monopoly, `A*` Avalon), WebRTC (`peerjs`) + `BroadcastChannel` transport, and sanitized per-seat snapshot broadcasting.
 
-- `src/app/core/models/mahjong.model.ts`: Strict TypeScript domain interfaces (`TileSpec`, `GameRules`, `MatchState`, `PlayerView`, `SessionSnapshot`).
-- `src/app/core/utils/tiles.util.ts`: `Map`-backed 144-tile (`4p`) and 84-tile (`3p`) deck builders with CSPRNG 3-pass wash (`洗牌`), 3d6 dice wall cut (`擲骰開門`), tile metadata, and hand sorting.
+## 2. Mahjong Module (`src/app/core/` & `src/app/pages/{lobby,table}/`)
+
+- `src/app/core/models/mahjong.model.ts` & `src/app/core/utils/tiles.util.ts`: Strict domain types and `Map`-backed 144-tile (`4p`) & 84-tile (`3p`) CSPRNG deck builders, 3-pass wash (`洗牌`), and 3d6 wall cut (`擲骰開門`).
 - `src/app/core/services/scorer.service.ts`: Exact backtracking meld/pair + `飛` wildcard solver, special hands (`十三么`, `七對子`, `九蓮寶燈`, `八仙過海`, `四飛爆胡`), Tenpai waiting-tile analyzer, and Half-Spicy (`半辣上`) payout calculator.
-- `src/app/core/services/engine.service.ts`: Authoritative state machine (`turn`, `claim`, `robKong`, `handOver`), authentic 4-tile block dealing (`四張一棟`) + dealer jump-draw (`跳牌`), dead-wall flower replacement (`補花`), manual `tileIds` meld validation (including `3p` `飛` wildcards), wrong-call / false-Hu (`詐糊` / `錯章`) point penalties, and claim priority (`食糊 > 槓/碰 > 上`).
-- `src/app/core/services/bot.service.ts`: Tactical 5-Fan AI with exact 1-ply Tenpai ukeire search, multi-archetype planning (All Pongs, Seven Pairs, Pure/Mixed Flush, Honor Power), sequence/triplet preservation, and defensive danger reading.
-- `src/app/core/services/mahjong-session.service.ts`: Signal store (`snapshot`, `waitingTiles`, `autoPass`), `HostSession`, `GuestSession`, Web Audio tile clack + penalty buzzer synthesis, SpeechSynthesis Cantonese callouts, and query-preserving Router transitions (`/lobby` ↔ `/table`).
-- `src/app/layout/header/`: Top navigation bar with `简中 / EN` switcher, room invite copy pill, rulebook trigger, and sound toggle.
-- `src/app/pages/lobby/` & `src/app/pages/table/`: Standalone routed feature pages.
-- `src/app/shared/`: `TileComponent` (`mj-tile` SVG renderer), `RulebookDialogComponent`, and `TranslatePipe`.
+- `src/app/core/services/engine.service.ts`: Authoritative state machine (`turn`, `claim`, `robKong`, `handOver`), 4-tile block dealing (`四張一棟`), dead-wall flower replacement (`補花`), manual `tileIds` meld validation, wrong-call / false-Hu (`詐糊` / `錯章`) point penalties, and claim priority (`食糊 > 槓/碰 > 上`).
+- `src/app/core/services/bot.service.ts` & `src/app/core/services/mahjong-session.service.ts`: Tactical 5-Fan AI (`BotService`) and signal session store (`MahjongSessionService`, `HostSession`, `GuestSession`) with idle-suspending Web Audio tile clacks and Cantonese TTS callouts.
+- `src/app/pages/lobby/` & `src/app/pages/table/`: Standalone routed Mahjong lobby and 3P/4P tabletop components.
+
+## 3. Monopoly & Avalon Modules (`src/app/games/` & `src/app/shared/`)
+
+- `src/app/games/monopoly/`: 40-space board & `Nasib`/`Dana` card data, `MonopolyEngineService` (movement, jail, rent, houses/hotels, mortgages, auctions, bilateral trades, bankruptcy, Free Parking jackpot), `MonopolyBotService`, `MonopolySessionService`, `MonopolyLobbyComponent`, and `MonopolyBoardComponent` (`11×11` perimeter grid + mobile cards).
+- `src/app/games/avalon/`: 5–10 player quest/ratio configuration, `AvalonEngineService` (role assignment, Night Vision knowledge builder, team proposals, Hammer vote track, Quest 4 two-fails rule, Lady of the Lake, Merlin assassination), `AvalonBotService` (Bayesian-style trust matrix & role-specific bluffing/deduction), `AvalonSessionService`, `AvalonLobbyComponent`, and `AvalonTableComponent`.
+- `src/app/shared/`: `TileComponent` (`mj-tile` inline SVG), `RealDiceComponent` (`app-real-dice` inline SVG), `RulebookDialogComponent` (contextual 3-game rulebook), `ExitConfirmDialogComponent`, and `TranslatePipe`.

@@ -1,0 +1,1492 @@
+{
+  "$schema": "./schemas/qa-manifest.schema.json",
+  "version": "1.5.1",
+  "baseline": {
+    "commit": "df1b32d01b1010c8dccc52fb8a13543529192948",
+    "updatedAt": "2026-10-31T16:49:27.042Z"
+  },
+  "lastVerifiedCommit": "df1b32d01b1010c8dccc52fb8a13543529192948",
+  "projectConfig": {
+    "angularRoot": "src/app",
+    "openApiSchemaPath": "openapi.json",
+    "supportedLocales": [
+      "en",
+      "zh"
+    ],
+    "routerMode": "path",
+    "roles": [
+      "admin",
+      "user",
+      "guest"
+    ],
+    "viewports": [
+      {
+        "name": "desktop",
+        "width": 1440,
+        "height": 900
+      },
+      {
+        "name": "tablet",
+        "width": 768,
+        "height": 1024
+      },
+      {
+        "name": "mobile",
+        "width": 390,
+        "height": 844
+      }
+    ]
+  },
+  "services": {
+    "bot": {
+      "filePath": "src/app/core/services/bot.service.ts",
+      "specPath": "src/app/core/services/bot.service.spec.ts",
+      "className": "BotService",
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 17,
+        "meaningfulAssertions": 36,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "httpEndpoints": [],
+      "dependents": [],
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "05a7d160a0ff"
+    },
+    "engine": {
+      "filePath": "src/app/core/services/engine.service.ts",
+      "specPath": "src/app/core/services/engine.service.spec.ts",
+      "className": "EngineService",
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 8,
+        "meaningfulAssertions": 182,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "httpEndpoints": [],
+      "dependents": [],
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "a28f4db6e9fa"
+    },
+    "game-session-manager": {
+      "filePath": "src/app/core/services/game-session-manager.service.ts",
+      "specPath": "src/app/core/services/game-session-manager.service.spec.ts",
+      "className": "GameSessionManagerService",
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 6,
+        "meaningfulAssertions": 80,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "httpEndpoints": [],
+      "dependents": [
+        "src/app/app.component.ts",
+        "src/app/games/monopoly/components/monopoly-board/monopoly-board.component.ts",
+        "src/app/layout/header/app-header.component.ts",
+        "src/app/pages/hub/hub.component.ts",
+        "src/app/shared/exit-confirm-dialog/exit-confirm-dialog.component.ts"
+      ],
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "9ea90e06fd9d"
+    },
+    "mahjong-session": {
+      "filePath": "src/app/core/services/mahjong-session.service.ts",
+      "specPath": "src/app/core/services/mahjong-session.service.spec.ts",
+      "className": "MahjongSessionService",
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 11,
+        "meaningfulAssertions": 167,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "httpEndpoints": [],
+      "dependents": [
+        "src/app/pages/lobby/lobby.component.ts",
+        "src/app/pages/table/table.component.ts"
+      ],
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "8f1c0932e5b4"
+    },
+    "scorer": {
+      "filePath": "src/app/core/services/scorer.service.ts",
+      "specPath": "src/app/core/services/scorer.service.spec.ts",
+      "className": "ScorerService",
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 4,
+        "meaningfulAssertions": 29,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "httpEndpoints": [],
+      "dependents": [],
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "d7422629012f"
+    },
+    "shell-ui": {
+      "filePath": "src/app/core/services/shell-ui.service.ts",
+      "specPath": "src/app/core/services/shell-ui.service.spec.ts",
+      "className": "ShellUiService",
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 13,
+        "meaningfulAssertions": 91,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "httpEndpoints": [],
+      "dependents": [
+        "src/app/app.component.ts",
+        "src/app/games/avalon/components/avalon-lobby/avalon-lobby.component.ts",
+        "src/app/games/avalon/components/avalon-table/avalon-table.component.ts",
+        "src/app/games/monopoly/components/monopoly-board/monopoly-board.component.ts",
+        "src/app/games/monopoly/components/monopoly-lobby/monopoly-lobby.component.ts",
+        "src/app/layout/header/app-header.component.ts",
+        "src/app/pages/hub/hub.component.ts",
+        "src/app/pages/lobby/lobby.component.ts",
+        "src/app/pages/placeholder/game-placeholder.component.ts",
+        "src/app/shared/exit-confirm-dialog/exit-confirm-dialog.component.ts",
+        "src/app/shared/rulebook-dialog/rulebook-dialog.component.ts"
+      ],
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "41b7fe20172a"
+    },
+    "translate": {
+      "filePath": "src/app/core/services/translate.service.ts",
+      "specPath": "src/app/core/services/translate.service.spec.ts",
+      "className": "TranslateService",
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 6,
+        "meaningfulAssertions": 15,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "httpEndpoints": [],
+      "dependents": [
+        "src/app/layout/header/app-header.component.ts",
+        "src/app/pages/hub/hub.component.ts"
+      ],
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "b32cd994bb28"
+    },
+    "avalon-bot": {
+      "filePath": "src/app/games/avalon/services/avalon-bot.service.ts",
+      "specPath": "src/app/games/avalon/services/avalon-bot.service.spec.ts",
+      "className": "AvalonBotService",
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 23,
+        "meaningfulAssertions": 91,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "httpEndpoints": [],
+      "dependents": [],
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "8c83f7a12507"
+    },
+    "avalon-engine": {
+      "filePath": "src/app/games/avalon/services/avalon-engine.service.ts",
+      "specPath": "src/app/games/avalon/services/avalon-engine.service.spec.ts",
+      "className": "AvalonEngineService",
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 16,
+        "meaningfulAssertions": 73,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "httpEndpoints": [],
+      "dependents": [],
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "80154e1257aa"
+    },
+    "avalon-session": {
+      "filePath": "src/app/games/avalon/services/avalon-session.service.ts",
+      "specPath": "src/app/games/avalon/services/avalon-session.service.spec.ts",
+      "className": "AvalonSessionService",
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 19,
+        "meaningfulAssertions": 110,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "httpEndpoints": [],
+      "dependents": [
+        "src/app/games/avalon/components/avalon-lobby/avalon-lobby.component.ts",
+        "src/app/games/avalon/components/avalon-table/avalon-table.component.ts"
+      ],
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "cba091fa24a1"
+    },
+    "monopoly-bot": {
+      "filePath": "src/app/games/monopoly/services/monopoly-bot.service.ts",
+      "specPath": "src/app/games/monopoly/services/monopoly-bot.service.spec.ts",
+      "className": "MonopolyBotService",
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 21,
+        "meaningfulAssertions": 60,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "httpEndpoints": [],
+      "dependents": [],
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "396ca58e1924"
+    },
+    "monopoly-engine": {
+      "filePath": "src/app/games/monopoly/services/monopoly-engine.service.ts",
+      "specPath": "src/app/games/monopoly/services/monopoly-engine.service.spec.ts",
+      "className": "MonopolyEngineService",
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 52,
+        "meaningfulAssertions": 307,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "httpEndpoints": [],
+      "dependents": [
+        "src/app/games/monopoly/components/monopoly-board/monopoly-board.component.ts"
+      ],
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "01f149e2140b"
+    },
+    "monopoly-session": {
+      "filePath": "src/app/games/monopoly/services/monopoly-session.service.ts",
+      "specPath": "src/app/games/monopoly/services/monopoly-session.service.spec.ts",
+      "className": "MonopolySessionService",
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 16,
+        "meaningfulAssertions": 97,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "httpEndpoints": [],
+      "dependents": [
+        "src/app/games/monopoly/components/monopoly-board/monopoly-board.component.ts",
+        "src/app/games/monopoly/components/monopoly-lobby/monopoly-lobby.component.ts"
+      ],
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "463bc9997ab6"
+    }
+  },
+  "components": {
+    "app": {
+      "filePath": "src/app/app.component.ts",
+      "templatePath": "src/app/app.component.html",
+      "specPath": "src/app/app.component.spec.ts",
+      "selector": "app-root",
+      "className": "AppComponent",
+      "importedTypes": [
+        "RouterOutlet",
+        "AppHeaderComponent",
+        "RulebookDialogComponent",
+        "ExitConfirmDialogComponent"
+      ],
+      "isStandalone": true,
+      "isInlineTemplate": false,
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 2,
+        "meaningfulAssertions": 52,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "detectedFeatures": {
+        "inputs": [],
+        "outputs": [],
+        "models": [],
+        "templateBranches": 2,
+        "interactiveEvents": [
+          "closed"
+        ],
+        "reactiveForms": [],
+        "i18nKeys": [],
+        "rbacDirectives": [],
+        "rxJsSubscriptions": 0
+      },
+      "dimensionsVerified": {
+        "functionalAndEdgeCases": false,
+        "errorAndDegradedStates": false,
+        "rbac": true,
+        "a11y": false,
+        "i18n": true,
+        "memoryLeakUnsubscribe": true
+      },
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "59e442064a3c"
+    },
+    "avalon-lobby": {
+      "filePath": "src/app/games/avalon/components/avalon-lobby/avalon-lobby.component.ts",
+      "templatePath": "src/app/games/avalon/components/avalon-lobby/avalon-lobby.component.html",
+      "specPath": "src/app/games/avalon/components/avalon-lobby/avalon-lobby.component.spec.ts",
+      "selector": "app-avalon-lobby",
+      "className": "AvalonLobbyComponent",
+      "importedTypes": [
+        "FormsModule",
+        "TranslatePipe"
+      ],
+      "isStandalone": true,
+      "isInlineTemplate": false,
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 8,
+        "meaningfulAssertions": 66,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "detectedFeatures": {
+        "inputs": [],
+        "outputs": [],
+        "models": [],
+        "templateBranches": 9,
+        "interactiveEvents": [
+          "click",
+          "ngModelChange",
+          "change"
+        ],
+        "reactiveForms": [],
+        "i18nKeys": [
+          "AVALON.NAME",
+          "AVALON.LOBBY.TITLE",
+          "AVALON.SUBTITLE",
+          "MONOPOLY.INVITE_JOIN_TITLE",
+          "MONOPOLY.INVITE_TAKE_SEAT",
+          "AVALON.LOBBY.PLAYER_COUNT",
+          "MONOPOLY.SEAT_LABEL",
+          "AVALON.LOBBY.GOOD_EVIL_RATIO",
+          "AVALON.LOBBY.SPECIAL_ROLES",
+          "AVALON.LOBBY.PERCIVAL",
+          "AVALON.LOBBY.MORGANA",
+          "AVALON.LOBBY.MORDRED",
+          "AVALON.LOBBY.OBERON",
+          "AVALON.LOBBY.LADY_OF_LAKE",
+          "AVALON.LOBBY.START_SOLO",
+          "AVALON.LOBBY.CREATE_ROOM",
+          "AVALON.LOBBY.JOIN_ROOM",
+          "MONOPOLY.JOIN_PLACEHOLDER",
+          "HEADER.ROOM_CODE",
+          "HEADER.COPY_LINK",
+          "MONOPOLY.ROOM_HOST_BADGE",
+          "MONOPOLY.ROOM_YOU_BADGE",
+          "HEADER.LEAVE_ROOM",
+          "AVALON.LOBBY.START_MATCH"
+        ],
+        "rbacDirectives": [],
+        "rxJsSubscriptions": 1
+      },
+      "dimensionsVerified": {
+        "functionalAndEdgeCases": false,
+        "errorAndDegradedStates": false,
+        "rbac": true,
+        "a11y": false,
+        "i18n": false,
+        "memoryLeakUnsubscribe": true
+      },
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "7533a7f1f565"
+    },
+    "avalon-table": {
+      "filePath": "src/app/games/avalon/components/avalon-table/avalon-table.component.ts",
+      "templatePath": "src/app/games/avalon/components/avalon-table/avalon-table.component.html",
+      "specPath": "src/app/games/avalon/components/avalon-table/avalon-table.component.spec.ts",
+      "selector": "app-avalon-table",
+      "className": "AvalonTableComponent",
+      "importedTypes": [
+        "CommonModule",
+        "FormsModule",
+        "TranslatePipe"
+      ],
+      "isStandalone": true,
+      "isInlineTemplate": false,
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 11,
+        "meaningfulAssertions": 118,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "detectedFeatures": {
+        "inputs": [],
+        "outputs": [],
+        "models": [],
+        "templateBranches": 52,
+        "interactiveEvents": [
+          "qNum",
+          "click",
+          "pointerdown",
+          "pointerup",
+          "pointerleave",
+          "change"
+        ],
+        "reactiveForms": [],
+        "i18nKeys": [
+          "AVALON.NAME",
+          "AVALON.TABLE.QUEST_TITLE",
+          "AVALON.UI.QUEST_SHORT",
+          "AVALON.UI.TWO_FAILS_SHORT",
+          "AVALON.UI.STATUS_PASS",
+          "AVALON.UI.STATUS_FAIL",
+          "AVALON.UI.STATUS_ACTIVE",
+          "AVALON.TABLE.VOTE_TRACK",
+          "AVALON.TABLE.HAMMER_WARNING",
+          "AVALON.TABLE.PRIVACY_SHIELD_PROMPT",
+          "AVALON.UI.VERBAL_SUBTEXT",
+          "AVALON.TABLE.SECRET_REVEALED",
+          "AVALON.TABLE.SECRET_CONCEALED",
+          "AVALON.UI.NIGHT_VISION_TITLE",
+          "AVALON.UI.LADY_INTEL_BADGE",
+          "AVALON.TABLE.LADY_RESULT_GOOD",
+          "AVALON.TABLE.LADY_RESULT_EVIL",
+          "AVALON.UI.HOLD_TO_PEEK_HINT",
+          "AVALON.UI.ROUND_TABLE_TITLE",
+          "AVALON.TABLE.LEADER",
+          "AVALON.UI.LEADER_TIP",
+          "AVALON.TABLE.PROPOSE_TEAM_BTN",
+          "AVALON.UI.NOMINATED_TEAM",
+          "AVALON.UI.CAST_OPEN_VOTE_TIP",
+          "AVALON.TABLE.APPROVE",
+          "AVALON.TABLE.REJECT",
+          "AVALON.UI.VOTE_REGISTERED_WAIT",
+          "AVALON.UI.CHOSEN_FOR_QUEST_TIP",
+          "AVALON.UI.CAST_QUEST_CARD_BTN",
+          "AVALON.UI.QUEST_CARD_SUBMITTED_WAIT",
+          "AVALON.UI.QUEST_UNDERWAY_WAIT",
+          "AVALON.UI.LADY_HOLDER_TIP",
+          "AVALON.TABLE.LADY_INVESTIGATE",
+          "AVALON.UI.ASSASSIN_TURN_TIP",
+          "AVALON.TABLE.ASSASSINATE_BTN",
+          "AVALON.UI.HISTORY_TITLE",
+          "AVALON.UI.HISTORY_COUNT",
+          "AVALON.UI.COL_QUEST",
+          "AVALON.UI.COL_ATTEMPT",
+          "AVALON.UI.COL_LEADER",
+          "AVALON.UI.COL_TEAM",
+          "AVALON.UI.COL_VOTES",
+          "AVALON.UI.COL_OUTCOME",
+          "AVALON.UI.EMPTY_HISTORY",
+          "AVALON.UI.MODAL_QUEST_TITLE",
+          "AVALON.UI.MODAL_QUEST_DESC",
+          "AVALON.TABLE.QUEST_SUBMIT_SUCCESS",
+          "AVALON.UI.MODAL_SUCCESS_DESC",
+          "AVALON.TABLE.QUEST_SUBMIT_FAIL",
+          "AVALON.UI.MODAL_FAIL_LOYAL_LOCK",
+          "AVALON.UI.MODAL_FAIL_EVIL_DESC",
+          "AVALON.UI.MODAL_CONFIRM_CARD_BTN",
+          "AVALON.UI.MODAL_LADY_TITLE",
+          "AVALON.UI.MODAL_LADY_CHOOSE",
+          "AVALON.UI.MODAL_LADY_REVEALED",
+          "AVALON.UI.MODAL_LADY_NOTE",
+          "AVALON.UI.MODAL_LADY_CONFIRM_BTN",
+          "AVALON.UI.MODAL_LADY_CLOSE_BTN",
+          "AVALON.UI.MODAL_ASSASSIN_TITLE",
+          "AVALON.TABLE.ASSASSINATE_PROMPT",
+          "AVALON.OUTCOMES.GOOD_VICTORY",
+          "AVALON.OUTCOMES.EVIL_VICTORY",
+          "AVALON.OUTCOMES.REASON_THREE_QUESTS",
+          "AVALON.OUTCOMES.REASON_THREE_FAILS",
+          "AVALON.OUTCOMES.REASON_HAMMER",
+          "AVALON.OUTCOMES.REASON_ASSASSIN_SUCCESS",
+          "AVALON.OUTCOMES.REASON_ASSASSIN_FAIL",
+          "AVALON.UI.FINAL_IDENTITIES_TITLE",
+          "MONOPOLY.RETURN_LOBBY_BTN"
+        ],
+        "rbacDirectives": [],
+        "rxJsSubscriptions": 0
+      },
+      "dimensionsVerified": {
+        "functionalAndEdgeCases": false,
+        "errorAndDegradedStates": false,
+        "rbac": true,
+        "a11y": false,
+        "i18n": false,
+        "memoryLeakUnsubscribe": true
+      },
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "ef11c6b105b8"
+    },
+    "monopoly-board": {
+      "filePath": "src/app/games/monopoly/components/monopoly-board/monopoly-board.component.ts",
+      "templatePath": "src/app/games/monopoly/components/monopoly-board/monopoly-board.component.html",
+      "specPath": "src/app/games/monopoly/components/monopoly-board/monopoly-board.component.spec.ts",
+      "selector": "app-monopoly-board",
+      "className": "MonopolyBoardComponent",
+      "importedTypes": [
+        "CommonModule",
+        "FormsModule",
+        "TranslatePipe",
+        "RealDiceComponent"
+      ],
+      "isStandalone": true,
+      "isInlineTemplate": false,
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 11,
+        "meaningfulAssertions": 175,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "detectedFeatures": {
+        "inputs": [],
+        "outputs": [],
+        "models": [],
+        "templateBranches": 73,
+        "interactiveEvents": [
+          "click",
+          "change"
+        ],
+        "reactiveForms": [],
+        "i18nKeys": [
+          "MONOPOLY.ROUND_LABEL",
+          "MONOPOLY.WIN_LAST_TYCOON",
+          "MONOPOLY.WIN_ROUND_LIMIT",
+          "MONOPOLY.POT_TITLE",
+          "MONOPOLY.UI_IN_JAIL",
+          "MONOPOLY.ROLL_DICE_BTN",
+          "MONOPOLY.PAY_BAIL_BTN",
+          "MONOPOLY.USE_CARD_BTN",
+          "MONOPOLY.BUY_PROPERTY_BTN",
+          "MONOPOLY.PASS_PROPERTY_BTN",
+          "MONOPOLY.END_TURN_BTN",
+          "MONOPOLY.UI_DISTRESS_WARN",
+          "MONOPOLY.BANKRUPT_BTN",
+          "MONOPOLY.TRADE_BTN",
+          "MONOPOLY.WAITING_TURN",
+          "MONOPOLY.UI_TAP_BOARD_HINT",
+          "MONOPOLY.UI_LEADERBOARD_TITLE",
+          "MONOPOLY.UI_BANKRUPT",
+          "MONOPOLY.UI_NET_WORTH",
+          "MONOPOLY.UI_NO_PROPS",
+          "MONOPOLY.UI_LIVE_LOG_TITLE",
+          "MONOPOLY.UI_SPACE_NUM",
+          "MONOPOLY.BASE_RENT",
+          "MONOPOLY.RENT_1H",
+          "MONOPOLY.RENT_2H",
+          "MONOPOLY.RENT_3H",
+          "MONOPOLY.RENT_4H",
+          "MONOPOLY.RENT_HOTEL",
+          "MONOPOLY.UI_PRICE",
+          "MONOPOLY.HOUSE_COST",
+          "MONOPOLY.MORTGAGE_VALUE",
+          "MONOPOLY.UI_OWNER",
+          "MONOPOLY.UI_UNOWNED",
+          "MONOPOLY.UI_BUILD_BTN_COST",
+          "MONOPOLY.UI_SELL_BTN_GAIN",
+          "MONOPOLY.UI_MORTGAGE_BTN_GAIN",
+          "MONOPOLY.UI_UNMORTGAGE_BTN_COST",
+          "COMMON.CLOSE",
+          "MONOPOLY.AUCTION_MODAL_TITLE",
+          "MONOPOLY.AUCTION_CURRENT_BID",
+          "MONOPOLY.AUCTION_HIGHEST_BIDDER",
+          "MONOPOLY.UI_NO_BIDS_YET",
+          "MONOPOLY.UI_BID_PLUS_10",
+          "MONOPOLY.AUCTION_PASS_BTN",
+          "MONOPOLY.UI_AUCTION_WAITING",
+          "MONOPOLY.TRADE_MODAL_TITLE",
+          "MONOPOLY.TRADE_SELECT_PARTNER",
+          "MONOPOLY.TRADE_OFFER_CASH",
+          "MONOPOLY.TRADE_OFFER_PROPERTIES",
+          "MONOPOLY.TRADE_REQUEST_CASH",
+          "MONOPOLY.TRADE_REQUEST_PROPERTIES",
+          "MONOPOLY.TRADE_PROPOSE_BTN",
+          "COMMON.CANCEL",
+          "MONOPOLY.UI_INCOMING_TRADE_TITLE",
+          "MONOPOLY.UI_INCOMING_TRADE_FROM",
+          "MONOPOLY.UI_THEY_OFFER",
+          "MONOPOLY.UI_THEY_REQUEST",
+          "MONOPOLY.TRADE_ACCEPT_BTN",
+          "MONOPOLY.TRADE_REJECT_BTN",
+          "MONOPOLY.GAME_OVER_TITLE",
+          "MONOPOLY.WINNER_LABEL",
+          "MONOPOLY.UI_COL_RANK",
+          "MONOPOLY.UI_COL_PLAYER",
+          "MONOPOLY.UI_CASH",
+          "MONOPOLY.NET_WORTH_LABEL",
+          "MONOPOLY.RETURN_LOBBY_BTN",
+          "MONOPOLY.RETURN_HUB_BTN"
+        ],
+        "rbacDirectives": [],
+        "rxJsSubscriptions": 0
+      },
+      "dimensionsVerified": {
+        "functionalAndEdgeCases": false,
+        "errorAndDegradedStates": false,
+        "rbac": true,
+        "a11y": false,
+        "i18n": false,
+        "memoryLeakUnsubscribe": true
+      },
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "aeb855a5d067"
+    },
+    "monopoly-lobby": {
+      "filePath": "src/app/games/monopoly/components/monopoly-lobby/monopoly-lobby.component.ts",
+      "templatePath": "src/app/games/monopoly/components/monopoly-lobby/monopoly-lobby.component.html",
+      "specPath": "src/app/games/monopoly/components/monopoly-lobby/monopoly-lobby.component.spec.ts",
+      "selector": "app-monopoly-lobby",
+      "className": "MonopolyLobbyComponent",
+      "importedTypes": [
+        "FormsModule",
+        "TranslatePipe"
+      ],
+      "isStandalone": true,
+      "isInlineTemplate": false,
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 7,
+        "meaningfulAssertions": 59,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "detectedFeatures": {
+        "inputs": [],
+        "outputs": [],
+        "models": [],
+        "templateBranches": 15,
+        "interactiveEvents": [
+          "click"
+        ],
+        "reactiveForms": [],
+        "i18nKeys": [
+          "HUB.MONOPOLY_BADGE",
+          "MONOPOLY.LOBBY_TITLE",
+          "MONOPOLY.LOBBY_SUBTITLE",
+          "MONOPOLY.INVITE_JOIN_TITLE",
+          "MONOPOLY.INVITE_TAKE_SEAT",
+          "MONOPOLY.PLAYERS_COUNT",
+          "MONOPOLY.SEAT_LABEL",
+          "MONOPOLY.WIN_MODE",
+          "MONOPOLY.WIN_LAST_TYCOON",
+          "MONOPOLY.WIN_ROUND_LIMIT",
+          "MONOPOLY.ROUND_LIMIT_ROUNDS",
+          "MONOPOLY.AUCTION_RULE",
+          "MONOPOLY.AUCTION_ENABLED",
+          "MONOPOLY.AUCTION_DISABLED",
+          "MONOPOLY.QUICK_SOLO_BTN",
+          "MONOPOLY.CREATE_ROOM_BTN",
+          "MONOPOLY.JOIN_ROOM_TITLE",
+          "MONOPOLY.JOIN_PLACEHOLDER",
+          "MONOPOLY.JOIN_ROOM_BTN",
+          "MONOPOLY.WAITING_TITLE",
+          "MONOPOLY.WAITING_SUBTITLE",
+          "LOBBY.YOU_TAG",
+          "MONOPOLY.SEAT_HOST",
+          "MONOPOLY.SEAT_HUMAN",
+          "MONOPOLY.SEAT_BOT",
+          "MONOPOLY.SEAT_OPEN",
+          "MONOPOLY.TOGGLE_BOT",
+          "MONOPOLY.TOGGLE_OPEN",
+          "MONOPOLY.START_MATCH_BTN",
+          "LOBBY.WAIT_FOR_HOST",
+          "HEADER.LEAVE_ROOM"
+        ],
+        "rbacDirectives": [],
+        "rxJsSubscriptions": 1
+      },
+      "dimensionsVerified": {
+        "functionalAndEdgeCases": false,
+        "errorAndDegradedStates": false,
+        "rbac": true,
+        "a11y": false,
+        "i18n": false,
+        "memoryLeakUnsubscribe": true
+      },
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "337ed158d91a"
+    },
+    "app-header": {
+      "filePath": "src/app/layout/header/app-header.component.ts",
+      "templatePath": "src/app/layout/header/app-header.component.html",
+      "specPath": "src/app/layout/header/app-header.component.spec.ts",
+      "selector": "app-header",
+      "className": "AppHeaderComponent",
+      "importedTypes": [
+        "TranslatePipe"
+      ],
+      "isStandalone": true,
+      "isInlineTemplate": false,
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 5,
+        "meaningfulAssertions": 83,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "detectedFeatures": {
+        "inputs": [],
+        "outputs": [],
+        "models": [],
+        "templateBranches": 10,
+        "interactiveEvents": [
+          "click"
+        ],
+        "reactiveForms": [],
+        "i18nKeys": [
+          "HEADER.BRAND",
+          "HEADER.GAME_TITLE_MAHJONG",
+          "HEADER.GAME_TITLE_MONOPOLY",
+          "HEADER.GAME_TITLE_AVALON",
+          "HEADER.BADGE_MAHJONG",
+          "HEADER.BADGE_MONOPOLY",
+          "HEADER.BADGE_AVALON",
+          "HEADER.BADGE_PAVILION",
+          "HEADER.SWITCH_GAME",
+          "HEADER.RULEBOOK",
+          "HEADER.LEAVE_ROOM"
+        ],
+        "rbacDirectives": [],
+        "rxJsSubscriptions": 0
+      },
+      "dimensionsVerified": {
+        "functionalAndEdgeCases": false,
+        "errorAndDegradedStates": false,
+        "rbac": true,
+        "a11y": false,
+        "i18n": false,
+        "memoryLeakUnsubscribe": true
+      },
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "0d85a0ace4d7"
+    },
+    "hub": {
+      "filePath": "src/app/pages/hub/hub.component.ts",
+      "templatePath": "src/app/pages/hub/hub.component.html",
+      "specPath": "src/app/pages/hub/hub.component.spec.ts",
+      "selector": "app-hub",
+      "className": "HubComponent",
+      "importedTypes": [
+        "CommonModule",
+        "FormsModule",
+        "TranslatePipe"
+      ],
+      "isStandalone": true,
+      "isInlineTemplate": false,
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 8,
+        "meaningfulAssertions": 47,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "detectedFeatures": {
+        "inputs": [],
+        "outputs": [],
+        "models": [],
+        "templateBranches": 9,
+        "interactiveEvents": [
+          "ngModelChange",
+          "click",
+          "keyup.enter"
+        ],
+        "reactiveForms": [],
+        "i18nKeys": [
+          "HUB.HERO_TITLE",
+          "HUB.NICKNAME_LABEL",
+          "HUB.NICKNAME_PLACEHOLDER",
+          "COMMON.SAVE",
+          "COMMON.CANCEL",
+          "HUB.EDIT_NICKNAME",
+          "HUB.SAVED_BADGE",
+          "HUB.SAVED_TITLE",
+          "HUB.SAVED_RESUME_BTN",
+          "HUB.SAVED_DELETE_BTN",
+          "HUB.JOIN_HEADING",
+          "HUB.JOIN_SUBTEXT",
+          "HUB.JOIN_PLACEHOLDER",
+          "HUB.JOIN_BUTTON",
+          "HUB.SELECT_GAME_HEADING",
+          "HUB.TAP_FOR_DETAILS",
+          "COMMON.CLOSE",
+          "HUB.VIEW_RULES"
+        ],
+        "rbacDirectives": [],
+        "rxJsSubscriptions": 0
+      },
+      "dimensionsVerified": {
+        "functionalAndEdgeCases": false,
+        "errorAndDegradedStates": false,
+        "rbac": true,
+        "a11y": false,
+        "i18n": false,
+        "memoryLeakUnsubscribe": true
+      },
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "dafc101bdbdd"
+    },
+    "lobby": {
+      "filePath": "src/app/pages/lobby/lobby.component.ts",
+      "templatePath": "src/app/pages/lobby/lobby.component.html",
+      "specPath": "src/app/pages/lobby/lobby.component.spec.ts",
+      "selector": "app-lobby",
+      "className": "LobbyComponent",
+      "importedTypes": [
+        "FormsModule",
+        "TranslatePipe"
+      ],
+      "isStandalone": true,
+      "isInlineTemplate": false,
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 9,
+        "meaningfulAssertions": 119,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "detectedFeatures": {
+        "inputs": [],
+        "outputs": [],
+        "models": [],
+        "templateBranches": 25,
+        "interactiveEvents": [
+          "blur",
+          "change",
+          "click",
+          "keydown.enter",
+          "ngModelChange"
+        ],
+        "reactiveForms": [],
+        "i18nKeys": [
+          "LOBBY.HERO_TITLE",
+          "LOBBY.HERO_SUB",
+          "LOBBY.NICKNAME_LABEL",
+          "LOBBY.NICKNAME_PLACEHOLDER",
+          "LOBBY.INVITE_TITLE",
+          "LOBBY.RULE_HINTS",
+          "LOBBY.INVITE_JOIN_BTN",
+          "LOBBY.MODE_3P_TITLE",
+          "LOBBY.MODE_3P_DESC",
+          "LOBBY.MODE_4P_TITLE",
+          "LOBBY.MODE_4P_DESC",
+          "LOBBY.RULE_MIN_FAN",
+          "LOBBY.RULE_MIN_OPT",
+          "LOBBY.RULE_MAX_FAN",
+          "LOBBY.RULE_MAX_OPT",
+          "LOBBY.RULE_CONCEALED",
+          "LOBBY.RULE_SEVEN_PAIRS",
+          "LOBBY.BTN_START_SOLO",
+          "LOBBY.BTN_CREATE_ROOM",
+          "LOBBY.JOIN_SECTION_TITLE",
+          "LOBBY.JOIN_PLACEHOLDER",
+          "LOBBY.BTN_JOIN_ROOM",
+          "LOBBY.WAITING_ROOM_TITLE",
+          "LOBBY.WAITING_SHARE_HINT",
+          "LOBBY.SWITCH_3P",
+          "LOBBY.SWITCH_4P",
+          "LOBBY.SEAT_HEADER",
+          "LOBBY.YOU_TAG",
+          "LOBBY.SEAT_BOT",
+          "LOBBY.SEAT_OPEN",
+          "LOBBY.SEAT_CONNECTED",
+          "LOBBY.SEAT_OFFLINE",
+          "LOBBY.BTN_START_MATCH",
+          "LOBBY.WAIT_FOR_HOST"
+        ],
+        "rbacDirectives": [],
+        "rxJsSubscriptions": 1
+      },
+      "dimensionsVerified": {
+        "functionalAndEdgeCases": false,
+        "errorAndDegradedStates": false,
+        "rbac": true,
+        "a11y": false,
+        "i18n": false,
+        "memoryLeakUnsubscribe": true
+      },
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "0b7eff4ed268"
+    },
+    "game-placeholder": {
+      "filePath": "src/app/pages/placeholder/game-placeholder.component.ts",
+      "templatePath": "[inline]",
+      "specPath": "src/app/pages/placeholder/game-placeholder.component.spec.ts",
+      "selector": "app-game-placeholder",
+      "className": "GamePlaceholderComponent",
+      "importedTypes": [
+        "TranslatePipe"
+      ],
+      "isStandalone": true,
+      "isInlineTemplate": true,
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 3,
+        "meaningfulAssertions": 9,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "detectedFeatures": {
+        "inputs": [],
+        "outputs": [],
+        "models": [],
+        "templateBranches": 0,
+        "interactiveEvents": [
+          "click"
+        ],
+        "reactiveForms": [],
+        "i18nKeys": [
+          "HUB.DEV_NOTICE",
+          "HEADER.SWITCH_GAME"
+        ],
+        "rbacDirectives": [],
+        "rxJsSubscriptions": 0
+      },
+      "dimensionsVerified": {
+        "functionalAndEdgeCases": false,
+        "errorAndDegradedStates": false,
+        "rbac": true,
+        "a11y": false,
+        "i18n": false,
+        "memoryLeakUnsubscribe": true
+      },
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "1855a865de64"
+    },
+    "table": {
+      "filePath": "src/app/pages/table/table.component.ts",
+      "templatePath": "src/app/pages/table/table.component.html",
+      "specPath": "src/app/pages/table/table.component.spec.ts",
+      "selector": "app-table",
+      "className": "TableComponent",
+      "importedTypes": [
+        "TileComponent",
+        "TranslatePipe"
+      ],
+      "isStandalone": true,
+      "isInlineTemplate": false,
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 8,
+        "meaningfulAssertions": 86,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "detectedFeatures": {
+        "inputs": [],
+        "outputs": [],
+        "models": [],
+        "templateBranches": 82,
+        "interactiveEvents": [
+          "click",
+          "change"
+        ],
+        "reactiveForms": [],
+        "i18nKeys": [
+          "TABLE.DEALER",
+          "TABLE.REL_ACROSS",
+          "TABLE.PTS",
+          "TABLE.BANNER_3P",
+          "TABLE.REL_LEFT",
+          "TABLE.ROUND_LABEL",
+          "TABLE.WALL_LEFT",
+          "TABLE.TILES_UNIT",
+          "TABLE.TURN_LABEL",
+          "TABLE.PENALTY_FALSE_FAN",
+          "TABLE.PENALTY_FALSE_SHAPE",
+          "TABLE.PENALTY_WRONG_CALL",
+          "TABLE.RIVER_SUFFIX",
+          "TABLE.NO_DISCARDS",
+          "TABLE.REL_RIGHT",
+          "TABLE.REL_SELF",
+          "TABLE.YOUR_TURN_HINT",
+          "TABLE.BTN_CHOW",
+          "TABLE.BTN_PONG",
+          "TABLE.BTN_KONG",
+          "TABLE.BTN_FLY",
+          "TABLE.BTN_RETRIEVE_FLY",
+          "TABLE.BTN_HU",
+          "TABLE.ACT_PASS",
+          "TABLE.AUTO_PASS",
+          "TABLE.SELECT_HINT_CHOW",
+          "TABLE.SELECT_HINT_PONG",
+          "TABLE.SELECT_HINT_KONG",
+          "TABLE.SELECT_HINT_FLY",
+          "TABLE.SELECT_HINT_RETRIEVE_FLY",
+          "TABLE.BTN_CONFIRM_CALL",
+          "TABLE.BTN_CANCEL_CALL",
+          "TABLE.TENPAI_HINT",
+          "TABLE.WAIT_SELF_ONLY",
+          "TABLE.WAIT_LOW_FAN",
+          "TABLE.DRAW_TITLE",
+          "TABLE.WIN_TITLE",
+          "TABLE.CAPPED_FROM",
+          "TABLE.PAY_SELF_DRAW",
+          "TABLE.PAY_DISCARDER",
+          "TABLE.BONUS_LABEL",
+          "TABLE.COL_PLAYER",
+          "TABLE.COL_DELTA",
+          "TABLE.COL_TOTAL",
+          "TABLE.BTN_RETURN_LOBBY",
+          "TABLE.BTN_NEXT_HAND",
+          "TABLE.WAIT_NEXT_HAND"
+        ],
+        "rbacDirectives": [],
+        "rxJsSubscriptions": 0
+      },
+      "dimensionsVerified": {
+        "functionalAndEdgeCases": false,
+        "errorAndDegradedStates": false,
+        "rbac": true,
+        "a11y": false,
+        "i18n": false,
+        "memoryLeakUnsubscribe": true
+      },
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "94cad2b38a9d"
+    },
+    "real-dice": {
+      "filePath": "src/app/shared/dice/real-dice.component.ts",
+      "templatePath": "src/app/shared/dice/real-dice.component.html",
+      "specPath": "src/app/shared/dice/real-dice.component.spec.ts",
+      "selector": "app-real-dice",
+      "className": "RealDiceComponent",
+      "importedTypes": [
+        "TranslatePipe"
+      ],
+      "isStandalone": true,
+      "isInlineTemplate": false,
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 4,
+        "meaningfulAssertions": 45,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "detectedFeatures": {
+        "inputs": [
+          "values",
+          "rolling",
+          "compact"
+        ],
+        "outputs": [],
+        "models": [],
+        "templateBranches": 4,
+        "interactiveEvents": [],
+        "reactiveForms": [],
+        "i18nKeys": [
+          "MONOPOLY.UI_DICE_SUM",
+          "MONOPOLY.UI_DOUBLES"
+        ],
+        "rbacDirectives": [],
+        "rxJsSubscriptions": 0
+      },
+      "dimensionsVerified": {
+        "functionalAndEdgeCases": false,
+        "errorAndDegradedStates": false,
+        "rbac": true,
+        "a11y": false,
+        "i18n": false,
+        "memoryLeakUnsubscribe": true
+      },
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "e9210f78333e"
+    },
+    "exit-confirm-dialog": {
+      "filePath": "src/app/shared/exit-confirm-dialog/exit-confirm-dialog.component.ts",
+      "templatePath": "src/app/shared/exit-confirm-dialog/exit-confirm-dialog.component.html",
+      "specPath": "src/app/shared/exit-confirm-dialog/exit-confirm-dialog.component.spec.ts",
+      "selector": "app-exit-confirm-dialog",
+      "className": "ExitConfirmDialogComponent",
+      "importedTypes": [
+        "TranslatePipe"
+      ],
+      "isStandalone": true,
+      "isInlineTemplate": false,
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 4,
+        "meaningfulAssertions": 38,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "detectedFeatures": {
+        "inputs": [],
+        "outputs": [],
+        "models": [],
+        "templateBranches": 3,
+        "interactiveEvents": [
+          "click"
+        ],
+        "reactiveForms": [],
+        "i18nKeys": [
+          "EXIT_MODAL.TITLE",
+          "EXIT_MODAL.DESC_CAN_SAVE",
+          "EXIT_MODAL.DESC_NO_SAVE",
+          "EXIT_MODAL.BTN_STAY",
+          "EXIT_MODAL.BTN_DISCARD_EXIT",
+          "EXIT_MODAL.BTN_SAVE_EXIT"
+        ],
+        "rbacDirectives": [],
+        "rxJsSubscriptions": 0
+      },
+      "dimensionsVerified": {
+        "functionalAndEdgeCases": false,
+        "errorAndDegradedStates": false,
+        "rbac": true,
+        "a11y": false,
+        "i18n": false,
+        "memoryLeakUnsubscribe": true
+      },
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "42a4103d8f76"
+    },
+    "rulebook-dialog": {
+      "filePath": "src/app/shared/rulebook-dialog/rulebook-dialog.component.ts",
+      "templatePath": "src/app/shared/rulebook-dialog/rulebook-dialog.component.html",
+      "specPath": "src/app/shared/rulebook-dialog/rulebook-dialog.component.spec.ts",
+      "selector": "app-rulebook-dialog",
+      "className": "RulebookDialogComponent",
+      "importedTypes": [
+        "TranslatePipe"
+      ],
+      "isStandalone": true,
+      "isInlineTemplate": false,
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 3,
+        "meaningfulAssertions": 37,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "detectedFeatures": {
+        "inputs": [],
+        "outputs": [
+          "closed"
+        ],
+        "models": [],
+        "templateBranches": 11,
+        "interactiveEvents": [
+          "click"
+        ],
+        "reactiveForms": [],
+        "i18nKeys": [
+          "RULEBOOK.MONOPOLY_TITLE",
+          "RULEBOOK.AVALON_TITLE",
+          "RULEBOOK.TITLE",
+          "RULEBOOK.MONOPOLY_RULE_1",
+          "RULEBOOK.MONOPOLY_RULE_2",
+          "RULEBOOK.MONOPOLY_RULE_3",
+          "RULEBOOK.MONOPOLY_RULE_4",
+          "RULEBOOK.MONOPOLY_RULE_5",
+          "RULEBOOK.MONOPOLY_SCHEDULE_TITLE",
+          "RULEBOOK.MONOPOLY_COL_TYPE",
+          "RULEBOOK.MONOPOLY_COL_COUNT",
+          "RULEBOOK.MONOPOLY_COL_EFFECT",
+          "RULEBOOK.AVALON_RULE_1",
+          "RULEBOOK.AVALON_RULE_2",
+          "RULEBOOK.AVALON_RULE_3",
+          "RULEBOOK.AVALON_RULE_4",
+          "RULEBOOK.AVALON_RULE_5",
+          "RULEBOOK.AVALON_SCHEDULE_TITLE",
+          "RULEBOOK.AVALON_COL_PLAYERS",
+          "RULEBOOK.AVALON_COL_RATIO",
+          "RULEBOOK.AVALON_COL_QUESTS",
+          "RULEBOOK.AVALON_TWO_FAILS_TAG",
+          "RULEBOOK.TIER_1",
+          "RULEBOOK.TIER_2",
+          "RULEBOOK.TIER_3",
+          "RULEBOOK.TIER_4",
+          "RULEBOOK.TIER_5_8",
+          "RULEBOOK.TIER_LIMIT",
+          "RULEBOOK.MAHJONG_FLY_NOTE",
+          "RULEBOOK.PENALTY_NOTE",
+          "RULEBOOK.PAYOUT_TITLE",
+          "RULEBOOK.COL_FAN",
+          "RULEBOOK.COL_BASE",
+          "RULEBOOK.COL_DISCARD",
+          "RULEBOOK.COL_SELFDRAW",
+          "RULEBOOK.LIMIT_TAG",
+          "RULEBOOK.EACH_PREFIX",
+          "RULEBOOK.CLOSE"
+        ],
+        "rbacDirectives": [],
+        "rxJsSubscriptions": 0
+      },
+      "dimensionsVerified": {
+        "functionalAndEdgeCases": false,
+        "errorAndDegradedStates": false,
+        "rbac": true,
+        "a11y": false,
+        "i18n": false,
+        "memoryLeakUnsubscribe": true
+      },
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "b9008de08bb0"
+    },
+    "tile": {
+      "filePath": "src/app/shared/tile/tile.component.ts",
+      "templatePath": "src/app/shared/tile/tile.component.html",
+      "specPath": "src/app/shared/tile/tile.component.spec.ts",
+      "selector": "mj-tile",
+      "className": "TileComponent",
+      "importedTypes": [],
+      "isStandalone": true,
+      "isInlineTemplate": false,
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 4,
+        "meaningfulAssertions": 58,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "detectedFeatures": {
+        "inputs": [
+          "tile",
+          "size",
+          "clickable",
+          "highlight",
+          "selected",
+          "drawnGap"
+        ],
+        "outputs": [],
+        "models": [],
+        "templateBranches": 17,
+        "interactiveEvents": [],
+        "reactiveForms": [],
+        "i18nKeys": [],
+        "rbacDirectives": [],
+        "rxJsSubscriptions": 0
+      },
+      "dimensionsVerified": {
+        "functionalAndEdgeCases": false,
+        "errorAndDegradedStates": false,
+        "rbac": true,
+        "a11y": false,
+        "i18n": true,
+        "memoryLeakUnsubscribe": true
+      },
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "939e7c7fd2e6"
+    }
+  },
+  "featureSlices": {
+    "home": {
+      "routePath": "/",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "components": [
+        "hub"
+      ],
+      "services": [
+        "game-session-manager",
+        "shell-ui",
+        "translate"
+      ],
+      "mockFixtures": [],
+      "params": [],
+      "paramOverrides": {},
+      "e2eSpecPath": "e2e/journeys/home.e2e.spec.ts",
+      "manualChapterId": "manual-home",
+      "manualOutputPaths": [],
+      "status": "PENDING",
+      "dimensionsVerified": {
+        "happyPathJourney": false,
+        "errorResilience4xx5xx": false,
+        "rbacAccessMatrix": false,
+        "responsiveViewports": false,
+        "openApiContractSync": false,
+        "axeAccessibility": false,
+        "i18nLocales": false,
+        "performanceWebVitals": false
+      }
+    },
+    "mahjong-lobby": {
+      "routePath": "/mahjong/lobby",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "components": [
+        "lobby"
+      ],
+      "services": [
+        "mahjong-session",
+        "shell-ui"
+      ],
+      "mockFixtures": [],
+      "params": [],
+      "paramOverrides": {},
+      "e2eSpecPath": "e2e/journeys/mahjong-lobby.e2e.spec.ts",
+      "manualChapterId": "manual-mahjong-lobby",
+      "manualOutputPaths": [],
+      "status": "PENDING",
+      "dimensionsVerified": {
+        "happyPathJourney": false,
+        "errorResilience4xx5xx": false,
+        "rbacAccessMatrix": false,
+        "responsiveViewports": false,
+        "openApiContractSync": false,
+        "axeAccessibility": false,
+        "i18nLocales": false,
+        "performanceWebVitals": false
+      }
+    },
+    "mahjong-table": {
+      "routePath": "/mahjong/table",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "components": [
+        "table",
+        "tile"
+      ],
+      "services": [
+        "mahjong-session"
+      ],
+      "mockFixtures": [],
+      "params": [],
+      "paramOverrides": {},
+      "e2eSpecPath": "e2e/journeys/mahjong-table.e2e.spec.ts",
+      "manualChapterId": "manual-mahjong-table",
+      "manualOutputPaths": [],
+      "status": "PENDING",
+      "dimensionsVerified": {
+        "happyPathJourney": false,
+        "errorResilience4xx5xx": false,
+        "rbacAccessMatrix": false,
+        "responsiveViewports": false,
+        "openApiContractSync": false,
+        "axeAccessibility": false,
+        "i18nLocales": false,
+        "performanceWebVitals": false
+      }
+    },
+    "monopoly-lobby": {
+      "routePath": "/monopoly/lobby",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "components": [
+        "monopoly-lobby"
+      ],
+      "services": [
+        "shell-ui",
+        "monopoly-session"
+      ],
+      "mockFixtures": [],
+      "params": [],
+      "paramOverrides": {},
+      "e2eSpecPath": "e2e/journeys/monopoly-lobby.e2e.spec.ts",
+      "manualChapterId": "manual-monopoly-lobby",
+      "manualOutputPaths": [],
+      "status": "PENDING",
+      "dimensionsVerified": {
+        "happyPathJourney": false,
+        "errorResilience4xx5xx": false,
+        "rbacAccessMatrix": false,
+        "responsiveViewports": false,
+        "openApiContractSync": false,
+        "axeAccessibility": false,
+        "i18nLocales": false,
+        "performanceWebVitals": false
+      }
+    },
+    "monopoly-board": {
+      "routePath": "/monopoly/board",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "components": [
+        "monopoly-board",
+        "real-dice"
+      ],
+      "services": [
+        "game-session-manager",
+        "shell-ui",
+        "monopoly-engine",
+        "monopoly-session"
+      ],
+      "mockFixtures": [],
+      "params": [],
+      "paramOverrides": {},
+      "e2eSpecPath": "e2e/journeys/monopoly-board.e2e.spec.ts",
+      "manualChapterId": "manual-monopoly-board",
+      "manualOutputPaths": [],
+      "status": "PENDING",
+      "dimensionsVerified": {
+        "happyPathJourney": false,
+        "errorResilience4xx5xx": false,
+        "rbacAccessMatrix": false,
+        "responsiveViewports": false,
+        "openApiContractSync": false,
+        "axeAccessibility": false,
+        "i18nLocales": false,
+        "performanceWebVitals": false
+      }
+    },
+    "avalon-lobby": {
+      "routePath": "/avalon/lobby",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "components": [
+        "avalon-lobby"
+      ],
+      "services": [
+        "shell-ui",
+        "avalon-session"
+      ],
+      "mockFixtures": [],
+      "params": [],
+      "paramOverrides": {},
+      "e2eSpecPath": "e2e/journeys/avalon-lobby.e2e.spec.ts",
+      "manualChapterId": "manual-avalon-lobby",
+      "manualOutputPaths": [],
+      "status": "PENDING",
+      "dimensionsVerified": {
+        "happyPathJourney": false,
+        "errorResilience4xx5xx": false,
+        "rbacAccessMatrix": false,
+        "responsiveViewports": false,
+        "openApiContractSync": false,
+        "axeAccessibility": false,
+        "i18nLocales": false,
+        "performanceWebVitals": false
+      }
+    },
+    "avalon-table": {
+      "routePath": "/avalon/table",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "components": [
+        "avalon-table"
+      ],
+      "services": [
+        "shell-ui",
+        "avalon-session"
+      ],
+      "mockFixtures": [],
+      "params": [],
+      "paramOverrides": {},
+      "e2eSpecPath": "e2e/journeys/avalon-table.e2e.spec.ts",
+      "manualChapterId": "manual-avalon-table",
+      "manualOutputPaths": [],
+      "status": "PENDING",
+      "dimensionsVerified": {
+        "happyPathJourney": false,
+        "errorResilience4xx5xx": false,
+        "rbacAccessMatrix": false,
+        "responsiveViewports": false,
+        "openApiContractSync": false,
+        "axeAccessibility": false,
+        "i18nLocales": false,
+        "performanceWebVitals": false
+      }
+    }
+  }
+}

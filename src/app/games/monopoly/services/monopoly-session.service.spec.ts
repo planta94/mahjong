@@ -1,13 +1,26 @@
 import { TestBed } from '@angular/core/testing';
-import { Router } from '@angular/router';
-import { describe, expect, it, vi } from 'vitest';
-import { ShellUiService } from '../../../core/services/shell-ui.service';
-import { MonopolySessionService } from './monopoly-session.service';
-
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { routes } from '../../../app.routes';
+import {
+  GenericHostSession,
+  P2PRoomTransportService,
+} from '../../../core/services/p2p-room.transport';
+import { ShellUiService } from '../../../core/services/shell-ui.service';
+import {
+  MonopolyAction,
+  MonopolyMatchState,
+  MonopolyPlayerView,
+} from '../models/monopoly.model';
+import { MonopolyBotService } from './monopoly-bot.service';
+import { MonopolySessionService, SerializedMonopolySave } from './monopoly-session.service';
 
 describe('MonopolySessionService & Host/Guest Sync', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
   function setupService(): { session: MonopolySessionService; router: Router; shellUi: ShellUiService } {
     TestBed.configureTestingModule({
       providers: [provideRouter(routes)],
@@ -25,13 +38,14 @@ describe('MonopolySessionService & Host/Guest Sync', () => {
 
     expect(session.isHost()).toBe(true);
     expect(session.mySeat()).toBe(0);
+    expect(session.isMyTurn()).toBe(true);
     expect(shellUi.activeGame()).toBe('monopoly');
     expect(shellUi.activeRoomCode()).toBe(null);
 
     const snap = session.snapshot();
     expect(snap?.lobby?.seats.length).toBe(4);
-    expect(snap?.lobby?.seats[0].kind).toBe('human');
-    expect(snap?.lobby?.seats[1].kind).toBe('bot');
+    expect(snap?.lobby?.seats.at(0)?.kind).toBe('human');
+    expect(snap?.lobby?.seats.at(1)?.kind).toBe('bot');
     expect(snap?.lobby?.started).toBe(true);
     expect(snap?.view?.players.length).toBe(4);
 
@@ -50,7 +64,8 @@ describe('MonopolySessionService & Host/Guest Sync', () => {
     const snap = session.snapshot();
     expect(snap?.role).toBe('host');
     expect(snap?.lobby?.started).toBe(false);
-    expect(snap?.lobby?.seats[1].kind).toBe('open');
+    expect(snap?.lobby?.seats.at(1)?.kind).toBe('open');
+    expect(session.currentLobby()?.seats.length).toBe(4);
 
     session.leaveRoom();
   });
@@ -59,18 +74,13 @@ describe('MonopolySessionService & Host/Guest Sync', () => {
     const { session } = setupService();
     session.createMultiplayerRoom(4);
 
-    const snapBefore = session.snapshot();
-    expect(snapBefore?.lobby?.seats[1].kind).toBe('open');
+    expect(session.snapshot()?.lobby?.seats.at(1)?.kind).toBe('open');
 
-    // Toggle seat 1 to bot
     session.toggleSeatKind(1);
-    const snapBot = session.snapshot();
-    expect(snapBot?.lobby?.seats[1].kind).toBe('bot');
+    expect(session.snapshot()?.lobby?.seats.at(1)?.kind).toBe('bot');
 
-    // Toggle seat 1 back to open
     session.toggleSeatKind(1);
-    const snapOpen = session.snapshot();
-    expect(snapOpen?.lobby?.seats[1].kind).toBe('open');
+    expect(session.snapshot()?.lobby?.seats.at(1)?.kind).toBe('open');
 
     session.leaveRoom();
   });
@@ -83,9 +93,8 @@ describe('MonopolySessionService & Host/Guest Sync', () => {
 
     const snap = session.snapshot();
     expect(snap?.lobby?.started).toBe(true);
-    // All open seats should have been filled with bots
     for (let i = 1; i < 4; i++) {
-      expect(snap?.lobby?.seats[i].kind).toBe('bot');
+      expect(snap?.lobby?.seats.at(i)?.kind).toBe('bot');
     }
 
     session.leaveRoom();
@@ -95,7 +104,7 @@ describe('MonopolySessionService & Host/Guest Sync', () => {
     const { session } = setupService();
     session.createSoloMatch(2);
 
-    session.inspectSpace(1); // Space 1 (Kota A Famosa)
+    session.inspectSpace(1);
     expect(session.selectedSpaceIndex()).toBe(1);
     expect(session.showDeedModal()).toBe(true);
 
@@ -114,6 +123,7 @@ describe('MonopolySessionService & Host/Guest Sync', () => {
     expect(session.snapshot()).toBeNull();
     expect(session.mySeat()).toBe(-1);
     expect(session.isHost()).toBe(false);
+    expect(session.isMyTurn()).toBe(false);
     expect(session.selectedSpaceIndex()).toBeNull();
   });
 
@@ -124,49 +134,74 @@ describe('MonopolySessionService & Host/Guest Sync', () => {
 
     expect(shellUi.activeGame()).toBe('monopoly');
     expect(shellUi.activeRoomCode()).toBe('PTEST9');
+    expect(session.snapshot()?.role).toBe('guest');
 
     session.leaveRoom();
   });
 
   it('routes action dispatches with corresponding SFX triggers', () => {
-    const { session } = setupService();
+    const { session, shellUi } = setupService();
+    const sfxSpy = vi.spyOn(shellUi, 'playSfx');
     session.createSoloMatch(2);
+    sfxSpy.mockClear();
 
-    // Dispatch rollDice
     session.dispatchAction({ type: 'rollDice' });
-    // Dispatch buyProperty
+    expect(sfxSpy).toHaveBeenCalledWith('dice');
+
     session.dispatchAction({ type: 'buyProperty' });
-    // Dispatch buildHouse
+    expect(sfxSpy).toHaveBeenCalledWith('click');
+
     session.dispatchAction({ type: 'buildHouse', spaceIndex: 1 });
-    // Dispatch declareBankruptcy
     session.dispatchAction({ type: 'declareBankruptcy' });
+    expect(sfxSpy).toHaveBeenCalledWith('fail');
 
     session.leaveRoom();
   });
 
-  it('responds to global p2p:leave CustomEvent and resets room', () => {
+  it('responds to global p2p:leave CustomEvent selectively for monopoly or generic events', () => {
     const { session } = setupService();
     session.createSoloMatch(2);
-
     expect(session.isHost()).toBe(true);
 
-    window.dispatchEvent(new CustomEvent('p2p:leave', { detail: { game: 'monopoly' } }));
+    // Other game leave event should not tear down monopoly session
+    window.dispatchEvent(new CustomEvent('p2p:leave', { detail: { game: 'avalon' } }));
+    expect(session.isHost()).toBe(true);
 
+    // Monopoly leave event resets room
+    window.dispatchEvent(new CustomEvent('p2p:leave', { detail: { game: 'monopoly' } }));
     expect(session.snapshot()).toBeNull();
   });
 
-  it('triggers bot actions via timer when active seat is bot or in auction', () => {
+  it('triggers bot actions via timer for active bot turns, auctions, and pending trades', () => {
     vi.useFakeTimers();
     try {
       const { session } = setupService();
       session.createSoloMatch(2);
 
-      // Advance to seat 1 (bot)
-      session.dispatchAction({ type: 'rollDice' });
-      session.dispatchAction({ type: 'endTurn' });
+      // 1. Pending trade targeting bot seat 1 triggers bot response timer
+      const snap = session.snapshot();
+      expect(snap !== null).toBe(true);
+      if (snap?.view) {
+        session.dispatchAction({
+          type: 'proposeTrade',
+          trade: {
+            fromSeat: 0,
+            toSeat: 1,
+            offerCash: 50,
+            offerProperties: [],
+            requestCash: 0,
+            requestProperties: [],
+          },
+        });
+        vi.advanceTimersByTime(700);
+        expect(session.currentView()?.pendingTrade).toBeNull();
+      }
 
-      // Run timer for bot turn
-      vi.advanceTimersByTime(1000);
+      // 2. Advance to seat 1 (bot) turn and run timer
+      session.dispatchAction({ type: 'rollDice' });
+      session.dispatchAction({ type: 'passProperty' });
+      session.dispatchAction({ type: 'endTurn' });
+      vi.advanceTimersByTime(2500);
 
       expect(session.snapshot()?.view?.players.length).toBe(2);
 
@@ -176,15 +211,45 @@ describe('MonopolySessionService & Host/Guest Sync', () => {
     }
   });
 
+  it('exports and restores serialized save data while stripping seat tokens', () => {
+    const { session } = setupService();
+
+    // Cannot export when idle or in unstarted lobby
+    expect(session.canExportSave()).toBe(false);
+    expect(session.exportSaveData()).toBeNull();
+
+    session.createMultiplayerRoom(3);
+    expect(session.canExportSave()).toBe(false);
+
+    // Active solo match exports cleanly with stripped tokens
+    session.createSoloMatch(3);
+    expect(session.canExportSave()).toBe(true);
+    const saved = session.exportSaveData();
+    expect(saved !== null).toBe(true);
+    expect(saved?.lobby.seats.length).toBe(3);
+    expect(saved?.lobby.seats.at(0)?.token).toBeNull();
+    expect(Array.isArray(saved?.state.propertiesEntries)).toBe(true);
+
+    // Invalid restore guard
+    expect(session.restoreSaveData({} as never)).toBe(false);
+
+    // Valid restore reconstructs Map properties and host session
+    session.leaveRoom();
+    const restored = session.restoreSaveData(saved!);
+    expect(restored).toBe(true);
+    expect(session.isHost()).toBe(true);
+    expect(session.currentView()?.players.length).toBe(3);
+
+    session.leaveRoom();
+  });
+
   it('covers modal visibility signals, guest action dispatch, and seat toggle guards', () => {
     const { session } = setupService();
 
-    // 1. Guard check when no hostSession
     session.toggleSeatKind(1);
     session.startMatchFromLobby();
     expect(session.snapshot()).toBeNull();
 
-    // 2. Modals state
     session.showTradeModal.set(true);
     session.showAuctionModal.set(true);
     session.showBankruptcyModal.set(true);
@@ -192,25 +257,286 @@ describe('MonopolySessionService & Host/Guest Sync', () => {
     expect(session.showAuctionModal()).toBe(true);
     expect(session.showBankruptcyModal()).toBe(true);
 
-    // 3. Guest action dispatch
     session.joinMultiplayerRoom('PTEST9');
     session.dispatchAction({ type: 'rollDice' });
 
-    // 4. Leave room resets all modals
     session.leaveRoom();
     expect(session.showTradeModal()).toBe(false);
     expect(session.showAuctionModal()).toBe(false);
     expect(session.showBankruptcyModal()).toBe(false);
 
-    // 5. Host seat 0 guard in toggleSeatKind
     session.createMultiplayerRoom(3);
     session.toggleSeatKind(0);
     expect(session.snapshot()?.lobby?.seats.at(0)?.kind).toBe('human');
 
     session.toggleSeatKind(99);
+    expect(session.snapshot()?.lobby?.seats.length).toBe(3);
 
     session.leaveRoom();
   });
+
+  it('dispatches actions in multiplayer-hosted sessions, handles empty nickname fallbacks, and ignores idle dispatches', () => {
+    const { session, router, shellUi } = setupService();
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const sfxSpy = vi.spyOn(shellUi, 'playSfx');
+
+    shellUi.playerNickname.set('');
+
+    session.createSoloMatch(2, { auctionEnabled: false });
+    expect(session.snapshot()?.lobby?.seats.at(0)?.name).toBe('Host');
+
+    const roomCode = session.createMultiplayerRoom(3, {
+      auctionEnabled: false,
+      winCondition: 'roundLimit',
+      maxRounds: 20,
+    });
+    expect(session.snapshot()?.lobby?.seats.at(0)?.name).toBe('Host');
+    expect(session.snapshot()?.lobby?.rules?.winCondition).toBe('roundLimit');
+
+    session.startMatchFromLobby();
+    sfxSpy.mockClear();
+    session.dispatchAction({ type: 'rollDice' });
+    expect(sfxSpy).toHaveBeenCalledWith('dice');
+
+    session.joinMultiplayerRoom(roomCode);
+    expect(session.snapshot()?.roomCode).toBe(roomCode);
+
+    session.leaveRoom();
+    expect(session.currentView()).toBeNull();
+    expect(session.currentLobby()).toBeNull();
+
+    session.dispatchAction({ type: 'rollDice' });
+    expect(session.snapshot()).toBeNull();
+
+    shellUi.setPlayerNickname('雀友');
+  });
+
+  it('restores save data with missing seat names and colors, blocks export on gameOver, and dispatches actions on restored session', () => {
+    const { session, router, shellUi } = setupService();
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    session.createSoloMatch(2, { auctionEnabled: false });
+    const baseSave = session.exportSaveData()!;
+    expect(session.restoreSaveData({ lobby: baseSave.lobby } as never)).toBe(false);
+
+    shellUi.setPlayerNickname('TycoonNick');
+    const unnamedSave: SerializedMonopolySave = {
+      ...baseSave,
+      lobby: {
+        ...baseSave.lobby,
+        seats: baseSave.lobby.seats.map((s) => ({
+          ...s,
+          name: '',
+          color: '',
+        })),
+      },
+    };
+
+    expect(session.restoreSaveData(unnamedSave)).toBe(true);
+    expect(session.snapshot()?.lobby?.seats.at(0)?.name).toBe('TycoonNick');
+    expect(session.snapshot()?.lobby?.seats.at(1)?.name).toBe('KL Tycoon (Bot)');
+    expect(session.snapshot()?.lobby?.seats.at(0)?.color).toBe('#e63946');
+    expect(session.snapshot()?.lobby?.seats.at(1)?.color).toBe('#457b9d');
+
+    const sfxSpy = vi.spyOn(shellUi, 'playSfx');
+    session.dispatchAction({ type: 'rollDice' });
+    expect(sfxSpy).toHaveBeenCalledWith('dice');
+
+    // Empty playerNickname falls back to 'Host' on restore
+    shellUi.playerNickname.set('');
+    expect(session.restoreSaveData(unnamedSave)).toBe(true);
+    expect(session.snapshot()?.lobby?.seats.at(0)?.name).toBe('Host');
+    shellUi.setPlayerNickname('雀友');
+
+    // GameOver state disables save export and skips bot scheduling
+    const gameOverSave: SerializedMonopolySave = {
+      ...baseSave,
+      state: {
+        ...baseSave.state,
+        phase: 'gameOver',
+        winnerSeat: 0,
+        gameOverReason: 'All rivals bankrupt.',
+      },
+    };
+    expect(session.restoreSaveData(gameOverSave)).toBe(true);
+    expect(session.canExportSave()).toBe(false);
+    expect(session.exportSaveData()).toBeNull();
+
+    session.leaveRoom();
+  });
+
+  it('schedules AI bot turns across active bot seat, auctions with or without bots, human-targeted trades, and null bot decisions', () => {
+    vi.useFakeTimers();
+    const { session, router } = setupService();
+    const bot = TestBed.inject(MonopolyBotService);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    session.createSoloMatch(3, { auctionEnabled: true });
+    const baseSave = session.exportSaveData()!;
+
+    // 1. Active bot seat (seat 1) executes scheduled turn after 700ms
+    session.restoreSaveData({
+      ...baseSave,
+      state: { ...baseSave.state, activeSeat: 1, phase: 'roll' },
+    });
+    vi.advanceTimersByTime(700);
+    expect(session.currentView()?.logs.length ?? 0).toBeGreaterThan(baseSave.state.logs.length);
+
+    // 2. Active bot seat handles null bot decision gracefully
+    vi.spyOn(bot, 'evaluateMonopolyBotAction').mockReturnValueOnce(null);
+    session.restoreSaveData({
+      ...baseSave,
+      state: { ...baseSave.state, activeSeat: 1, phase: 'roll' },
+    });
+    vi.advanceTimersByTime(700);
+    expect(session.currentView()?.phase).toBe('roll');
+
+    // 3. Pending trade targeting human seat (seat 0) pauses bot turn scheduling
+    session.restoreSaveData({
+      ...baseSave,
+      state: {
+        ...baseSave.state,
+        activeSeat: 1,
+        phase: 'action',
+        pendingTrade: {
+          fromSeat: 1,
+          toSeat: 0,
+          offerCash: 100,
+          offerProperties: [],
+          requestCash: 0,
+          requestProperties: [],
+        },
+      },
+    });
+    vi.advanceTimersByTime(1000);
+    expect(session.currentView()?.pendingTrade?.toSeat).toBe(0);
+
+    // 4. Pending trade targeting bot seat handles null bot decision gracefully
+    vi.spyOn(bot, 'evaluateMonopolyBotAction').mockReturnValueOnce(null);
+    session.restoreSaveData({
+      ...baseSave,
+      state: {
+        ...baseSave.state,
+        activeSeat: 0,
+        phase: 'action',
+        pendingTrade: {
+          fromSeat: 0,
+          toSeat: 1,
+          offerCash: 50,
+          offerProperties: [],
+          requestCash: 0,
+          requestProperties: [],
+        },
+      },
+    });
+    vi.advanceTimersByTime(600);
+    expect(session.currentView()?.pendingTrade?.toSeat).toBe(1);
+
+    // 5. Auction with only human activeBidders does not schedule bot auction bid
+    session.restoreSaveData({
+      ...baseSave,
+      state: {
+        ...baseSave.state,
+        activeSeat: 0,
+        phase: 'auction',
+        activeAuction: {
+          spaceIndex: 1,
+          currentBid: 60,
+          highestBidderSeat: 0,
+          activeBidders: [0],
+          timerSeconds: 15,
+        },
+      },
+    });
+    vi.advanceTimersByTime(900);
+    expect(session.currentView()?.activeAuction?.currentBid).toBe(60);
+
+    // 6. Auction with bot bidder executes after 800ms and also handles null bot decision
+    session.restoreSaveData({
+      ...baseSave,
+      state: {
+        ...baseSave.state,
+        activeSeat: 0,
+        phase: 'auction',
+        activeAuction: {
+          spaceIndex: 1,
+          currentBid: 10,
+          highestBidderSeat: 0,
+          activeBidders: [0, 1],
+          timerSeconds: 15,
+        },
+      },
+    });
+    vi.advanceTimersByTime(800);
+    expect(session.currentView()?.logs.length ?? 0).toBeGreaterThan(baseSave.state.logs.length);
+
+    vi.spyOn(bot, 'evaluateMonopolyBotAction').mockReturnValueOnce(null);
+    session.restoreSaveData({
+      ...baseSave,
+      state: {
+        ...baseSave.state,
+        activeSeat: 0,
+        phase: 'auction',
+        activeAuction: {
+          spaceIndex: 1,
+          currentBid: 10,
+          highestBidderSeat: 0,
+          activeBidders: [0, 1],
+          timerSeconds: 15,
+        },
+      },
+    });
+    vi.advanceTimersByTime(800);
+    expect(session.currentView()?.activeAuction?.currentBid).toBe(10);
+
+    session.leaveRoom();
+  });
+
+  it('auto-navigates from /monopoly/lobby on started snapshot, preserves human guest seat on toggleSeatKind, and handles detail-less p2p:leave', () => {
+    const { session, router } = setupService();
+    const transport = TestBed.inject(P2PRoomTransportService);
+    const navSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    vi.spyOn(router, 'url', 'get').mockReturnValue('/monopoly/lobby');
+
+    let capturedHost: GenericHostSession<
+      MonopolyMatchState,
+      MonopolyPlayerView,
+      MonopolyAction
+    > | null = null;
+    const realCreateHost = transport.createHost.bind(transport);
+    vi.spyOn(transport, 'createHost').mockImplementation((opts) => {
+      const created = realCreateHost(opts);
+      capturedHost = created as unknown as GenericHostSession<
+        MonopolyMatchState,
+        MonopolyPlayerView,
+        MonopolyAction
+      >;
+      return created;
+    });
+
+    session.createMultiplayerRoom(3);
+    expect(capturedHost !== null).toBe(true);
+
+    // Human guest joins seat 1; toggleSeatKind leaves human seat untouched
+    capturedHost!.handleClientMessage(
+      { type: 'join', token: 'guest_tok_1', name: 'GuestBob' },
+      () => {}
+    );
+    expect(session.snapshot()?.lobby?.seats.at(1)?.kind).toBe('human');
+    expect(session.snapshot()?.lobby?.seats.at(1)?.name).toBe('GuestBob');
+
+    session.toggleSeatKind(1);
+    expect(session.snapshot()?.lobby?.seats.at(1)?.kind).toBe('human');
+
+    // Undefined lobby.rules falls back to DEFAULT_MONOPOLY_SETTINGS & triggers board navigation from /monopoly/lobby
+    capturedHost!.lobby.rules = undefined;
+    navSpy.mockClear();
+    session.startMatchFromLobby();
+    expect(navSpy).toHaveBeenCalledWith(['/monopoly/board']);
+    expect(session.currentView()?.maxRounds).toBe(30);
+
+    // Detail-less p2p:leave event resets session
+    window.dispatchEvent(new CustomEvent('p2p:leave'));
+    expect(session.snapshot()).toBeNull();
+  });
 });
-
-

@@ -191,7 +191,7 @@
   box-shadow:
     0 0 0 2.5px #facc15,
     0 4px 12px rgba(0, 0, 0, 0.88);
-  animation: tokenPulse 1.5s ease-in-out infinite;
+  animation: tokenPulse 1.5s ease-in-out 4;
 }
 
 @keyframes tokenPulse {
@@ -989,5 +989,11 @@
 
   .trade-columns {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-token.is-active-token {
+    animation: none;
   }
 }

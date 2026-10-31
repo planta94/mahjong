@@ -1,0 +1,196 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Angular AI QA & Living Manual Manifest",
+  "description": "Single source of truth mapping Angular services, components, routes, quality dimensions, and User Manual chapters.",
+  "type": "object",
+  "required": ["version", "projectConfig", "services", "components", "featureSlices"],
+  "definitions": {
+    "specStatus": {
+      "type": "string",
+      "description": "MISSING: no spec file. SHALLOW_STUB: no tests, a scaffold marker, or too few meaningful assertions. TRIAGED: meaningful assertions present. VERIFIED: TRIAGED and confirmed by a human/agent for this content hash.",
+      "enum": ["MISSING", "SHALLOW_STUB", "TRIAGED", "VERIFIED"]
+    },
+    "specMetrics": {
+      "type": "object",
+      "description": "Static analysis of the spec file (see src/internal/spec-quality.mjs).",
+      "properties": {
+        "tests": { "type": "integer", "minimum": 0 },
+        "meaningfulAssertions": { "type": "integer", "minimum": 0 },
+        "trivialAssertions": { "type": "integer", "minimum": 0 },
+        "scaffoldMarker": { "type": "boolean", "description": "True while the file still contains the @veriscribe-scaffold marker." }
+      }
+    },
+    "ambiguities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "description": { "type": "string" },
+          "resolution": { "type": "string", "enum": ["OPEN", "CONFIRMED_BUG", "INTENTIONAL_BEHAVIOR"] }
+        }
+      }
+    }
+  },
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "type": "string", "description": "veriscribe version that last wrote the manifest." },
+    "baseline": {
+      "type": "object",
+      "description": "Commit the impact analysis/gate diffs against. Updated by `veriscribe gate --update-baseline`.",
+      "properties": {
+        "commit": { "type": ["string", "null"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "lastVerifiedCommit": { "type": "string", "description": "Deprecated mirror of baseline.commit, kept for pre-1.4 tooling." },
+    "projectConfig": {
+      "type": "object",
+      "required": ["angularRoot", "openApiSchemaPath", "supportedLocales", "roles", "viewports"],
+      "properties": {
+        "angularRoot": { "type": "string", "default": "src/app" },
+        "openApiSchemaPath": { "type": "string", "default": "openapi.json" },
+        "supportedLocales": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["en-US"]
+        },
+        "routerMode": {
+          "type": "string",
+          "enum": ["path", "hash"],
+          "default": "path"
+        },
+        "roles": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["admin", "user", "guest"]
+        },
+        "viewports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "width", "height"],
+            "properties": {
+              "name": { "type": "string" },
+              "width": { "type": "integer" },
+              "height": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "services": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["filePath", "specPath", "specStatus", "httpEndpoints", "dependents"],
+        "properties": {
+          "filePath": { "type": "string" },
+          "specPath": { "type": "string" },
+          "className": { "type": "string" },
+          "specStatus": { "$ref": "#/definitions/specStatus" },
+          "specMetrics": { "$ref": "#/definitions/specMetrics" },
+          "publicMethods": { "type": "array", "items": { "type": "string" } },
+          "httpEndpoints": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "method": { "type": "string" },
+                "urlPattern": { "type": "string" },
+                "openApiOperationId": { "type": "string" },
+                "contractVerified": { "type": "boolean" }
+              }
+            }
+          },
+          "dependents": { "type": "array", "items": { "type": "string" }, "description": "Component file paths that reference this service." },
+          "ambiguitiesOrSuspectedBugs": { "$ref": "#/definitions/ambiguities" },
+          "lastContentHash": { "type": "string" }
+        }
+      }
+    },
+    "components": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["filePath", "templatePath", "specPath", "specStatus", "detectedFeatures"],
+        "properties": {
+          "filePath": { "type": "string" },
+          "templatePath": { "type": "string", "description": "External template path, \"[inline]\", or empty." },
+          "specPath": { "type": "string" },
+          "selector": { "type": "string" },
+          "className": { "type": "string" },
+          "importedTypes": { "type": "array", "items": { "type": "string" } },
+          "isStandalone": { "type": "boolean" },
+          "isInlineTemplate": { "type": "boolean" },
+          "specStatus": { "$ref": "#/definitions/specStatus" },
+          "specMetrics": { "$ref": "#/definitions/specMetrics" },
+          "detectedFeatures": {
+            "type": "object",
+            "properties": {
+              "inputs": { "type": "array", "items": { "type": "string" } },
+              "outputs": { "type": "array", "items": { "type": "string" } },
+              "models": { "type": "array", "items": { "type": "string" } },
+              "templateBranches": { "type": "integer" },
+              "interactiveEvents": { "type": "array", "items": { "type": "string" } },
+              "reactiveForms": { "type": "array", "items": { "type": "string" } },
+              "i18nKeys": { "type": "array", "items": { "type": "string" } },
+              "rbacDirectives": { "type": "array", "items": { "type": "string" } },
+              "rxJsSubscriptions": { "type": "integer" }
+            }
+          },
+          "dimensionsVerified": {
+            "type": "object",
+            "properties": {
+              "functionalAndEdgeCases": { "type": "boolean" },
+              "errorAndDegradedStates": { "type": "boolean" },
+              "rbac": { "type": "boolean" },
+              "a11y": { "type": "boolean" },
+              "i18n": { "type": "boolean" },
+              "memoryLeakUnsubscribe": { "type": "boolean" }
+            }
+          },
+          "ambiguitiesOrSuspectedBugs": { "$ref": "#/definitions/ambiguities" },
+          "lastContentHash": { "type": "string" }
+        }
+      }
+    },
+    "featureSlices": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["routePath", "components", "services", "e2eSpecPath", "manualChapterId", "status"],
+        "properties": {
+          "routePath": { "type": "string" },
+          "allowedRoles": { "type": "array", "items": { "type": "string" } },
+          "components": { "type": "array", "items": { "type": "string" } },
+          "services": { "type": "array", "items": { "type": "string" }, "description": "Derived from component dependencies on each scan; manually added keys are kept while they exist." },
+          "mockFixtures": { "type": "array", "items": { "type": "string" } },
+          "params": { "type": "array", "items": { "type": "string" } },
+          "paramOverrides": { "type": "object", "additionalProperties": { "type": "string" } },
+          "e2eSpecPath": { "type": "string" },
+          "manualChapterId": { "type": "string", "description": "chapterId the E2E journey passes to ManualJourneyRecorder (default manual-<slice>)." },
+          "manualOutputPaths": { "type": "array", "items": { "type": "string" } },
+          "status": {
+            "type": "string",
+            "description": "Derived from evidence: DOCUMENTED = a manual-steps.json bound to the current source fingerprint exists; STALE = a manual exists but sources changed since; PENDING = no manual yet.",
+            "enum": ["PENDING", "TRIAGED", "VERIFIED", "DOCUMENTED", "STALE"]
+          },
+          "dimensionsVerified": {
+            "type": "object",
+            "properties": {
+              "happyPathJourney": { "type": "boolean" },
+              "errorResilience4xx5xx": { "type": "boolean" },
+              "rbacAccessMatrix": { "type": "boolean" },
+              "responsiveViewports": { "type": "boolean" },
+              "openApiContractSync": { "type": "boolean" },
+              "axeAccessibility": { "type": "boolean" },
+              "i18nLocales": { "type": "boolean" },
+              "performanceWebVitals": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

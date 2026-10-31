@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, OnDestroy, computed, signal } from '@angular/core';
 import { GameId, ShellGameId, ShellSoundType } from '../models/party.model';
 import { dispatchP2pLeaveEvent } from './p2p-room.transport';
 
@@ -20,7 +20,7 @@ export const BGM_TRACK_MAP: ReadonlyMap<GameId, string> = new Map<GameId, string
 @Injectable({
   providedIn: 'root',
 })
-export class ShellUiService {
+export class ShellUiService implements OnDestroy {
   readonly activeGame = signal<ShellGameId>('hub');
   readonly activeRoomCode = signal<string | null>(null);
 
@@ -35,14 +35,28 @@ export class ShellUiService {
   readonly hasActiveRoom = computed(() => !!this.activeRoomCode());
 
   private audioCtx: AudioContext | null = null;
+  private audioIdleTimer: ReturnType<typeof setTimeout> | undefined;
   private bgmAudio: HTMLAudioElement | null = null;
   private currentBgmTrack: string | null = null;
   private unlockListenersBound = false;
   private toastTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly visibilityHandler = (): void => this.handleVisibilityChange();
 
   constructor() {
     this.applyTheme(this.activeGame());
     this.syncBgm();
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', this.visibilityHandler);
+    }
+  }
+
+  ngOnDestroy(): void {
+    clearTimeout(this.toastTimer);
+    this.suspendAudioContextNow();
+    this.bgmAudio?.pause();
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+    }
   }
 
   setActiveGame(game: ShellGameId): void {
@@ -66,6 +80,9 @@ export class ShellUiService {
   toggleSound(): void {
     const next = !this.soundEnabled();
     this.soundEnabled.set(next);
+    if (!next) {
+      this.suspendAudioContextNow();
+    }
     try {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_SOUND_KEY, String(next));
@@ -200,6 +217,42 @@ export class ShellUiService {
     }
   }
 
+  private wakeAudioContext(ctx: AudioContext): void {
+    if (ctx.state === 'suspended' && typeof ctx.resume === 'function') {
+      void Promise.resolve(ctx.resume()).catch(() => {});
+    }
+    clearTimeout(this.audioIdleTimer);
+    this.audioIdleTimer = setTimeout(() => {
+      this.suspendAudioContextNow();
+    }, 1500);
+  }
+
+  private suspendAudioContextNow(): void {
+    clearTimeout(this.audioIdleTimer);
+    this.audioIdleTimer = undefined;
+    const ctx = this.audioCtx;
+    if (ctx && ctx.state !== 'suspended' && ctx.state !== 'closed' && typeof ctx.suspend === 'function') {
+      void Promise.resolve(ctx.suspend()).catch(() => {});
+    }
+  }
+
+  private handleVisibilityChange(): void {
+    if (typeof document === 'undefined') return;
+    if (document.hidden) {
+      this.bgmAudio?.pause();
+      this.suspendAudioContextNow();
+      if (typeof speechSynthesis !== 'undefined') {
+        try {
+          speechSynthesis.cancel();
+        } catch {
+          // Ignore speech synthesis errors
+        }
+      }
+      return;
+    }
+    this.syncBgm();
+  }
+
   private syncBgm(): void {
     if (
       typeof window === 'undefined' ||
@@ -224,7 +277,7 @@ export class ShellUiService {
         return;
       }
 
-      if (!this.bgmEnabled()) {
+      if (!this.bgmEnabled() || (typeof document !== 'undefined' && document.hidden)) {
         this.bgmAudio?.pause();
         return;
       }
@@ -275,10 +328,12 @@ export class ShellUiService {
       this.syncBgm();
     }
     if (!this.soundEnabled()) return;
+    if (typeof document !== 'undefined' && document.hidden) return;
     const ctx = this.getAudioContext();
     if (!ctx) return;
 
     try {
+      this.wakeAudioContext(ctx);
       const now = ctx.currentTime;
       switch (type) {
         case 'click': {

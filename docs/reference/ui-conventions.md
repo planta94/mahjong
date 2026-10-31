@@ -8,7 +8,7 @@
 
 ## 2. Bounded Modals & Bottom-Only Close Actions
 
-- Modals (`RulebookDialogComponent` and the `TableComponent` Settlement dialog) enforce `max-width: min(720px, 95vw); max-height: 90vh;` with fixed `.modal-header` / `.modal-footer` (`flex-shrink: 0`) and a middle `.modal-body` (`max-height: 55vh; overflow-y: auto;`).
+- Modals (`RulebookDialogComponent`, `ExitConfirmDialogComponent`, Mahjong Settlement, and Monopoly Deed/Trade/Auction/GameOver dialogs) enforce `max-width: min(720px, 95vw); max-height: 90vh;` with fixed `.modal-header` / `.modal-footer` (`flex-shrink: 0`) and a middle `.modal-body` (`max-height: 55vh; overflow-y: auto;`).
 - **Never** place a top-right `X` close button inside modal headers; all dismiss/action buttons belong exclusively in `.modal-footer`.
 
 ## 3. Desktop Table vs. Mobile Modern App Cards
@@ -19,3 +19,8 @@
 
 - All user-facing copy lives in `public/assets/i18n/{en,zh}.json` and renders via `TranslatePipe` (`| translate`).
 - `src/app/core/services/i18n-parity.spec.ts` enforces identical flattened key sets and non-empty string values across both dictionaries.
+
+## 5. Mobile Battery & Reduced-Motion Hygiene
+
+- Bound decorative CSS attention animations (such as Monopoly `tokenPulse` and Avalon `hammerPulsate`) to finite iteration counts (`4` cycles) rather than `infinite` so `1Hz–120Hz` LTPO phone displays can drop to idle refresh rates between turns.
+- Always honor `@media (prefers-reduced-motion: reduce)` in `src/styles.scss` and animated component stylesheets for OS Low Power / Battery Saver modes.

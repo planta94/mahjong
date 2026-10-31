@@ -12,6 +12,8 @@
             class="portal-input"
             maxlength="14"
             [(ngModel)]="nickname"
+            (blur)="persistNickname()"
+            (change)="persistNickname()"
             [placeholder]="'LOBBY.NICKNAME_PLACEHOLDER' | translate"
           />
         </div>

@@ -1,0 +1,150 @@
+<div class="monopoly-lobby-container">
+  @if (!session.snapshot()) {
+    <div class="lobby-card">
+      <div class="lobby-header">
+        <span class="lobby-badge">🇲🇾 {{ 'HUB.MONOPOLY_BADGE' | translate }}</span>
+        <h1 class="lobby-title">{{ 'MONOPOLY.LOBBY_TITLE' | translate }}</h1>
+        <p class="lobby-subtitle">{{ 'MONOPOLY.LOBBY_SUBTITLE' | translate }}</p>
+      </div>
+
+      @if (hasUrlInvite()) {
+        <div class="invite-banner">
+          <p class="invite-text">
+            {{ 'MONOPOLY.INVITE_JOIN_TITLE' | translate }} <strong>{{ joinCode }}</strong>
+          </p>
+          <button type="button" class="btn btn-emerald" (click)="joinRoom()">
+            {{ 'MONOPOLY.INVITE_TAKE_SEAT' | translate }}
+          </button>
+        </div>
+      }
+
+      <div class="settings-grid">
+        <div class="setting-item">
+          <label for="monopoly-players-select" class="setting-label">{{ 'MONOPOLY.PLAYERS_COUNT' | translate }}</label>
+          <select id="monopoly-players-select" class="portal-input" [(ngModel)]="playerCount">
+            <option [ngValue]="2">2 {{ 'MONOPOLY.SEAT_LABEL' | translate }}</option>
+            <option [ngValue]="3">3 {{ 'MONOPOLY.SEAT_LABEL' | translate }}</option>
+            <option [ngValue]="4">4 {{ 'MONOPOLY.SEAT_LABEL' | translate }}</option>
+            <option [ngValue]="5">5 {{ 'MONOPOLY.SEAT_LABEL' | translate }}</option>
+            <option [ngValue]="6">6 {{ 'MONOPOLY.SEAT_LABEL' | translate }}</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <label for="monopoly-win-mode-select" class="setting-label">{{ 'MONOPOLY.WIN_MODE' | translate }}</label>
+          <select id="monopoly-win-mode-select" class="portal-input" [(ngModel)]="winCondition">
+            <option value="lastTycoon">{{ 'MONOPOLY.WIN_LAST_TYCOON' | translate }}</option>
+            <option value="roundLimit">{{ 'MONOPOLY.WIN_ROUND_LIMIT' | translate }}</option>
+          </select>
+        </div>
+
+        @if (winCondition === 'roundLimit') {
+          <div class="setting-item">
+            <label for="monopoly-rounds-select" class="setting-label">{{ 'MONOPOLY.ROUND_LIMIT_ROUNDS' | translate }}</label>
+            <select id="monopoly-rounds-select" class="portal-input" [(ngModel)]="maxRounds">
+              <option [ngValue]="20">20</option>
+              <option [ngValue]="30">30</option>
+              <option [ngValue]="40">40</option>
+            </select>
+          </div>
+        }
+
+        <div class="setting-item">
+          <label for="monopoly-auction-select" class="setting-label">{{ 'MONOPOLY.AUCTION_RULE' | translate }}</label>
+          <select id="monopoly-auction-select" class="portal-input" [(ngModel)]="auctionEnabled">
+            <option [ngValue]="true">{{ 'MONOPOLY.AUCTION_ENABLED' | translate }}</option>
+            <option [ngValue]="false">{{ 'MONOPOLY.AUCTION_DISABLED' | translate }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button type="button" class="btn btn-emerald btn-lg" (click)="startSolo()">
+          🤖 {{ 'MONOPOLY.QUICK_SOLO_BTN' | translate }}
+        </button>
+        <button type="button" class="btn btn-gold btn-lg" (click)="createRoom()">
+          🌐 {{ 'MONOPOLY.CREATE_ROOM_BTN' | translate }}
+        </button>
+      </div>
+
+      <div class="join-section">
+        <h2 class="join-title">{{ 'MONOPOLY.JOIN_ROOM_TITLE' | translate }}</h2>
+        <div class="join-input-group">
+          <input
+            type="text"
+            class="portal-input"
+            [placeholder]="'MONOPOLY.JOIN_PLACEHOLDER' | translate"
+            [(ngModel)]="joinCode"
+          />
+          <button type="button" class="btn btn-emerald" (click)="joinRoom()">
+            {{ 'MONOPOLY.JOIN_ROOM_BTN' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <!-- Waiting Room View -->
+    <div class="waiting-card">
+      <div class="waiting-header">
+        <h1 class="waiting-title">
+          {{ 'MONOPOLY.WAITING_TITLE' | translate }}
+          <span class="room-code-tag">{{ session.snapshot()?.roomCode }}</span>
+        </h1>
+        <p class="waiting-subtitle">{{ 'MONOPOLY.WAITING_SUBTITLE' | translate }}</p>
+      </div>
+
+      <div class="seats-list">
+        @for (seat of session.currentLobby()?.seats; track seat.seat) {
+          <div class="seat-row" [class.is-me]="seat.seat === session.mySeat()">
+            <div class="seat-badge" [style.background-color]="seat.color">
+              {{ seat.seat + 1 }}
+            </div>
+            <div class="seat-info">
+              <span class="seat-name">
+                {{ seat.name }}
+                @if (seat.seat === session.mySeat()) {
+                  <span class="tag-me">{{ 'LOBBY.YOU_TAG' | translate }}</span>
+                }
+              </span>
+              <span class="seat-status">
+                @if (seat.seat === 0) {
+                  👑 {{ 'MONOPOLY.SEAT_HOST' | translate }}
+                } @else if (seat.kind === 'human') {
+                  👤 {{ 'MONOPOLY.SEAT_HUMAN' | translate }}
+                } @else if (seat.kind === 'bot') {
+                  🤖 {{ 'MONOPOLY.SEAT_BOT' | translate }}
+                } @else {
+                  ⏳ {{ 'MONOPOLY.SEAT_OPEN' | translate }}
+                }
+              </span>
+            </div>
+            @if (session.isHost() && seat.seat !== 0) {
+              <button type="button" class="btn btn-sm btn-outline" (click)="toggleSeat(seat.seat)">
+                @if (seat.kind === 'open') {
+                  {{ 'MONOPOLY.TOGGLE_BOT' | translate }}
+                } @else {
+                  {{ 'MONOPOLY.TOGGLE_OPEN' | translate }}
+                }
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="waiting-actions">
+        @if (session.isHost()) {
+          <button type="button" class="btn btn-emerald btn-lg" (click)="startMatch()">
+            🚀 {{ 'MONOPOLY.START_MATCH_BTN' | translate }}
+          </button>
+        } @else {
+          <p class="guest-wait-hint">
+            {{ 'LOBBY.WAIT_FOR_HOST' | translate }}
+          </p>
+        }
+        <button type="button" class="btn btn-outline" (click)="leaveRoom()">
+          {{ 'HEADER.LEAVE_ROOM' | translate }}
+        </button>
+      </div>
+    </div>
+  }
+</div>

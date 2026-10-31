@@ -1,0 +1,36 @@
+.exit-confirm-card {
+  width: min(500px, 95vw);
+  max-width: 95vw;
+  max-height: 90vh;
+}
+
+.dialog-title {
+  color: #fef08a;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.exit-desc {
+  color: var(--text-primary);
+  font-size: 0.94rem;
+  line-height: 1.6;
+}
+
+.exit-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .exit-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .exit-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

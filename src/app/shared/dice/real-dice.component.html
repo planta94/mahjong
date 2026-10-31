@@ -1,0 +1,38 @@
+<div
+  class="real-dice-widget"
+  [class.compact]="compact()"
+  [class.is-rolling]="rolling()"
+  role="img"
+  [attr.aria-label]="dieOne() + ' + ' + dieTwo()"
+>
+  <div class="dice-pair">
+    @for (face of [dieOne(), dieTwo()]; track $index) {
+      <div
+        class="die-cube"
+        [class.die-second]="$index === 1"
+        [attr.data-face]="face"
+      >
+        @for (cell of cells; track cell) {
+          <span class="pip-slot">
+            @if (hasPip(face, cell)) {
+              <span
+                class="pip-dot"
+                [class.pip-red]="isRedFace(face)"
+                [class.pip-one]="face === 1"
+              ></span>
+            }
+          </span>
+        }
+      </div>
+    }
+  </div>
+
+  <div class="dice-meta">
+    <span class="dice-sum-pill">
+      {{ 'MONOPOLY.UI_DICE_SUM' | translate: { sum: diceSum() } }}
+    </span>
+    @if (isDoubles()) {
+      <span class="doubles-pill">{{ 'MONOPOLY.UI_DOUBLES' | translate }}</span>
+    }
+  </div>
+</div>

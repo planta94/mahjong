@@ -1,0 +1,632 @@
+<div class="monopoly-screen">
+  @if (session.currentView(); as view) {
+    <div class="monopoly-layout">
+      <!-- Unified 11x11 Luxury Board (Visible on Desktop AND Mobile) -->
+      <div class="board-stage">
+        <div class="monopoly-grid">
+          <!-- 40 Perimeter Spaces -->
+          @for (s of spaces; track s.index) {
+            <div
+              class="board-space"
+              [ngClass]="'type-' + s.type"
+              [class.is-corner]="s.type.startsWith('corner_')"
+              [class.is-active-landing]="isActiveLanding(s.index)"
+              [ngStyle]="getSpaceGridStyle(s.index)"
+              [attr.title]="s.name + (s.cost ? ' · RM ' + s.cost : '')"
+              (click)="openDeed(s.index)"
+            >
+              @if (s.colorGroup) {
+                <div class="space-color-bar" [style.background-color]="getGroupColor(s.colorGroup)">
+                  @if (getPropertyState(s.index); as prop) {
+                    @if (prop.houses === 5) {
+                      <span class="badge-hotel">🏨</span>
+                    } @else if (prop.houses > 0) {
+                      <span class="badge-houses">🏠×{{ prop.houses }}</span>
+                    }
+                  }
+                </div>
+              }
+
+              <div class="space-content">
+                @if (s.icon && !s.colorGroup) {
+                  <span class="space-icon">{{ s.icon }}</span>
+                }
+                <span class="space-name">{{ s.shortName ?? s.name }}</span>
+
+                @if (s.cost) {
+                  <span class="space-cost">RM {{ s.cost }}</span>
+                }
+
+                @if (getPropertyState(s.index); as prop) {
+                  @if (prop.isMortgaged) {
+                    <span class="badge-mortgaged">M</span>
+                  }
+                }
+
+                @if (getOwnerColor(s.index); as ownerColor) {
+                  <div class="owner-indicator" [style.background-color]="ownerColor"></div>
+                }
+
+                <div class="tokens-container">
+                  @for (p of getPlayersOnSpace(s.index); track p.seat) {
+                    <div
+                      class="player-token"
+                      [class.is-active-token]="p.seat === view.activeSeat"
+                      [style.background-color]="p.color"
+                      [title]="p.name"
+                    >
+                      {{ p.seat + 1 }}
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Center Hub (Columns 2-10, Rows 2-10) -->
+          <div class="center-hub">
+            <!-- Top Strip: Round, Win Mode & Free Parking Jackpot -->
+            <div class="hub-top-bar">
+              <div class="hub-header">
+                <span class="round-badge">
+                  {{ 'MONOPOLY.ROUND_LABEL' | translate }} {{ view.currentRound }} / {{ view.maxRounds }}
+                </span>
+                <span class="mode-badge">
+                  @if (view.winCondition === 'lastTycoon') {
+                    🏆 {{ 'MONOPOLY.WIN_LAST_TYCOON' | translate }}
+                  } @else {
+                    ⏱️ {{ 'MONOPOLY.WIN_ROUND_LIMIT' | translate }}
+                  }
+                </span>
+              </div>
+
+              <!-- Free Parking Jackpot Vault (Saidina Rule) -->
+              <div class="jackpot-box">
+                <span class="jackpot-title">💰 {{ 'MONOPOLY.POT_TITLE' | translate }}</span>
+                <strong class="jackpot-amount">RM {{ view.jackpotPot }}</strong>
+              </div>
+            </div>
+
+            <!-- Dead-Center Stage: Active Player + Real 3D Dice + Roll Dice / Turn Actions -->
+            <div class="hub-center-stage">
+              <div class="active-player-banner" [style.border-color]="activePlayer()?.color">
+                <span class="player-color-dot" [style.background-color]="activePlayer()?.color"></span>
+                <strong>{{ activePlayer()?.name }}</strong>
+                <span class="active-cash-tag">RM {{ activePlayer()?.cash }}</span>
+                @if (activePlayer()?.inJail) {
+                  <span class="jail-status-tag">🔒 {{ 'MONOPOLY.UI_IN_JAIL' | translate }}</span>
+                }
+                @if (landingSpace(); as curSpace) {
+                  <span class="current-space-chip">📍 {{ curSpace.shortName ?? curSpace.name }}</span>
+                }
+              </div>
+
+              <div class="dice-arena">
+                <app-real-dice [values]="view.lastDice" [rolling]="isDiceRolling()" />
+              </div>
+
+              <div class="hub-actions">
+                @if (session.isMyTurn()) {
+                  @if (view.phase === 'roll') {
+                    <button type="button" class="btn btn-emerald roll-dice-hero-btn" (click)="rollDice()">
+                      🎲 {{ 'MONOPOLY.ROLL_DICE_BTN' | translate }}
+                    </button>
+                    @if (myPlayer()?.inJail) {
+                      @if ((myPlayer()?.cash ?? 0) >= 50) {
+                        <button type="button" class="btn btn-gold" (click)="payBail()">
+                          💸 {{ 'MONOPOLY.PAY_BAIL_BTN' | translate }} (RM 50)
+                        </button>
+                      }
+                      @if ((myPlayer()?.outOfJailCards ?? 0) > 0) {
+                        <button type="button" class="btn btn-outline" (click)="useJailCard()">
+                          🎫 {{ 'MONOPOLY.USE_CARD_BTN' | translate }}
+                        </button>
+                      }
+                    }
+                  }
+
+                  @if (view.phase === 'action') {
+                    @if (isUnownedLanding()) {
+                      <button type="button" class="btn btn-emerald" (click)="buyProperty()">
+                        🛒 {{ 'MONOPOLY.BUY_PROPERTY_BTN' | translate }} (RM {{ landingSpace()?.cost }})
+                      </button>
+                      <button type="button" class="btn btn-outline" (click)="passProperty()">
+                        ⏭️ {{ 'MONOPOLY.PASS_PROPERTY_BTN' | translate }}
+                      </button>
+                    }
+                    <button type="button" class="btn btn-gold roll-dice-hero-btn" (click)="endTurn()">
+                      ✅ {{ 'MONOPOLY.END_TURN_BTN' | translate }}
+                    </button>
+                  }
+
+                  @if (view.phase === 'financialDistress') {
+                    <div class="distress-banner">
+                      ⚠️ {{ 'MONOPOLY.UI_DISTRESS_WARN' | translate: { amount: view.debtTarget?.amountOwed ?? 0 } }}
+                    </div>
+                    <button type="button" class="btn btn-crimson" (click)="declareBankruptcy()">
+                      💀 {{ 'MONOPOLY.BANKRUPT_BTN' | translate }}
+                    </button>
+                  }
+
+                  <button type="button" class="btn btn-outline hub-trade-btn" (click)="openTrade()">
+                    🤝 {{ 'MONOPOLY.TRADE_BTN' | translate }}
+                  </button>
+                } @else {
+                  <p class="waiting-turn-hint">
+                    ⏳ {{ 'MONOPOLY.WAITING_TURN' | translate }} <strong>{{ activePlayer()?.name }}</strong>…
+                  </p>
+                }
+              </div>
+            </div>
+
+            <!-- Bottom Slot: Drawn Chance / Community Chest Spotlight -->
+            <div class="hub-bottom-slot">
+              @if (view.activeCard; as card) {
+                <div class="drawn-card-banner" [class.deck-nasib]="card.deck === 'nasib'">
+                  <span class="drawn-card-tag">
+                    {{ (card.deck === 'nasib' ? 'MONOPOLY.UI_DRAWN_NASIB' : 'MONOPOLY.UI_DRAWN_DANA') | translate }}
+                  </span>
+                  <strong class="drawn-card-title">{{ card.titleKey | translate }}</strong>
+                  <span class="drawn-card-desc">{{ card.descKey | translate }}</span>
+                </div>
+              } @else {
+                <span class="hub-board-tip">👆 {{ 'MONOPOLY.UI_TAP_BOARD_HINT' | translate }}</span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <p class="board-mobile-hint">👆 {{ 'MONOPOLY.UI_TAP_BOARD_HINT' | translate }}</p>
+      </div>
+
+      <!-- Desktop Right Sidebar (> 768px): Tycoon Standings & Live Event Feed -->
+      <aside class="board-sidebar">
+        <div class="sidebar-card tycoon-sidebar-card">
+          <h3 class="sidebar-title">👑 {{ 'MONOPOLY.UI_LEADERBOARD_TITLE' | translate }}</h3>
+          <div class="tycoon-list">
+            @for (p of view.players; track p.seat) {
+              <div
+                class="tycoon-card"
+                [class.is-active-turn]="p.seat === view.activeSeat"
+                [class.is-bankrupt]="p.bankrupt"
+              >
+                <div class="tycoon-top">
+                  <span class="tycoon-avatar" [style.background-color]="p.color">{{ p.seat + 1 }}</span>
+                  <div class="tycoon-ident">
+                    <strong class="tycoon-name">{{ p.name }}</strong>
+                    @if (p.inJail) {
+                      <span class="jail-status-tag">🔒 {{ 'MONOPOLY.UI_IN_JAIL' | translate }}</span>
+                    }
+                    @if (p.bankrupt) {
+                      <span class="jail-status-tag">{{ 'MONOPOLY.UI_BANKRUPT' | translate }}</span>
+                    }
+                  </div>
+                  <div class="tycoon-balances">
+                    <span class="tycoon-cash">RM {{ p.cash }}</span>
+                    <span class="tycoon-worth">{{ 'MONOPOLY.UI_NET_WORTH' | translate }}: RM {{ calculatePlayerNetWorth(p) }}</span>
+                  </div>
+                </div>
+
+                <div class="tycoon-deeds">
+                  @for (deed of getOwnedSpacesForSeat(p.seat); track deed.index) {
+                    <button
+                      type="button"
+                      class="deed-chip"
+                      [class.is-mortgaged]="getPropertyState(deed.index)?.isMortgaged"
+                      [style.border-left-color]="deed.colorGroup ? getGroupColor(deed.colorGroup) : '#94a3b8'"
+                      (click)="openDeed(deed.index)"
+                    >
+                      {{ deed.shortName ?? deed.name }}
+                      @if (getPropertyState(deed.index); as prop) {
+                        @if (prop.isMortgaged) {
+                          <span class="deed-chip-meta">(M)</span>
+                        } @else if (prop.houses === 5) {
+                          <span class="deed-chip-meta">🏨</span>
+                        } @else if (prop.houses > 0) {
+                          <span class="deed-chip-meta">🏠×{{ prop.houses }}</span>
+                        }
+                      }
+                    </button>
+                  } @empty {
+                    <span class="no-deeds-text">{{ 'MONOPOLY.UI_NO_PROPS' | translate }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="sidebar-card log-sidebar-card">
+          <h3 class="sidebar-title">📜 {{ 'MONOPOLY.UI_LIVE_LOG_TITLE' | translate }}</h3>
+          <div class="live-logs-list">
+            @for (log of view.logs.slice(-8).reverse(); track $index) {
+              <div class="live-log-item">{{ log }}</div>
+            }
+          </div>
+        </div>
+      </aside>
+
+      <!-- Mobile Cards Layout (<= 768px, rendered below the visible Monopoly Board) -->
+      <div class="mobile-cards">
+        <div class="mobile-app-card jackpot-mobile-card">
+          <div class="mobile-card-row">
+            <span>💰 {{ 'MONOPOLY.POT_TITLE' | translate }}</span>
+            <strong class="jackpot-mobile-text">RM {{ view.jackpotPot }}</strong>
+          </div>
+          <div class="mobile-card-row">
+            <span>{{ 'MONOPOLY.ROUND_LABEL' | translate }}</span>
+            <strong>{{ view.currentRound }} / {{ view.maxRounds }}</strong>
+          </div>
+        </div>
+
+        <div class="mobile-app-card">
+          <h3 class="card-section-title">👥 {{ 'MONOPOLY.UI_LEADERBOARD_TITLE' | translate }}</h3>
+          <div class="mobile-players-list">
+            @for (p of view.players; track p.seat) {
+              <div
+                class="mobile-player-block"
+                [class.is-active-turn]="p.seat === view.activeSeat"
+                [class.is-bankrupt]="p.bankrupt"
+              >
+                <div class="player-asset-row" [class.is-bankrupt]="p.bankrupt">
+                  <span class="player-seat-badge" [style.background-color]="p.color">{{ p.seat + 1 }}</span>
+                  <span class="player-name-text">{{ p.name }}</span>
+                  @if (p.inJail) {
+                    <span class="jail-status-tag">🔒 {{ 'MONOPOLY.UI_IN_JAIL' | translate }}</span>
+                  }
+                  <span class="player-cash-text">RM {{ p.cash }}</span>
+                  <span class="player-worth-text">{{ 'MONOPOLY.UI_NET_WORTH' | translate }}: RM {{ calculatePlayerNetWorth(p) }}</span>
+                </div>
+
+                <div class="tycoon-deeds">
+                  @for (deed of getOwnedSpacesForSeat(p.seat); track deed.index) {
+                    <button
+                      type="button"
+                      class="deed-chip"
+                      [class.is-mortgaged]="getPropertyState(deed.index)?.isMortgaged"
+                      [style.border-left-color]="deed.colorGroup ? getGroupColor(deed.colorGroup) : '#94a3b8'"
+                      (click)="openDeed(deed.index)"
+                    >
+                      {{ deed.shortName ?? deed.name }}
+                      @if (getPropertyState(deed.index); as prop) {
+                        @if (prop.isMortgaged) {
+                          <span class="deed-chip-meta">(M)</span>
+                        } @else if (prop.houses === 5) {
+                          <span class="deed-chip-meta">🏨</span>
+                        } @else if (prop.houses > 0) {
+                          <span class="deed-chip-meta">🏠×{{ prop.houses }}</span>
+                        }
+                      }
+                    </button>
+                  } @empty {
+                    <span class="no-deeds-text">{{ 'MONOPOLY.UI_NO_PROPS' | translate }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modals Section (Bounded Modals: bottom action buttons only, max-height: 90vh) -->
+
+    <!-- 1. Property Deed Inspector Modal -->
+    @if (session.showDeedModal() && selectedSpace(); as space) {
+      <div class="modal-backdrop" (click)="closeDeed()">
+        <div class="modal-card deed-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            @if (space.colorGroup) {
+              <div class="deed-header-band" [style.background-color]="getGroupColor(space.colorGroup)"></div>
+            }
+            <h2 class="dialog-title">{{ space.name }}</h2>
+            <span class="deed-space-num">{{ 'MONOPOLY.UI_SPACE_NUM' | translate: { index: space.index } }}</span>
+          </div>
+
+          <div class="modal-body">
+            @if (space.type === 'property') {
+              <div class="deed-rent-table">
+                <div class="rent-row">
+                  <span>{{ 'MONOPOLY.BASE_RENT' | translate }}</span>
+                  <strong>RM {{ space.baseRent }}</strong>
+                </div>
+                <div class="rent-row">
+                  <span>{{ 'MONOPOLY.RENT_1H' | translate }}</span>
+                  <strong>RM {{ space.rentSchedule?.[1] }}</strong>
+                </div>
+                <div class="rent-row">
+                  <span>{{ 'MONOPOLY.RENT_2H' | translate }}</span>
+                  <strong>RM {{ space.rentSchedule?.[2] }}</strong>
+                </div>
+                <div class="rent-row">
+                  <span>{{ 'MONOPOLY.RENT_3H' | translate }}</span>
+                  <strong>RM {{ space.rentSchedule?.[3] }}</strong>
+                </div>
+                <div class="rent-row">
+                  <span>{{ 'MONOPOLY.RENT_4H' | translate }}</span>
+                  <strong>RM {{ space.rentSchedule?.[4] }}</strong>
+                </div>
+                <div class="rent-row">
+                  <span>{{ 'MONOPOLY.RENT_HOTEL' | translate }}</span>
+                  <strong>RM {{ space.rentSchedule?.[5] }}</strong>
+                </div>
+              </div>
+              <div class="deed-meta-box">
+                <p>{{ 'MONOPOLY.UI_PRICE' | translate }}: RM {{ space.cost }}</p>
+                <p>{{ 'MONOPOLY.HOUSE_COST' | translate }}: RM {{ space.houseCost }}</p>
+                <p>{{ 'MONOPOLY.MORTGAGE_VALUE' | translate }}: RM {{ space.mortgageValue }}</p>
+                <p>
+                  {{ 'MONOPOLY.UI_OWNER' | translate }}:
+                  <strong>{{ getPlayerName(selectedPropState()?.ownerSeat) || ('MONOPOLY.UI_UNOWNED' | translate) }}</strong>
+                </p>
+              </div>
+
+              @if (selectedPropState(); as prop) {
+                @if (prop.ownerSeat === session.mySeat()) {
+                  <div class="management-controls">
+                    @if (prop.houses < 5 && !prop.isMortgaged) {
+                      <button type="button" class="btn btn-emerald btn-sm" (click)="buildHouse(space.index)">
+                        {{ 'MONOPOLY.UI_BUILD_BTN_COST' | translate: { cost: space.houseCost ?? 0 } }}
+                      </button>
+                    }
+                    @if (prop.houses > 0) {
+                      <button type="button" class="btn btn-outline btn-sm" (click)="sellHouse(space.index)">
+                        {{ 'MONOPOLY.UI_SELL_BTN_GAIN' | translate: { gain: (space.houseCost ?? 100) / 2 } }}
+                      </button>
+                    }
+                    @if (!prop.isMortgaged && prop.houses === 0) {
+                      <button type="button" class="btn btn-danger btn-sm" (click)="mortgage(space.index)">
+                        {{ 'MONOPOLY.UI_MORTGAGE_BTN_GAIN' | translate: { gain: space.mortgageValue ?? 0 } }}
+                      </button>
+                    }
+                    @if (prop.isMortgaged) {
+                      <button type="button" class="btn btn-gold btn-sm" (click)="unmortgage(space.index)">
+                        {{ 'MONOPOLY.UI_UNMORTGAGE_BTN_COST' | translate: { cost: getUnmortgageCost(space.mortgageValue) } }}
+                      </button>
+                    }
+                  </div>
+                }
+              }
+            } @else {
+              <div class="deed-meta-box">
+                @if (space.cost) {
+                  <p>{{ 'MONOPOLY.UI_PRICE' | translate }}: RM {{ space.cost }}</p>
+                }
+                @if (space.mortgageValue) {
+                  <p>{{ 'MONOPOLY.MORTGAGE_VALUE' | translate }}: RM {{ space.mortgageValue }}</p>
+                }
+              </div>
+            }
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-emerald" (click)="closeDeed()">
+              {{ 'COMMON.CLOSE' | translate }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- 2. Auction Dialog Modal -->
+    @if (view.phase === 'auction' && view.activeAuction; as auction) {
+      <div class="modal-backdrop">
+        <div class="modal-card" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2 class="dialog-title">🏛️ {{ 'MONOPOLY.AUCTION_MODAL_TITLE' | translate }}</h2>
+          </div>
+
+          <div class="modal-body">
+            <div class="auction-info-card">
+              <h3>{{ getSpaceName(auction.spaceIndex) }}</h3>
+              <p class="current-bid-display">
+                {{ 'MONOPOLY.AUCTION_CURRENT_BID' | translate }}:
+                <strong>RM {{ auction.currentBid }}</strong>
+              </p>
+              <p class="highest-bidder-display">
+                {{ 'MONOPOLY.AUCTION_HIGHEST_BIDDER' | translate }}:
+                <strong>{{ getPlayerName(auction.highestBidderSeat) || ('MONOPOLY.UI_NO_BIDS_YET' | translate) }}</strong>
+              </p>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            @if (auction.activeBidders.includes(session.mySeat())) {
+              <button type="button" class="btn btn-emerald" (click)="bidAuction(auction.currentBid + 10)">
+                {{ 'MONOPOLY.UI_BID_PLUS_10' | translate: { amount: auction.currentBid + 10 } }}
+              </button>
+              <button type="button" class="btn btn-outline" (click)="passAuction()">
+                {{ 'MONOPOLY.AUCTION_PASS_BTN' | translate }}
+              </button>
+            } @else {
+              <p class="waiting-turn-hint">{{ 'MONOPOLY.UI_AUCTION_WAITING' | translate }}</p>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- 3. Trade Negotiation Modal -->
+    @if (session.showTradeModal()) {
+      <div class="modal-backdrop" (click)="closeTrade()">
+        <div class="modal-card" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2 class="dialog-title">🤝 {{ 'MONOPOLY.TRADE_MODAL_TITLE' | translate }}</h2>
+          </div>
+
+          <div class="modal-body">
+            <div class="trade-target-selector">
+              <label for="trade-partner-select">{{ 'MONOPOLY.TRADE_SELECT_PARTNER' | translate }}</label>
+              <select id="trade-partner-select" class="portal-input" [(ngModel)]="tradeTargetSeat">
+                @for (p of view.players; track p.seat) {
+                  @if (p.seat !== session.mySeat() && !p.bankrupt) {
+                    <option [ngValue]="p.seat">{{ p.name }} (RM {{ p.cash }})</option>
+                  }
+                }
+              </select>
+            </div>
+
+            <div class="trade-columns">
+              <div class="trade-col">
+                <h4>{{ 'MONOPOLY.TRADE_OFFER_CASH' | translate }}</h4>
+                <input type="number" class="portal-input" [(ngModel)]="tradeOfferCash" min="0" />
+
+                <h4>{{ 'MONOPOLY.TRADE_OFFER_PROPERTIES' | translate }}</h4>
+                <div class="trade-props-list">
+                  @for (s of getMyOwnedProperties(); track s.index) {
+                    <label class="trade-prop-item">
+                      <input
+                        type="checkbox"
+                        [checked]="tradeOfferProps.includes(s.index)"
+                        (change)="toggleTradeOfferProp(s.index)"
+                      />
+                      {{ s.name }}
+                    </label>
+                  }
+                </div>
+              </div>
+
+              <div class="trade-col">
+                <h4>{{ 'MONOPOLY.TRADE_REQUEST_CASH' | translate }}</h4>
+                <input type="number" class="portal-input" [(ngModel)]="tradeRequestCash" min="0" />
+
+                <h4>{{ 'MONOPOLY.TRADE_REQUEST_PROPERTIES' | translate }}</h4>
+                <div class="trade-props-list">
+                  @for (s of getTargetOwnedProperties(); track s.index) {
+                    <label class="trade-prop-item">
+                      <input
+                        type="checkbox"
+                        [checked]="tradeRequestProps.includes(s.index)"
+                        (change)="toggleTradeRequestProp(s.index)"
+                      />
+                      {{ s.name }}
+                    </label>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-emerald" (click)="proposeTrade()">
+              {{ 'MONOPOLY.TRADE_PROPOSE_BTN' | translate }}
+            </button>
+            <button type="button" class="btn btn-outline" (click)="closeTrade()">
+              {{ 'COMMON.CANCEL' | translate }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- 4. Incoming Trade Proposal Modal -->
+    @if (incomingTrade(); as trade) {
+      <div class="modal-backdrop">
+        <div class="modal-card" role="dialog" aria-modal="true">
+          <div class="modal-header">
+            <h2 class="dialog-title">📩 {{ 'MONOPOLY.UI_INCOMING_TRADE_TITLE' | translate }}</h2>
+          </div>
+
+          <div class="modal-body">
+            <p>{{ 'MONOPOLY.UI_INCOMING_TRADE_FROM' | translate: { name: getPlayerName(trade.fromSeat) } }}</p>
+            <div class="trade-summary-box">
+              <p>
+                {{ 'MONOPOLY.UI_THEY_OFFER' | translate }}:
+                <strong>RM {{ trade.offerCash }}</strong>
+                @if (trade.offerProperties.length > 0) {
+                  @for (propIdx of trade.offerProperties; track propIdx) {
+                    <span> · <strong>{{ getSpaceName(propIdx) }}</strong></span>
+                  }
+                }
+              </p>
+              <p>
+                {{ 'MONOPOLY.UI_THEY_REQUEST' | translate }}:
+                <strong>RM {{ trade.requestCash }}</strong>
+                @if (trade.requestProperties.length > 0) {
+                  @for (propIdx of trade.requestProperties; track propIdx) {
+                    <span> · <strong>{{ getSpaceName(propIdx) }}</strong></span>
+                  }
+                }
+              </p>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-emerald" (click)="acceptTrade()">
+              {{ 'MONOPOLY.TRADE_ACCEPT_BTN' | translate }}
+            </button>
+            <button type="button" class="btn btn-danger" (click)="rejectTrade()">
+              {{ 'MONOPOLY.TRADE_REJECT_BTN' | translate }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- 5. Game Over / Victory Modal -->
+    @if (view.phase === 'gameOver') {
+      <div class="modal-backdrop">
+        <div class="modal-card" role="dialog" aria-modal="true">
+          <div class="modal-header">
+            <h2 class="dialog-title">🏆 {{ 'MONOPOLY.GAME_OVER_TITLE' | translate }}</h2>
+          </div>
+
+          <div class="modal-body">
+            <div class="winner-podium">
+              <div class="trophy-icon">👑</div>
+              <h3 class="winner-name">
+                {{ getPlayerName(view.winnerSeat) || ('MONOPOLY.WINNER_LABEL' | translate) }}
+              </h3>
+              <p class="game-over-reason">{{ view.gameOverReason }}</p>
+            </div>
+
+            <table class="desktop-table">
+              <thead>
+                <tr>
+                  <th>{{ 'MONOPOLY.UI_COL_RANK' | translate }}</th>
+                  <th>{{ 'MONOPOLY.UI_COL_PLAYER' | translate }}</th>
+                  <th>{{ 'MONOPOLY.UI_CASH' | translate }}</th>
+                  <th>{{ 'MONOPOLY.NET_WORTH_LABEL' | translate }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (p of view.players; track p.seat; let idx = $index) {
+                  <tr>
+                    <td>#{{ idx + 1 }}</td>
+                    <td>{{ p.name }}</td>
+                    <td>RM {{ p.cash }}</td>
+                    <td>RM {{ calculatePlayerNetWorth(p) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+
+            <div class="mobile-cards">
+              @for (p of view.players; track p.seat; let idx = $index) {
+                <div class="mobile-app-card">
+                  <div class="mobile-card-row">
+                    <strong>#{{ idx + 1 }} {{ p.name }}</strong>
+                    <span>RM {{ p.cash }}</span>
+                  </div>
+                  <div class="mobile-card-row">
+                    <span>{{ 'MONOPOLY.NET_WORTH_LABEL' | translate }}</span>
+                    <strong>RM {{ calculatePlayerNetWorth(p) }}</strong>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-emerald" (click)="returnToLobby()">
+              {{ 'MONOPOLY.RETURN_LOBBY_BTN' | translate }}
+            </button>
+            <button type="button" class="btn btn-outline" (click)="returnToHub()">
+              {{ 'MONOPOLY.RETURN_HUB_BTN' | translate }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  }
+</div>

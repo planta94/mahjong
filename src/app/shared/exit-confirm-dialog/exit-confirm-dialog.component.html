@@ -1,0 +1,39 @@
+<div class="modal-backdrop exit-confirm-backdrop" (click)="stay()">
+  <div
+    class="modal-card exit-confirm-card"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="exit-confirm-dialog-title"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="modal-header">
+      <h2 id="exit-confirm-dialog-title" class="dialog-title">
+        🏠 {{ 'EXIT_MODAL.TITLE' | translate }}
+      </h2>
+    </div>
+
+    <div class="modal-body">
+      <p class="exit-desc">
+        @if (gameManager.canSaveCurrentProgress()) {
+          {{ 'EXIT_MODAL.DESC_CAN_SAVE' | translate }}
+        } @else {
+          {{ 'EXIT_MODAL.DESC_NO_SAVE' | translate }}
+        }
+      </p>
+    </div>
+
+    <div class="modal-footer exit-footer">
+      <button type="button" class="btn stay-btn" (click)="stay()">
+        {{ 'EXIT_MODAL.BTN_STAY' | translate }}
+      </button>
+      <button type="button" class="btn btn-crimson discard-exit-btn" (click)="discardAndExit()">
+        {{ 'EXIT_MODAL.BTN_DISCARD_EXIT' | translate }}
+      </button>
+      @if (gameManager.canSaveCurrentProgress()) {
+        <button type="button" class="btn btn-emerald save-exit-btn" (click)="saveAndExit()">
+          💾 {{ 'EXIT_MODAL.BTN_SAVE_EXIT' | translate }}
+        </button>
+      }
+    </div>
+  </div>
+</div>

@@ -1,6 +1,5 @@
 import { TestBed } from '@angular/core/testing';
 import en from '../../../../public/assets/i18n/en.json';
-import ms from '../../../../public/assets/i18n/ms.json';
 import zh from '../../../../public/assets/i18n/zh.json';
 import { TranslateService } from './translate.service';
 
@@ -19,18 +18,14 @@ describe('i18n Translation Dictionary Parity & TranslateService', () => {
   }
 
   const enKeys = flattenKeys(en as Record<string, unknown>).sort();
-  const msKeys = flattenKeys(ms as Record<string, unknown>).sort();
   const zhKeys = flattenKeys(zh as Record<string, unknown>).sort();
 
-  it('has identical key count across en, ms, and zh dictionaries', () => {
-    expect(msKeys.length).toBe(enKeys.length);
+  it('has identical key count across en and Simplified Chinese zh dictionaries', () => {
     expect(zhKeys.length).toBe(enKeys.length);
   });
 
-  it('contains zero missing or extra keys across Malay and Chinese dictionaries', () => {
-    expect(enKeys.filter((k) => !msKeys.includes(k))).toEqual([]);
+  it('contains zero missing or extra keys across English and Simplified Chinese dictionaries', () => {
     expect(enKeys.filter((k) => !zhKeys.includes(k))).toEqual([]);
-    expect(msKeys.filter((k) => !enKeys.includes(k))).toEqual([]);
     expect(zhKeys.filter((k) => !enKeys.includes(k))).toEqual([]);
   });
 
@@ -46,7 +41,6 @@ describe('i18n Translation Dictionary Parity & TranslateService', () => {
     }
 
     validateNonEmpty(en as Record<string, unknown>, 'en.json');
-    validateNonEmpty(ms as Record<string, unknown>, 'ms.json');
     validateNonEmpty(zh as Record<string, unknown>, 'zh.json');
   });
 
@@ -56,14 +50,12 @@ describe('i18n Translation Dictionary Parity & TranslateService', () => {
     const svc = TestBed.inject(TranslateService);
 
     expect(svc.currentLang()).toBe('zh');
-    expect(svc.instant('HEADER.FAN_SUMMARY', { min: 5, max: 10 })).toBe('5番起糊 · 10番封頂');
+    expect(svc.instant('HEADER.FAN_SUMMARY', { min: 5, max: 10 })).toBe('5番起胡 · 10番封顶');
 
     svc.use('en');
     expect(svc.currentLang()).toBe('en');
     expect(svc.instant('HEADER.FAN_SUMMARY', { min: 5, max: 10 })).toBe('5 Fan Min · 10 Fan Cap');
-
-    svc.use('ms');
-    expect(svc.instant('HEADER.ROOM_CODE', { code: 'HK888' })).toBe('Bilik HK888');
+    expect(svc.instant('HEADER.ROOM_CODE', { code: 'HK888' })).toBe('Room HK888');
     expect(svc.instant('UNKNOWN.KEY')).toBe('UNKNOWN.KEY');
   });
 });

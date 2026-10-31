@@ -1,0 +1,156 @@
+<div class="avalon-lobby-container">
+  @if (!session.snapshot()) {
+    <div class="lobby-card">
+      <div class="lobby-header">
+        <span class="lobby-badge">⚔️ {{ 'AVALON.NAME' | translate }}</span>
+        <h1 class="lobby-title">{{ 'AVALON.LOBBY.TITLE' | translate }}</h1>
+        <p class="lobby-subtitle">{{ 'AVALON.SUBTITLE' | translate }}</p>
+      </div>
+
+      @if (hasUrlInvite()) {
+        <div class="invite-banner">
+          <p class="invite-text">
+            {{ 'MONOPOLY.INVITE_JOIN_TITLE' | translate }} <strong>{{ joinCode }}</strong>
+          </p>
+          <button type="button" class="btn btn-crimson" (click)="joinRoom()">
+            {{ 'MONOPOLY.INVITE_TAKE_SEAT' | translate }}
+          </button>
+        </div>
+      }
+
+      <div class="settings-grid">
+        <div class="setting-item">
+          <label for="avalon-players-select" class="setting-label">
+            {{ 'AVALON.LOBBY.PLAYER_COUNT' | translate: { count: playerCount } }}
+          </label>
+          <select
+            id="avalon-players-select"
+            class="portal-input"
+            [(ngModel)]="playerCount"
+            (ngModelChange)="onPlayerCountChange($event)"
+          >
+            <option [ngValue]="5">5 {{ 'MONOPOLY.SEAT_LABEL' | translate }} ({{ 'AVALON.LOBBY.GOOD_EVIL_RATIO' | translate: { good: 3, evil: 2 } }})</option>
+            <option [ngValue]="6">6 {{ 'MONOPOLY.SEAT_LABEL' | translate }} ({{ 'AVALON.LOBBY.GOOD_EVIL_RATIO' | translate: { good: 4, evil: 2 } }})</option>
+            <option [ngValue]="7">7 {{ 'MONOPOLY.SEAT_LABEL' | translate }} ({{ 'AVALON.LOBBY.GOOD_EVIL_RATIO' | translate: { good: 4, evil: 3 } }})</option>
+            <option [ngValue]="8">8 {{ 'MONOPOLY.SEAT_LABEL' | translate }} ({{ 'AVALON.LOBBY.GOOD_EVIL_RATIO' | translate: { good: 5, evil: 3 } }})</option>
+            <option [ngValue]="9">9 {{ 'MONOPOLY.SEAT_LABEL' | translate }} ({{ 'AVALON.LOBBY.GOOD_EVIL_RATIO' | translate: { good: 6, evil: 3 } }})</option>
+            <option [ngValue]="10">10 {{ 'MONOPOLY.SEAT_LABEL' | translate }} ({{ 'AVALON.LOBBY.GOOD_EVIL_RATIO' | translate: { good: 6, evil: 4 } }})</option>
+          </select>
+          <span class="ratio-badge">
+            {{ 'AVALON.LOBBY.GOOD_EVIL_RATIO' | translate: { good: goodCount, evil: evilCount } }}
+          </span>
+        </div>
+
+        <div class="setting-item full-width">
+          <label class="setting-label">{{ 'AVALON.LOBBY.SPECIAL_ROLES' | translate }}</label>
+          <div class="roles-toggle-grid">
+            <label class="role-checkbox">
+              <input type="checkbox" [(ngModel)]="percival" (change)="onRoleToggle()" />
+              <span class="role-name">{{ 'AVALON.LOBBY.PERCIVAL' | translate }}</span>
+            </label>
+            <label class="role-checkbox">
+              <input type="checkbox" [(ngModel)]="morgana" (change)="onRoleToggle()" />
+              <span class="role-name">{{ 'AVALON.LOBBY.MORGANA' | translate }}</span>
+            </label>
+            <label class="role-checkbox">
+              <input type="checkbox" [(ngModel)]="mordred" (change)="onRoleToggle()" />
+              <span class="role-name">{{ 'AVALON.LOBBY.MORDRED' | translate }}</span>
+            </label>
+            <label class="role-checkbox">
+              <input type="checkbox" [(ngModel)]="oberon" (change)="onRoleToggle()" />
+              <span class="role-name">{{ 'AVALON.LOBBY.OBERON' | translate }}</span>
+            </label>
+            <label class="role-checkbox">
+              <input type="checkbox" [(ngModel)]="enableLadyOfLake" (change)="onRoleToggle()" />
+              <span class="role-name">{{ 'AVALON.LOBBY.LADY_OF_LAKE' | translate }}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button type="button" class="btn btn-crimson btn-lg" (click)="startSolo()">
+          ⚔️ {{ 'AVALON.LOBBY.START_SOLO' | translate }}
+        </button>
+        <button type="button" class="btn btn-gold btn-lg" (click)="createRoom()">
+          🌐 {{ 'AVALON.LOBBY.CREATE_ROOM' | translate }}
+        </button>
+      </div>
+
+      <div class="join-section">
+        <h2 class="join-title">{{ 'AVALON.LOBBY.JOIN_ROOM' | translate }}</h2>
+        <div class="join-input-group">
+          <input
+            type="text"
+            class="portal-input"
+            [placeholder]="'MONOPOLY.JOIN_PLACEHOLDER' | translate"
+            [(ngModel)]="joinCode"
+          />
+          <button type="button" class="btn btn-crimson" (click)="joinRoom()">
+            {{ 'AVALON.LOBBY.JOIN_ROOM' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <!-- Active Room Lobby -->
+    <div class="lobby-card room-active-card">
+      <div class="room-header">
+        <div>
+          <span class="room-pill">🛡️ {{ 'AVALON.NAME' | translate }}</span>
+          <h2 class="room-code-heading">
+            {{ 'HEADER.ROOM_CODE' | translate: { code: session.snapshot()?.roomCode ?? '' } }}
+          </h2>
+        </div>
+        <button type="button" class="btn btn-gold btn-sm" (click)="shellUi.copyInviteLink()">
+          📋 {{ 'HEADER.COPY_LINK' | translate }}
+        </button>
+      </div>
+
+      <div class="seats-list">
+        @for (seat of session.currentLobby()?.seats; track seat.seat) {
+          <div class="seat-card" [class.is-my-seat]="seat.seat === session.mySeat()">
+            <div class="seat-left">
+              <span class="seat-index">#{{ seat.seat + 1 }}</span>
+              <span class="seat-name">{{ seat.name }}</span>
+              @if (seat.seat === 0) {
+                <span class="host-pill">{{ 'MONOPOLY.ROOM_HOST_BADGE' | translate }}</span>
+              }
+              @if (seat.seat === session.mySeat()) {
+                <span class="you-pill">{{ 'MONOPOLY.ROOM_YOU_BADGE' | translate }}</span>
+              }
+            </div>
+
+            <div class="seat-right">
+              @if (session.isHost() && seat.seat !== 0) {
+                <button
+                  type="button"
+                  class="btn btn-sm"
+                  [class.btn-crimson]="seat.kind === 'bot'"
+                  (click)="toggleSeat(seat.seat)"
+                >
+                  {{ seat.kind === 'bot' ? '🤖 Bot' : '👤 Open' }}
+                </button>
+              } @else {
+                <span class="seat-status-tag" [class.connected]="seat.connected">
+                  {{ seat.kind === 'bot' ? '🤖 Bot' : (seat.connected ? '🟢' : '⚪') }}
+                </span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="lobby-footer-actions">
+        <button type="button" class="btn" (click)="session.leaveRoom()">
+          {{ 'HEADER.LEAVE_ROOM' | translate }}
+        </button>
+        @if (session.isHost()) {
+          <button type="button" class="btn btn-crimson btn-lg" (click)="startMatch()">
+            ⚔️ {{ 'AVALON.LOBBY.START_MATCH' | translate }}
+          </button>
+        }
+      </div>
+    </div>
+  }
+</div>

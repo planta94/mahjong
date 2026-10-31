@@ -15,7 +15,7 @@
 
 - Scoreboards and payout schedules render `<table class="desktop-table">` above `768px` and `<div class="mobile-cards">` (`mobile-app-card`) at `<= 768px`.
 
-## 4. Trilingual i18n Parity (`en`, `zh`, `ms`)
+## 4. Bilingual i18n Parity (`en`, `zh` Simplified Chinese)
 
-- All user-facing copy lives in `public/assets/i18n/{en,zh,ms}.json` and renders via `TranslatePipe` (`| translate`).
-- `src/app/core/services/i18n-parity.spec.ts` enforces identical flattened key sets and non-empty string values across all 3 dictionaries.
+- All user-facing copy lives in `public/assets/i18n/{en,zh}.json` and renders via `TranslatePipe` (`| translate`).
+- `src/app/core/services/i18n-parity.spec.ts` enforces identical flattened key sets and non-empty string values across both dictionaries.

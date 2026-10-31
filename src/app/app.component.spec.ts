@@ -3,6 +3,7 @@ import { Router, provideRouter } from '@angular/router';
 import { AppComponent } from './app.component';
 import { routes } from './app.routes';
 import { MahjongSessionService } from './core/services/mahjong-session.service';
+import { ShellUiService } from './core/services/shell-ui.service';
 import { TranslateService } from './core/services/translate.service';
 import { TileComponent } from './shared/tile/tile.component';
 
@@ -43,6 +44,7 @@ describe('AppComponent, LobbyComponent, TableComponent & Modals', () => {
   it('switches header languages, opens bottom-action rulebook modal, and exercises Lobby + 3P/4P Table + Settlement UI', async () => {
     const router = TestBed.inject(Router);
     const session = TestBed.inject(MahjongSessionService);
+    const shellUi = TestBed.inject(ShellUiService);
     const translate = TestBed.inject(TranslateService);
     translate.use('zh');
 
@@ -51,31 +53,58 @@ describe('AppComponent, LobbyComponent, TableComponent & Modals', () => {
     appFixture.detectChanges();
 
     const rootEl = appFixture.nativeElement as HTMLElement;
-    expect(rootEl.textContent).toContain('港馬麻雀館');
+    expect(rootEl.textContent).toContain('星冕桌游荟');
+    expect(rootEl.querySelector('.brand-title')?.textContent?.trim()).toBe('港马麻将馆');
     expect(rootEl.querySelector('.brand-logo')?.getAttribute('src')).toBe('favicon.svg');
     expect(rootEl.querySelectorAll('.portal-input').length).toBeGreaterThanOrEqual(3);
 
     // Language switch to English and back to Chinese
     const langBtns = rootEl.querySelectorAll('.lang-btn');
-    expect(langBtns.length).toBe(3);
+    expect(langBtns.length).toBe(2);
     (langBtns.item(1) as HTMLButtonElement).click();
     appFixture.detectChanges();
     expect(translate.currentLang()).toBe('en');
-    expect(rootEl.textContent).toContain('HK & MY Mahjong Pavilion');
+    expect(rootEl.textContent).toContain('Tabletop Royale');
+    expect(rootEl.querySelector('.brand-title')?.textContent?.trim()).toBe('HK & Fly Mahjong');
 
     (langBtns.item(0) as HTMLButtonElement).click();
     appFixture.detectChanges();
     expect(translate.currentLang()).toBe('zh');
 
+    // Exercise active game titles & badges in topbar
+    shellUi.setActiveGame('monopoly');
+    appFixture.detectChanges();
+    expect(rootEl.querySelector('.brand-title')?.textContent?.trim()).toBe('大马地标大富翁');
+    expect(rootEl.querySelector('.brand-badge')?.textContent).toContain('大富翁');
+    expect(document.title).toContain('大马地标大富翁');
+
+    shellUi.setActiveGame('avalon');
+    appFixture.detectChanges();
+    expect(rootEl.querySelector('.brand-title')?.textContent?.trim()).toBe('阿瓦隆：圣杯传奇');
+    expect(rootEl.querySelector('.brand-badge')?.textContent).toContain('阿瓦隆');
+    expect(document.title).toContain('阿瓦隆');
+
+    const hubNavBtn = rootEl.querySelector('.hub-btn') as HTMLButtonElement;
+    expect(hubNavBtn !== null).toBe(true);
+    hubNavBtn.click();
+    await appFixture.whenStable();
+    appFixture.detectChanges();
+    expect(rootEl.querySelector('.brand-title')?.textContent?.trim()).toBe('星冕桌游荟');
+
+    await router.navigateByUrl('/lobby');
+    appFixture.detectChanges();
+    expect(rootEl.querySelector('.brand-title')?.textContent?.trim()).toBe('港马麻将馆');
+    expect(rootEl.querySelector('.brand-badge')?.textContent).toContain('港马麻将');
+
     // Toggle BGM mute/unmute button in header
     const bgmBtn = rootEl.querySelector('.bgm-toggle-btn') as HTMLButtonElement;
-    expect(session.bgmEnabled()).toBe(true);
-    bgmBtn.click();
-    appFixture.detectChanges();
     expect(session.bgmEnabled()).toBe(false);
     bgmBtn.click();
     appFixture.detectChanges();
     expect(session.bgmEnabled()).toBe(true);
+    bgmBtn.click();
+    appFixture.detectChanges();
+    expect(session.bgmEnabled()).toBe(false);
 
     // Open Rulebook dialog & verify bottom-only close button (no top-right X)
     session.showRulebook.set(true);
@@ -108,12 +137,25 @@ describe('AppComponent, LobbyComponent, TableComponent & Modals', () => {
     appFixture.detectChanges();
     expect(session.snapshot()?.lobby?.rules.showHints).toBe(false);
 
+    // Exercise header room code pill & copy
+    const roomCodeBtn = rootEl.querySelector('.room-code-btn') as HTMLButtonElement;
+    expect(roomCodeBtn !== null).toBe(true);
+    roomCodeBtn.click();
+    appFixture.detectChanges();
+
+    const hubBtn = rootEl.querySelector('.hub-btn') as HTMLButtonElement;
+    expect(hubBtn !== null).toBe(true);
+
+    const leaveBtn = rootEl.querySelector('.leave-btn') as HTMLButtonElement;
+    expect(leaveBtn !== null).toBe(true);
+    leaveBtn.click();
     session.leaveSession();
     await appFixture.whenStable();
     appFixture.detectChanges();
 
     // Start 4P Solo via Lobby button and exercise TableComponent 4P top seat + discard click + claim bar + tenpai bar
-    (modeCards.item(1) as HTMLElement).click();
+    const refreshedModeCards = rootEl.querySelectorAll('.mode-card');
+    (refreshedModeCards.item(1) as HTMLElement).click();
     appFixture.detectChanges();
     const soloBtn = rootEl.querySelector('.cta-row .btn-gold') as HTMLButtonElement;
     soloBtn.click();
@@ -183,7 +225,7 @@ describe('AppComponent, LobbyComponent, TableComponent & Modals', () => {
      // Click Retrieve Fly button to verify retrieveFly selection prompt, then switch to Pong
      (actionBtns.item(4) as HTMLButtonElement).click();
      appFixture.detectChanges();
-     expect(rootEl.querySelector('.selection-prompt')?.textContent).toContain('換回副露中的「飛」');
+     expect(rootEl.querySelector('.selection-prompt')?.textContent).toContain('换回副露中的「飞」');
 
      // Click Pong button to enter manual tile-selection mode, toggle 2 tiles, then Confirm
      (actionBtns.item(1) as HTMLButtonElement).click();

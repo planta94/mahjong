@@ -1,0 +1,248 @@
+.avalon-lobby-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 80px);
+  padding: 24px 16px;
+}
+
+.lobby-card {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(7, 11, 20, 0.98));
+  border: 1px solid rgba(220, 38, 38, 0.45);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 680px;
+  padding: 28px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
+}
+
+.lobby-header {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.lobby-badge {
+  display: inline-block;
+  background: rgba(220, 38, 38, 0.2);
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  color: #fca5a5;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.lobby-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 6px;
+}
+
+.lobby-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.invite-banner {
+  background: rgba(220, 38, 38, 0.16);
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.invite-text {
+  font-size: 0.9rem;
+  color: #fee2e2;
+}
+
+.settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.setting-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setting-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.ratio-badge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #93c5fd;
+  margin-top: 4px;
+}
+
+.roles-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.role-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #e2e8f0;
+}
+
+.actions-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.actions-row .btn-lg {
+  flex: 1;
+  height: 44px;
+  font-size: 0.95rem;
+}
+
+.join-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 18px;
+}
+
+.join-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #cbd5e1;
+  margin-bottom: 10px;
+}
+
+.join-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.room-active-card {
+  max-width: 600px;
+}
+
+.room-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.room-pill {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fca5a5;
+  text-transform: uppercase;
+}
+
+.room-code-heading {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.seats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.seat-card {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.seat-card.is-my-seat {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.seat-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.seat-index {
+  font-weight: 800;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.seat-name {
+  font-weight: 700;
+  color: #ffffff;
+  font-size: 0.9rem;
+}
+
+.host-pill {
+  background: rgba(234, 179, 8, 0.25);
+  color: #fde047;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.you-pill {
+  background: rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.seat-status-tag {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.lobby-footer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 16px;
+}
+
+@media (max-width: 768px) {
+  .actions-row {
+    flex-direction: column;
+  }
+
+  .roles-toggle-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lobby-card {
+    padding: 18px;
+  }
+}

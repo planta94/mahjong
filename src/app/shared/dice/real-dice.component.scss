@@ -1,0 +1,201 @@
+.real-dice-widget {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dice-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.die-cube {
+  width: 54px;
+  height: 54px;
+  padding: 7px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #fffef9 0%, #f4ecd8 58%, #dfd3b6 100%);
+  border: 1px solid rgba(120, 96, 58, 0.45);
+  box-shadow:
+    inset 0 2px 3px rgba(255, 255, 255, 0.95),
+    inset 0 -3px 5px rgba(120, 96, 58, 0.28),
+    0 8px 18px rgba(0, 0, 0, 0.48),
+    0 2px 4px rgba(0, 0, 0, 0.32);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  place-items: center;
+  transform: rotate(-3deg);
+  transition: transform 0.2s ease;
+}
+
+.die-cube.die-second {
+  transform: rotate(4deg);
+}
+
+.is-rolling .die-cube {
+  animation: realDiceTumble 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.is-rolling .die-second {
+  animation: realDiceTumbleAlt 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes realDiceTumble {
+  0% {
+    transform: translateY(-8px) rotate(-26deg) scale(0.92);
+  }
+  45% {
+    transform: translateY(4px) rotate(18deg) scale(1.06);
+  }
+  100% {
+    transform: translateY(0) rotate(-3deg) scale(1);
+  }
+}
+
+@keyframes realDiceTumbleAlt {
+  0% {
+    transform: translateY(-10px) rotate(28deg) scale(0.92);
+  }
+  45% {
+    transform: translateY(3px) rotate(-16deg) scale(1.06);
+  }
+  100% {
+    transform: translateY(0) rotate(4deg) scale(1);
+  }
+}
+
+.pip-slot {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pip-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #334155 0%, #0f172a 75%);
+  box-shadow:
+    inset 0 1.5px 2px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.pip-dot.pip-red {
+  background: radial-gradient(circle at 35% 35%, #f87171 0%, #dc2626 55%, #991b1b 100%);
+}
+
+.pip-dot.pip-one {
+  width: 15px;
+  height: 15px;
+}
+
+.dice-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.dice-sum-pill {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #fde68a;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(253, 230, 138, 0.35);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.doubles-pill {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  color: #ffffff;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.45);
+  white-space: nowrap;
+}
+
+.compact {
+  gap: 6px;
+}
+
+.compact .dice-pair {
+  gap: 6px;
+}
+
+.compact .die-cube {
+  width: 34px;
+  height: 34px;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.compact .pip-dot {
+  width: 5.5px;
+  height: 5.5px;
+}
+
+.compact .pip-one {
+  width: 9.5px;
+  height: 9.5px;
+}
+
+.compact .dice-sum-pill {
+  font-size: 0.66rem;
+  padding: 1px 6px;
+}
+
+.compact .doubles-pill {
+  font-size: 0.62rem;
+  padding: 1px 6px;
+}
+
+@media (max-width: 768px) {
+  .real-dice-widget {
+    gap: 6px;
+  }
+
+  .dice-pair {
+    gap: 8px;
+  }
+
+  .die-cube {
+    width: 38px;
+    height: 38px;
+    padding: 5px;
+    border-radius: 9px;
+  }
+
+  .pip-dot {
+    width: 6.5px;
+    height: 6.5px;
+  }
+
+  .pip-dot.pip-one {
+    width: 11px;
+    height: 11px;
+  }
+
+  .dice-meta {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .dice-sum-pill {
+    font-size: 0.68rem;
+    padding: 1px 6px;
+  }
+
+  .doubles-pill {
+    font-size: 0.64rem;
+    padding: 1px 6px;
+  }
+}

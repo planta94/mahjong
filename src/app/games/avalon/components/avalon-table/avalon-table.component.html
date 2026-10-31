@@ -1,0 +1,579 @@
+<div class="avalon-table-container">
+  @if (currentView(); as view) {
+    <!-- Top Quest & Vote Status Board -->
+    <div class="quest-board-card">
+      <div class="quest-track-header">
+        <div class="quest-track-title">
+          <span class="pavilion-tag">🏰 {{ 'AVALON.NAME' | translate }}</span>
+          <h2>{{ 'AVALON.TABLE.QUEST_TITLE' | translate: { num: view.currentQuest, teamSize: view.legalActions.requiredTeamSize } }}</h2>
+        </div>
+
+        <div class="quest-slots-row">
+          @for (qNum of [1, 2, 3, 4, 5]; track qNum) {
+            <div
+              class="quest-slot-pill"
+              [class.status-success]="getQuestStatus(qNum) === 'success'"
+              [class.status-fail]="getQuestStatus(qNum) === 'fail'"
+              [class.status-current]="getQuestStatus(qNum) === 'current'"
+            >
+              <div class="quest-slot-num">{{ 'AVALON.UI.QUEST_SHORT' | translate: { num: qNum } }}</div>
+              <div class="quest-slot-req">{{ getQuestSize(qNum) }} ⚔️</div>
+              @if (qNum === 4 && view.numPlayers >= 7) {
+                <span class="two-fails-badge">{{ 'AVALON.UI.TWO_FAILS_SHORT' | translate }}</span>
+              }
+              <div class="quest-slot-result">
+                @if (getQuestStatus(qNum) === 'success') {
+                  <span class="icon-win">🛡️ {{ 'AVALON.UI.STATUS_PASS' | translate }}</span>
+                } @else if (getQuestStatus(qNum) === 'fail') {
+                  <span class="icon-fail">💀 {{ 'AVALON.UI.STATUS_FAIL' | translate }}</span>
+                } @else if (getQuestStatus(qNum) === 'current') {
+                  <span class="icon-active">⏳ {{ 'AVALON.UI.STATUS_ACTIVE' | translate }}</span>
+                } @else {
+                  <span class="icon-idle">⚪</span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Vote Track / Hammer Tracker -->
+      <div class="vote-track-container" [class.hammer-active]="view.voteTrack === 4">
+        <div class="vote-track-label">
+          <span>{{ 'AVALON.TABLE.VOTE_TRACK' | translate: { count: view.voteTrack } }}</span>
+          @if (view.voteTrack === 4) {
+            <span class="hammer-badge-text">⚠️ {{ 'AVALON.TABLE.HAMMER_WARNING' | translate }}</span>
+          }
+        </div>
+
+        <div class="vote-track-steps">
+          @for (step of [0, 1, 2, 3, 4]; track step) {
+            <div
+              class="vote-step-slot"
+              [class.is-filled]="view.voteTrack > step"
+              [class.is-current]="view.voteTrack === step"
+              [class.is-hammer]="step === 4"
+            >
+              <span class="step-num">{{ step + 1 }}</span>
+              @if (step === 4) {
+                <span class="hammer-icon">🔨</span>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Privacy Shield / Role Knowledge Section -->
+    <div class="privacy-shield-card">
+      <div class="shield-header">
+        <div class="shield-header-left">
+          <span class="shield-badge">🛡️ {{ 'AVALON.TABLE.PRIVACY_SHIELD_PROMPT' | translate }}</span>
+          <p class="shield-subtext">{{ 'AVALON.UI.VERBAL_SUBTEXT' | translate }}</p>
+        </div>
+
+        <button
+          type="button"
+          class="btn btn-sm"
+          [class.btn-gold]="session.privacyShieldRevealed()"
+          (click)="session.togglePrivacyShield()"
+        >
+          👁️ {{ session.privacyShieldRevealed() ? ('AVALON.TABLE.SECRET_REVEALED' | translate) : ('AVALON.TABLE.SECRET_CONCEALED' | translate) }}
+        </button>
+      </div>
+
+      <div
+        class="shield-viewport"
+        (pointerdown)="session.setPrivacyShield(true)"
+        (pointerup)="session.setPrivacyShield(false)"
+        (pointerleave)="session.setPrivacyShield(false)"
+      >
+        @if (session.privacyShieldRevealed()) {
+          <div class="revealed-role-content">
+            <div class="role-badge-chip" [class.badge-good]="view.myLoyalty === 'good'" [class.badge-evil]="view.myLoyalty === 'evil'">
+              <span class="loyalty-icon">{{ view.myLoyalty === 'good' ? '👑' : '🗡️' }}</span>
+              <span class="role-title-text">{{ (myRoleMeta()?.nameKey ?? view.myRole ?? '') | translate }}</span>
+              <span class="loyalty-tag">
+                ({{ (view.myLoyalty === 'good' ? 'AVALON.UI.LOYAL_TO_ARTHUR' : 'AVALON.UI.MINION_OF_MORDRED') | translate }})
+              </span>
+            </div>
+
+            <p class="role-desc-text">{{ myRoleMeta()?.descKey ?? '' | translate }}</p>
+
+            <div class="night-vision-summary">
+              <h4 class="night-vision-title">{{ 'AVALON.UI.NIGHT_VISION_TITLE' | translate }}</h4>
+              <div class="night-vision-chips">
+                @for (pl of view.players; track pl.seat) {
+                  @if (pl.seat !== view.viewerSeat) {
+                    <div class="nv-chip" [ngClass]="getClueBadgeClass(view.nightVision.get(pl.seat))">
+                      <span class="nv-player-name">{{ pl.name }}:</span>
+                      <span class="nv-clue-label">{{ getClueBadgeText(view.nightVision.get(pl.seat)) }}</span>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+
+            @if (view.privateLadyResult; as ladyRes) {
+              <div class="lady-private-box">
+                <span class="lady-box-badge">🌊 {{ 'AVALON.UI.LADY_INTEL_BADGE' | translate }}</span>
+                <p>
+                  <strong>{{ getPlayerName(ladyRes.targetSeat) }}</strong>:
+                  <strong [class.pos-delta]="ladyRes.loyalty === 'good'" [class.neg-delta]="ladyRes.loyalty === 'evil'">
+                    {{ ladyRes.loyalty === 'good' ? ('AVALON.TABLE.LADY_RESULT_GOOD' | translate) : ('AVALON.TABLE.LADY_RESULT_EVIL' | translate) }}
+                  </strong>
+                </p>
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="concealed-prompt">
+            <span class="crest-icon">🛡️</span>
+            <p class="prompt-instruction">{{ 'AVALON.TABLE.PRIVACY_SHIELD_PROMPT' | translate }}</p>
+            <span class="prompt-hint">{{ 'AVALON.UI.HOLD_TO_PEEK_HINT' | translate }}</span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Round Table Knights Grid -->
+    <div class="round-table-section">
+      <div class="round-table-header">
+        <h3 class="section-title">{{ 'AVALON.UI.ROUND_TABLE_TITLE' | translate }}</h3>
+        <span class="leader-indicator">
+          👑 {{ 'AVALON.TABLE.LEADER' | translate: { name: getPlayerName(view.currentLeader) } }}
+        </span>
+      </div>
+
+      <div class="knights-grid">
+        @for (pl of view.players; track pl.seat) {
+          <div
+            class="knight-card"
+            [class.is-leader]="pl.isLeader"
+            [class.is-proposed]="pl.onProposedTeam || selectedTeamSeats().includes(pl.seat)"
+            [class.is-me]="pl.seat === view.viewerSeat"
+            [class.has-lady]="pl.hasLadyToken"
+            (click)="toggleSeatForTeam(pl.seat)"
+          >
+            <div class="knight-card-top">
+              <span class="knight-seat">#{{ pl.seat + 1 }}</span>
+              <div class="knight-badges">
+                @if (pl.isLeader) {
+                  <span class="badge-crown">👑</span>
+                }
+                @if (pl.hasLadyToken) {
+                  <span class="badge-lady">🌊</span>
+                }
+                @if (pl.onProposedTeam || selectedTeamSeats().includes(pl.seat)) {
+                  <span class="badge-team">⚔️</span>
+                }
+              </div>
+            </div>
+
+            <div class="knight-avatar">
+              <span class="avatar-sym">{{ pl.isBot ? '🤖' : '👤' }}</span>
+            </div>
+
+            <div class="knight-name">{{ pl.name }}</div>
+
+            @if (session.privacyShieldRevealed() && pl.seat !== view.viewerSeat) {
+              <div class="knight-clue-pill" [ngClass]="getClueBadgeClass(view.nightVision.get(pl.seat))">
+                {{ getClueBadgeText(view.nightVision.get(pl.seat)) }}
+              </div>
+            }
+
+            @if (view.legalActions.canPropose) {
+              <div class="select-checkbox">
+                <input
+                  type="checkbox"
+                  [checked]="selectedTeamSeats().includes(pl.seat)"
+                  (click)="$event.stopPropagation(); toggleSeatForTeam(pl.seat)"
+                />
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Active Action Panel -->
+    <div class="action-dock-card">
+      @if (view.legalActions.canPropose) {
+        <div class="action-bar-group">
+          <p class="action-tip">
+            {{ 'AVALON.UI.LEADER_TIP' | translate: { req: view.legalActions.requiredTeamSize, quest: view.currentQuest } }}
+          </p>
+          <button
+            type="button"
+            class="btn btn-crimson btn-lg"
+            [disabled]="selectedTeamSeats().length !== view.legalActions.requiredTeamSize"
+            (click)="proposeSelectedTeam()"
+          >
+            ⚔️ {{ 'AVALON.TABLE.PROPOSE_TEAM_BTN' | translate: { current: selectedTeamSeats().length, required: view.legalActions.requiredTeamSize } }}
+          </button>
+        </div>
+      }
+
+      @if (view.phase === 'team_voting') {
+        <div class="action-bar-group">
+          <div class="proposal-info-box">
+            <h4>{{ 'AVALON.UI.NOMINATED_TEAM' | translate }}</h4>
+            <div class="team-chips">
+              @for (seat of view.proposedTeam; track seat) {
+                <span class="nominee-chip">⚔️ {{ getPlayerName(seat) }}</span>
+              }
+            </div>
+          </div>
+
+          @if (view.legalActions.canVote) {
+            <p class="action-tip">{{ 'AVALON.UI.CAST_OPEN_VOTE_TIP' | translate }}</p>
+            <div class="vote-action-buttons">
+              <button type="button" class="btn btn-gold btn-lg" (click)="castVote('approve')">
+                🛡️ {{ 'AVALON.TABLE.APPROVE' | translate }}
+              </button>
+              <button type="button" class="btn btn-crimson btn-lg" (click)="castVote('reject')">
+                🗡️ {{ 'AVALON.TABLE.REJECT' | translate }}
+              </button>
+            </div>
+          } @else if (view.legalActions.hasVoted) {
+            <div class="voted-waiting-box">
+              <span class="spinner-icon">⏳</span>
+              <span>{{ 'AVALON.UI.VOTE_REGISTERED_WAIT' | translate }}</span>
+            </div>
+          }
+        </div>
+      }
+
+      @if (view.phase === 'quest_execution') {
+        <div class="action-bar-group">
+          @if (view.legalActions.canSubmitQuestCard) {
+            <div class="quest-callout">
+              <p>{{ 'AVALON.UI.CHOSEN_FOR_QUEST_TIP' | translate: { quest: view.currentQuest } }}</p>
+              <button type="button" class="btn btn-emerald btn-lg" (click)="openQuestSubmitModal()">
+                📜 {{ 'AVALON.UI.CAST_QUEST_CARD_BTN' | translate }}
+              </button>
+            </div>
+          } @else if (view.proposedTeam.includes(view.viewerSeat) && view.legalActions.hasSubmittedQuestCard) {
+            <div class="voted-waiting-box">
+              <span class="spinner-icon">⏳</span>
+              <span>{{ 'AVALON.UI.QUEST_CARD_SUBMITTED_WAIT' | translate }}</span>
+            </div>
+          } @else {
+            <div class="voted-waiting-box">
+              <span>{{ 'AVALON.UI.QUEST_UNDERWAY_WAIT' | translate: { quest: view.currentQuest } }}</span>
+            </div>
+          }
+        </div>
+      }
+
+      @if (view.phase === 'lady_of_lake' && view.legalActions.canUseLady) {
+        <div class="action-bar-group">
+          <p class="action-tip">{{ 'AVALON.UI.LADY_HOLDER_TIP' | translate }}</p>
+          <button type="button" class="btn btn-gold btn-lg" (click)="openLadyModal()">
+            🌊 {{ 'AVALON.TABLE.LADY_INVESTIGATE' | translate }}
+          </button>
+        </div>
+      }
+
+      @if (view.phase === 'assassination' && view.legalActions.canAssassinate) {
+        <div class="action-bar-group">
+          <p class="action-tip">{{ 'AVALON.UI.ASSASSIN_TURN_TIP' | translate }}</p>
+          <button type="button" class="btn btn-crimson btn-lg" (click)="openAssassinateModal()">
+            🗡️ {{ 'AVALON.TABLE.ASSASSINATE_BTN' | translate }}
+          </button>
+        </div>
+      }
+    </div>
+
+    <!-- Public History & Vote Record -->
+    <div class="history-section-card">
+      <div class="history-header">
+        <h3 class="section-title">📜 {{ 'AVALON.UI.HISTORY_TITLE' | translate }}</h3>
+        <span class="history-count">{{ 'AVALON.UI.HISTORY_COUNT' | translate: { count: view.proposalHistory.length } }}</span>
+      </div>
+
+      <!-- Desktop Table (> 768px) -->
+      <table class="desktop-table">
+        <thead>
+          <tr>
+            <th>{{ 'AVALON.UI.COL_QUEST' | translate }}</th>
+            <th>{{ 'AVALON.UI.COL_ATTEMPT' | translate }}</th>
+            <th>{{ 'AVALON.UI.COL_LEADER' | translate }}</th>
+            <th>{{ 'AVALON.UI.COL_TEAM' | translate }}</th>
+            <th>{{ 'AVALON.UI.COL_VOTES' | translate }}</th>
+            <th>{{ 'AVALON.UI.COL_OUTCOME' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of view.proposalHistory; track $index) {
+            <tr>
+              <td>{{ 'AVALON.UI.QUEST_SHORT' | translate: { num: p.questNumber } }}</td>
+              <td>#{{ p.attemptNumber }} / 5</td>
+              <td>👑 {{ getPlayerName(p.leaderSeat) }}</td>
+              <td>
+                <div class="history-team-pills">
+                  @for (m of p.proposedTeam; track m) {
+                    <span class="history-knight-pill">{{ getPlayerName(m) }}</span>
+                  }
+                </div>
+              </td>
+              <td>
+                <div class="history-votes-grid">
+                  @for (pl of view.players; track pl.seat) {
+                    <span
+                      class="history-vote-chip"
+                      [class.vote-chip-approve]="getVoteValue(p, pl.seat) === 'approve'"
+                      [class.vote-chip-reject]="getVoteValue(p, pl.seat) === 'reject'"
+                    >
+                      {{ pl.name }}:
+                      {{ (getVoteValue(p, pl.seat) === 'approve' ? 'AVALON.TABLE.APPROVE' : 'AVALON.TABLE.REJECT') | translate }}
+                    </span>
+                  }
+                </div>
+              </td>
+              <td>
+                <span
+                  class="history-outcome-badge"
+                  [class.outcome-approved]="p.approved"
+                  [class.outcome-rejected]="!p.approved"
+                >
+                  {{ (p.approved ? 'AVALON.UI.APPROVED_BADGE' : 'AVALON.UI.REJECTED_BADGE') | translate }}
+                </span>
+              </td>
+            </tr>
+          }
+          @if (view.proposalHistory.length === 0) {
+            <tr>
+              <td colspan="6" class="empty-history-cell">{{ 'AVALON.UI.EMPTY_HISTORY' | translate }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <!-- Mobile Cards (<= 768px) -->
+      <div class="mobile-cards">
+        @for (p of view.proposalHistory; track $index) {
+          <div class="mobile-app-card">
+            <div class="mobile-card-row">
+              <strong>{{ 'AVALON.UI.QUEST_SHORT' | translate: { num: p.questNumber } }} (#{{ p.attemptNumber }}/5)</strong>
+              <span
+                class="history-outcome-badge"
+                [class.outcome-approved]="p.approved"
+                [class.outcome-rejected]="!p.approved"
+              >
+                {{ (p.approved ? 'AVALON.UI.APPROVED_BADGE' : 'AVALON.UI.REJECTED_BADGE') | translate }}
+              </span>
+            </div>
+            <div class="mobile-card-row">
+              <span class="subtext">{{ 'AVALON.UI.COL_LEADER' | translate }}:</span>
+              <span>👑 {{ getPlayerName(p.leaderSeat) }}</span>
+            </div>
+            <div class="mobile-card-row">
+              <span class="subtext">{{ 'AVALON.UI.COL_TEAM' | translate }}:</span>
+              <span class="subtext-team">{{ formatTeamNames(p.proposedTeam) }}</span>
+            </div>
+          </div>
+        }
+        @if (view.proposalHistory.length === 0) {
+          <div class="empty-history-cell">{{ 'AVALON.UI.EMPTY_HISTORY' | translate }}</div>
+        }
+      </div>
+    </div>
+
+    <!-- Modals (Strictly Bounded, Bottom Action Buttons Only, NO top-right X) -->
+
+    <!-- A. Secret Quest Card Submission Modal -->
+    @if (session.showQuestModal()) {
+      <div class="modal-backdrop">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h3>📜 {{ 'AVALON.UI.MODAL_QUEST_TITLE' | translate: { quest: view.currentQuest } }}</h3>
+          </div>
+          <div class="modal-body">
+            <p>{{ 'AVALON.UI.MODAL_QUEST_DESC' | translate }}</p>
+
+            <div class="quest-cards-choice">
+              <div
+                class="quest-choice-card choice-success"
+                [class.selected]="selectedCardToSubmit() === 'success'"
+                (click)="selectedCardToSubmit.set('success')"
+              >
+                <span class="choice-icon">🛡️</span>
+                <h4>{{ 'AVALON.TABLE.QUEST_SUBMIT_SUCCESS' | translate }}</h4>
+                <p>{{ 'AVALON.UI.MODAL_SUCCESS_DESC' | translate }}</p>
+              </div>
+
+              <div
+                class="quest-choice-card choice-fail"
+                [class.selected]="selectedCardToSubmit() === 'fail'"
+                [class.disabled]="view.legalActions.canOnlyPass"
+                (click)="!view.legalActions.canOnlyPass && selectedCardToSubmit.set('fail')"
+              >
+                <span class="choice-icon">💀</span>
+                <h4>{{ 'AVALON.TABLE.QUEST_SUBMIT_FAIL' | translate }}</h4>
+                <p>
+                  @if (view.legalActions.canOnlyPass) {
+                    {{ 'AVALON.UI.MODAL_FAIL_LOYAL_LOCK' | translate }}
+                  } @else {
+                    {{ 'AVALON.UI.MODAL_FAIL_EVIL_DESC' | translate }}
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-emerald btn-lg" (click)="confirmQuestCard()">
+              {{ 'AVALON.UI.MODAL_CONFIRM_CARD_BTN' | translate }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- B. Lady of the Lake Modal -->
+    @if (session.showLadyModal()) {
+      <div class="modal-backdrop">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h3>🌊 {{ 'AVALON.UI.MODAL_LADY_TITLE' | translate }}</h3>
+          </div>
+          <div class="modal-body">
+            @if (!view.privateLadyResult) {
+              <p>{{ 'AVALON.UI.MODAL_LADY_CHOOSE' | translate }}</p>
+              <div class="target-select-list">
+                @for (targetSeat of view.legalActions.eligibleLadyTargets; track targetSeat) {
+                  <label class="target-radio-row">
+                    <input
+                      type="radio"
+                      name="ladyTarget"
+                      [value]="targetSeat"
+                      [checked]="selectedLadyTarget() === targetSeat"
+                      (change)="selectedLadyTarget.set(targetSeat)"
+                    />
+                    <span>{{ getPlayerName(targetSeat) }} (#{{ targetSeat + 1 }})</span>
+                  </label>
+                }
+              </div>
+            } @else {
+              <div class="lady-result-reveal">
+                <h4>{{ 'AVALON.UI.MODAL_LADY_REVEALED' | translate }}</h4>
+                <p class="target-loyalty-text">
+                  <strong>{{ getPlayerName(view.privateLadyResult.targetSeat) }}</strong>:
+                  <strong [class.pos-delta]="view.privateLadyResult.loyalty === 'good'" [class.neg-delta]="view.privateLadyResult.loyalty === 'evil'">
+                    {{ view.privateLadyResult.loyalty === 'good' ? ('AVALON.TABLE.LADY_RESULT_GOOD' | translate) : ('AVALON.TABLE.LADY_RESULT_EVIL' | translate) }}
+                  </strong>
+                </p>
+                <p class="lady-note">{{ 'AVALON.UI.MODAL_LADY_NOTE' | translate }}</p>
+              </div>
+            }
+          </div>
+          <div class="modal-footer">
+            @if (!view.privateLadyResult) {
+              <button
+                type="button"
+                class="btn btn-gold btn-lg"
+                [disabled]="selectedLadyTarget() === null"
+                (click)="confirmLadyInvestigation()"
+              >
+                {{ 'AVALON.UI.MODAL_LADY_CONFIRM_BTN' | translate }}
+              </button>
+            } @else {
+              <button type="button" class="btn btn-gold btn-lg" (click)="closeLadyModal()">
+                {{ 'AVALON.UI.MODAL_LADY_CLOSE_BTN' | translate }}
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- C. Assassination Modal -->
+    @if (session.showAssassinationModal()) {
+      <div class="modal-backdrop">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h3>🗡️ {{ 'AVALON.UI.MODAL_ASSASSIN_TITLE' | translate }}</h3>
+          </div>
+          <div class="modal-body">
+            <p>{{ 'AVALON.TABLE.ASSASSINATE_PROMPT' | translate }}</p>
+            <div class="target-select-list">
+              @for (targetSeat of view.legalActions.eligibleAssassinationTargets; track targetSeat) {
+                <label class="target-radio-row">
+                  <input
+                    type="radio"
+                    name="assassinTarget"
+                    [value]="targetSeat"
+                    [checked]="selectedAssassinTarget() === targetSeat"
+                    (change)="selectedAssassinTarget.set(targetSeat)"
+                  />
+                  <span>{{ getPlayerName(targetSeat) }} (#{{ targetSeat + 1 }})</span>
+                </label>
+              }
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-crimson btn-lg"
+              [disabled]="selectedAssassinTarget() === null"
+              (click)="confirmAssassination()"
+            >
+              🗡️ {{ 'AVALON.TABLE.ASSASSINATE_BTN' | translate }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- D. Game Over Settlement Modal -->
+    @if (view.phase === 'game_over') {
+      <div class="modal-backdrop">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h2 [class.pos-delta]="view.winner === 'good'" [class.neg-delta]="view.winner === 'evil'">
+              {{ view.winner === 'good' ? ('AVALON.OUTCOMES.GOOD_VICTORY' | translate) : ('AVALON.OUTCOMES.EVIL_VICTORY' | translate) }}
+            </h2>
+          </div>
+          <div class="modal-body">
+            <div class="win-reason-banner">
+              @switch (view.winReason) {
+                @case ('THREE_SUCCESSFUL_QUESTS') {
+                  <p>{{ 'AVALON.OUTCOMES.REASON_THREE_QUESTS' | translate }}</p>
+                }
+                @case ('THREE_FAILED_QUESTS') {
+                  <p>{{ 'AVALON.OUTCOMES.REASON_THREE_FAILS' | translate }}</p>
+                }
+                @case ('FIVE_REJECTED_TEAMS') {
+                  <p>{{ 'AVALON.OUTCOMES.REASON_HAMMER' | translate }}</p>
+                }
+                @case ('MERLIN_ASSASSINATED') {
+                  <p>{{ 'AVALON.OUTCOMES.REASON_ASSASSIN_SUCCESS' | translate }}</p>
+                }
+                @case ('MERLIN_SURVIVED') {
+                  <p>{{ 'AVALON.OUTCOMES.REASON_ASSASSIN_FAIL' | translate }}</p>
+                }
+              }
+            </div>
+
+            <h4>{{ 'AVALON.UI.FINAL_IDENTITIES_TITLE' | translate }}</h4>
+            <div class="final-roles-table">
+              @for (pl of view.players; track pl.seat) {
+                <div class="final-role-row">
+                  <span class="final-seat">#{{ pl.seat + 1 }} {{ pl.name }}</span>
+                  <span class="final-role-tag">
+                    {{ getPlayerRoleName(view.finalRoles?.get(pl.seat)) | translate }}
+                  </span>
+                </div>
+              }
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-gold btn-lg" (click)="returnToLobby()">
+              {{ 'MONOPOLY.RETURN_LOBBY_BTN' | translate }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  }
+</div>

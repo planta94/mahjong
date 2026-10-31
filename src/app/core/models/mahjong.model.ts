@@ -1,6 +1,6 @@
 export type GameMode = '4p' | '3p';
 export type SuitType = 'm' | 'p' | 's';
-export type SupportedLang = 'zh' | 'en' | 'ms';
+export type SupportedLang = 'zh' | 'en';
 
 export interface TileSpec {
   readonly code: string;

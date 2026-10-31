@@ -1,36 +1,56 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="HK &amp; MY Mahjong">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Tabletop Royale">
   <defs>
-    <linearGradient id="crestBg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#115e46" />
-      <stop offset="100%" stop-color="#051c14" />
+    <linearGradient id="royaleShieldBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#134e3a" />
+      <stop offset="55%" stop-color="#09261d" />
+      <stop offset="100%" stop-color="#070d14" />
     </linearGradient>
-    <linearGradient id="goldTrim" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="royaleGold" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#fef08a" />
-      <stop offset="55%" stop-color="#eab308" />
-      <stop offset="100%" stop-color="#a16207" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#b45309" />
     </linearGradient>
-    <linearGradient id="ivoryFace" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#fffef9" />
-      <stop offset="78%" stop-color="#f8f2e2" />
-      <stop offset="100%" stop-color="#e5dcc4" />
+    <linearGradient id="ivorySurface" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="80%" stop-color="#f5eedc" />
+      <stop offset="100%" stop-color="#dfd3b6" />
     </linearGradient>
   </defs>
 
-  <!-- Royal Jade & Gold Rounded Crest -->
-  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#crestBg)" stroke="url(#goldTrim)" stroke-width="2.5" />
-  <rect x="6" y="6" width="52" height="52" rx="11.5" fill="none" stroke="#eab308" stroke-opacity="0.24" stroke-width="1" />
+  <!-- Royal Rounded Crest Frame -->
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="url(#royaleShieldBg)" stroke="url(#royaleGold)" stroke-width="2.6" />
+  <rect x="5.5" y="5.5" width="53" height="53" rx="12" fill="none" stroke="#fde68a" stroke-opacity="0.28" stroke-width="1" />
 
-  <!-- 3D Mahjong Tile Base (Jade Back) -->
-  <rect x="14" y="12" width="36" height="44" rx="6.5" fill="#064e3b" opacity="0.55" />
-  <rect x="14" y="10.5" width="36" height="44" rx="6.5" fill="#15803d" />
+  <!-- Top Sovereign Crown (Monopoly Tycoon & Avalon Royalty) -->
+  <path
+    d="M19 22L22.5 12.5L28.5 17.5L32 10.5L35.5 17.5L41.5 12.5L45 22Z"
+    fill="url(#royaleGold)"
+    stroke="#fef9c3"
+    stroke-width="0.9"
+    stroke-linejoin="round"
+  />
+  <rect x="19" y="22.5" width="26" height="2.8" rx="1.2" fill="url(#royaleGold)" />
+  <circle cx="32" cy="10" r="1.7" fill="#fef08a" />
+  <circle cx="22.3" cy="12" r="1.4" fill="#fef08a" />
+  <circle cx="41.7" cy="12" r="1.4" fill="#fef08a" />
 
-  <!-- Ivory Tile Face -->
-  <rect x="14" y="7.5" width="36" height="43" rx="6.5" fill="url(#ivoryFace)" stroke="#cfc5ab" stroke-width="1.2" />
+  <!-- Left Tilted Jade & Ivory Tile / Quest Card -->
+  <g transform="rotate(-11 23 41)">
+    <rect x="12.5" y="29.5" width="20" height="25" rx="4" fill="#059669" />
+    <rect x="12.5" y="27.5" width="20" height="24.5" rx="4" fill="url(#ivorySurface)" stroke="#cbbda0" stroke-width="1" />
+    <!-- Classic Diamond Star Emblem -->
+    <path d="M22.5 34L26 39.8L22.5 45.6L19 39.8Z" fill="#0d9488" />
+  </g>
 
-  <!-- Carved Red Dragon (紅中) Vector Glyph -->
-  <g fill="none" stroke="#c81e1e" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="22" y="20" width="20" height="13.5" rx="2" stroke-width="3.5" />
-    <path d="M32 13.5V45" stroke-width="3.9" />
-    <path d="M29.6 13.5H34.4" stroke-width="2.6" />
+  <!-- Right Overlapping Ivory 3D Dice Cube -->
+  <g transform="rotate(9 41 42)">
+    <rect x="29.5" y="31.5" width="22" height="22" rx="5" fill="#78350f" opacity="0.45" />
+    <rect x="29.5" y="29.5" width="22" height="22" rx="5" fill="url(#ivorySurface)" stroke="#d4a373" stroke-width="1.2" />
+    <!-- Traditional Red Center Pip & Corner Pips -->
+    <circle cx="35" cy="35" r="1.9" fill="#1e293b" />
+    <circle cx="46" cy="35" r="1.9" fill="#1e293b" />
+    <circle cx="40.5" cy="40.5" r="2.5" fill="#dc2626" />
+    <circle cx="35" cy="46" r="1.9" fill="#1e293b" />
+    <circle cx="46" cy="46" r="1.9" fill="#1e293b" />
   </g>
 </svg>

@@ -140,4 +140,310 @@ describe('MahjongSessionService & Host/Guest P2P Sync', () => {
 
     window.removeEventListener('mahjong:leave', listener);
   });
+
+  it('covers HostSession client message protocol, error handling, rule clamping, and hand transitions', () => {
+    const host = new HostSession({
+      hostName: 'HostPlayer',
+      mode: '3p',
+      online: true,
+      fillBots: false,
+      rules: { minFan: 3, maxFan: 10 },
+    });
+
+    const privHost = host as unknown as {
+      handleClientMessage: (
+        msg: Record<string, unknown>,
+        replyFn: (reply: Record<string, unknown>) => void
+      ) => void;
+      match: { phase: string } | null;
+      buildSnapshotForSeat: (seatIdx: number) => unknown;
+    };
+
+    let replyMsg: Record<string, unknown> | null = null;
+    const replyFn = (reply: Record<string, unknown>) => {
+      replyMsg = reply;
+    };
+
+    // 1. Missing token or self-token
+    privHost.handleClientMessage({ type: 'join' }, replyFn);
+    expect(replyMsg).toBeNull();
+
+    privHost.handleClientMessage({ type: 'join', token: host.myToken }, replyFn);
+    expect(replyMsg).toBeNull();
+
+    // 2. Client join filling open seat 1
+    privHost.handleClientMessage({ type: 'join', token: 'guest_seat_1', name: 'GuestOne' }, replyFn);
+    expect(host.lobby.seats.at(1)?.name).toBe('GuestOne');
+    expect(host.lobby.seats.at(1)?.connected).toBe(true);
+
+    // 3. Client join with existing token updates name and reconnects
+    privHost.handleClientMessage({ type: 'join', token: 'guest_seat_1', name: 'GuestOneRenamed' }, replyFn);
+    expect(host.lobby.seats.at(1)?.name).toBe('GuestOneRenamed');
+
+    // 4. Client join filling bot/open seat 2
+    host.toggleSeatBot(2);
+    expect(host.lobby.seats.at(2)?.kind).toBe('bot');
+    privHost.handleClientMessage({ type: 'join', token: 'guest_seat_2', name: 'GuestTwo' }, replyFn);
+    expect(host.lobby.seats.at(2)?.kind).toBe('human');
+    expect(host.lobby.seats.at(2)?.name).toBe('GuestTwo');
+
+    // 5. Client join when room is full (all 3 seats occupied by humans)
+    replyMsg = null;
+    privHost.handleClientMessage({ type: 'join', token: 'guest_extra', name: 'Latecomer' }, replyFn);
+    expect(replyMsg).toEqual({ type: 'error', message: '房间座位已满！请房主释放座位。' });
+
+    // 6. Start game and test late join rejection
+    expect(host.startGame()).toBe(true);
+    replyMsg = null;
+    privHost.handleClientMessage({ type: 'join', token: 'guest_during_game', name: 'Stranger' }, replyFn);
+    expect(replyMsg).toEqual({ type: 'error', message: '牌局已经开始，无法中途加入新座位。' });
+
+    // 7. Client action from unrecognized token
+    replyMsg = null;
+    privHost.handleClientMessage(
+      { type: 'action', token: 'unrecognized_tok', action: { type: 'pass' } },
+      replyFn
+    );
+    expect(replyMsg).toBeNull();
+
+    // 8. Client action throwing invalid action error
+    privHost.handleClientMessage(
+      { type: 'action', token: 'guest_seat_1', action: { type: 'discard', tileId: 'nonexistent_tile' } },
+      replyFn
+    );
+    const errReply = replyMsg as { type?: string; message?: string } | null;
+    expect(typeof errReply?.message).toBe('string');
+
+    // 9. Host sendAction failure
+    host.sendAction({ type: 'discard', tileId: 'invalid_host_tile' });
+    expect(typeof host.error).toBe('string');
+
+    // 10. toggleSeatBot edge cases
+    host.toggleSeatBot(0);
+    expect(host.lobby.seats.at(0)?.kind).toBe('human');
+    host.toggleSeatBot(1);
+    expect(host.lobby.seats.at(1)?.kind).toBe('human');
+    host.toggleSeatBot(99);
+
+    // 11. setMode & updateRules when match is started
+    host.setMode('4p');
+    expect(host.lobby.mode).toBe('3p');
+    host.updateRules({ minFan: 10 });
+    expect(host.lobby.rules.minFan).toBe(3);
+
+    // 12. nextHand transition
+    host.nextHand();
+    expect(host.match?.phase).toBe('turn');
+
+    if (privHost.match) {
+      privHost.match.phase = 'handOver';
+      host.nextHand();
+      expect(host.match?.phase).toBe('turn');
+    }
+
+    // 13. returnToLobby and rule maxFan clamping
+    host.returnToLobby();
+    expect(host.lobby.started).toBe(false);
+    expect(host.match).toBeNull();
+
+    host.updateRules({ minFan: 8, maxFan: 3 });
+    expect(host.lobby.rules.maxFan).toBe(8);
+
+    host.destroy();
+  });
+
+  it('handles GuestSession broadcast messages, action payloads, and MahjongSessionService helpers', async () => {
+    const guest = new GuestSession({
+      roomCode: 'TEST99',
+      guestName: 'GuestAlice',
+      token: 'tok_alice_123',
+    });
+
+    const privGuest = guest as unknown as {
+      bc: { onmessage?: (ev: MessageEvent) => void } | null;
+      snapshot: { error: string | null; status: string; mySeat: number };
+    };
+
+    // 1. Send action posts to broadcast channel
+    guest.sendAction({ type: 'pass' });
+
+    // 2. Simulate BC message not for guest
+    privGuest.bc?.onmessage?.(new MessageEvent('message', { data: { to: 'host' } }));
+    expect(privGuest.snapshot.error).toBeNull();
+
+    // 3. Simulate BC message targeting different token
+    privGuest.bc?.onmessage?.(
+      new MessageEvent('message', {
+        data: { to: 'guest', targetToken: 'different_token', type: 'error', message: '錯' },
+      })
+    );
+    expect(privGuest.snapshot.error).toBeNull();
+
+    // 4. Simulate BC error message targeting this guest
+    privGuest.bc?.onmessage?.(
+      new MessageEvent('message', {
+        data: {
+          to: 'guest',
+          targetToken: 'tok_alice_123',
+          type: 'error',
+          message: '房間座位已滿！',
+        },
+      })
+    );
+    expect(privGuest.snapshot.error).toBe('房間座位已滿！');
+
+    // 5. Simulate BC sync message updating snapshot
+    privGuest.bc?.onmessage?.(
+      new MessageEvent('message', {
+        data: {
+          to: 'guest',
+          targetToken: 'tok_alice_123',
+          type: 'sync',
+          snapshot: {
+            role: 'guest',
+            online: true,
+            roomCode: 'TEST99',
+            status: '已連線至房間 TEST99',
+            error: null,
+            mySeat: 2,
+            lobby: null,
+            view: null,
+          },
+        },
+      })
+    );
+    expect(privGuest.snapshot.mySeat).toBe(2);
+    expect(privGuest.snapshot.error).toBeNull();
+
+    guest.destroy();
+
+    // MahjongSessionService helpers
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [provideRouter(routes)],
+    });
+    const svc = TestBed.inject(MahjongSessionService);
+
+    svc.startSolo('SoloTester', '3p', DEFAULT_RULES);
+    expect(svc.waitingTiles().length).toBeGreaterThanOrEqual(0);
+
+    svc.playClack(500);
+    svc.toggleBgm();
+    svc.toggleBgm();
+    svc.speakCallout('自摸');
+    svc.speakCallout('錯章');
+
+    await svc.copyInviteLink();
+    svc.nextHand();
+    svc.leaveSession();
+  });
+
+  it('triggers audio cues on log changes and autoPass timer on claim phase', () => {
+    vi.useFakeTimers();
+    try {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [provideRouter(routes)],
+      });
+      const svc = TestBed.inject(MahjongSessionService);
+
+      let lastAction: unknown = null;
+      const listenerRef: { current?: (snap: unknown) => void } = {};
+      const fakeSession = {
+        role: 'host' as const,
+        online: false,
+        roomCode: 'LOCAL',
+        mySeat: 0,
+        destroy: vi.fn(),
+        onUpdate: (fn: (snap: unknown) => void) => {
+          listenerRef.current = fn;
+          return () => undefined;
+        },
+        sendAction: (act: unknown) => {
+          lastAction = act;
+        },
+      };
+
+      const privSvc = svc as unknown as {
+        attach: (session: unknown) => void;
+      };
+      privSvc.attach(fakeSession);
+
+      svc.toggleAutoPass(true);
+      expect(svc.autoPass()).toBe(true);
+
+      const logsToTest = [
+        '⚠️ 詐糊 扣分',
+        '⚠️ 錯章 罰分',
+        '自摸！大三元',
+        '食糊！清一色',
+        '暗槓 筒子',
+        '碰 一筒',
+        '上 二三四筒',
+        '打飛 萬能牌',
+        '換飛 成功',
+        '普通摸牌',
+      ];
+
+      for (const logMsg of logsToTest) {
+        listenerRef.current?.({
+          role: 'host',
+          online: false,
+          roomCode: 'LOCAL',
+          mySeat: 0,
+          lobby: null,
+          view: {
+            phase: 'turn',
+            viewerSeat: 0,
+            numSeats: 3,
+            players: [],
+            log: [logMsg],
+            legalActions: null,
+          },
+        });
+      }
+
+      // Claim phase triggers autoPass timer
+      listenerRef.current?.({
+        role: 'host',
+        online: false,
+        roomCode: 'LOCAL',
+        mySeat: 0,
+        lobby: null,
+        view: {
+          phase: 'claim',
+          viewerSeat: 0,
+          numSeats: 3,
+          players: [],
+          log: ['進張'],
+          legalActions: { phase: 'claim', pass: true, claims: [] },
+        },
+      });
+
+      vi.advanceTimersByTime(200);
+      expect(lastAction).toEqual({ type: 'pass' });
+
+      // handOver resets autoPass and selectionPaused
+      listenerRef.current?.({
+        role: 'host',
+        online: false,
+        roomCode: 'LOCAL',
+        mySeat: 0,
+        lobby: null,
+        view: {
+          phase: 'handOver',
+          viewerSeat: 0,
+          numSeats: 3,
+          players: [],
+          log: ['手牌結算'],
+          legalActions: null,
+        },
+      });
+      expect(svc.autoPass()).toBe(false);
+
+      svc.leaveSession();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

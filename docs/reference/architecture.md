@@ -10,6 +10,6 @@ Following `ocpi-hub-portal` conventions:
 - `src/app/core/services/engine.service.ts`: Authoritative state machine (`turn`, `claim`, `robKong`, `handOver`), authentic 4-tile block dealing (`四張一棟`) + dealer jump-draw (`跳牌`), dead-wall flower replacement (`補花`), manual `tileIds` meld validation (including `3p` `飛` wildcards), wrong-call / false-Hu (`詐糊` / `錯章`) point penalties, and claim priority (`食糊 > 槓/碰 > 上`).
 - `src/app/core/services/bot.service.ts`: Tactical 5-Fan AI with exact 1-ply Tenpai ukeire search, multi-archetype planning (All Pongs, Seven Pairs, Pure/Mixed Flush, Honor Power), sequence/triplet preservation, and defensive danger reading.
 - `src/app/core/services/mahjong-session.service.ts`: Signal store (`snapshot`, `waitingTiles`, `autoPass`), `HostSession`, `GuestSession`, Web Audio tile clack + penalty buzzer synthesis, SpeechSynthesis Cantonese callouts, and query-preserving Router transitions (`/lobby` ↔ `/table`).
-- `src/app/layout/header/`: Top navigation bar with `繁中 / EN / BM` switcher, room invite copy pill, rulebook trigger, and sound toggle.
+- `src/app/layout/header/`: Top navigation bar with `简中 / EN` switcher, room invite copy pill, rulebook trigger, and sound toggle.
 - `src/app/pages/lobby/` & `src/app/pages/table/`: Standalone routed feature pages.
 - `src/app/shared/`: `TileComponent` (`mj-tile` SVG renderer), `RulebookDialogComponent`, and `TranslatePipe`.

@@ -8,7 +8,7 @@ This file is the always-on rulebook for AI coding agents and engineers working o
 
 - **Application**: Serverless P2P & Offline AI Mahjong Pavilion (`4p` Hong Kong 144-Tile + `3p` Authentic Malaysian 84-Tile `飛牌三人麻將`)
 - **Framework & Language**: **Angular 21** (Standalone Components & Signals) + **TypeScript 5.9+**
-- **Styling & i18n**: **SCSS Design System** (`src/styles/`) + Signal-backed `TranslateService` / `TranslatePipe` (`public/assets/i18n/{en,zh,ms}.json`)
+- **Styling & i18n**: **SCSS Design System** (`src/styles/`) + Signal-backed `TranslateService` / `TranslatePipe` (`public/assets/i18n/{en,zh}.json`)
 - **Networking**: **Zero Backend** — Host-in-browser authoritative state machine over WebRTC (`peerjs`) + same-browser `BroadcastChannel` fallback
 - **Unit Testing**: **Vitest 4.1+** via `@angular/build:unit-test` (`isolate: true`, `@vitest/coverage-v8`, `0` trivial assertions)
 - **Linter**: **ESLint 9+** + `typescript-eslint` + `eslint-plugin-security` (`0` errors, `0` warnings, `0` `eslint-disable`)
@@ -48,7 +48,7 @@ Before modifying files in any area below, **MUST** `read_file` the corresponding
 
 - **Inputs & Modals**: Keep `.portal-input` (`38px`, `#0d1117`, `#00d285` focus) top-level in `src/styles.scss` (never nested). Render modals with `max-width: 95vw; max-height: 90vh;`, middle scroll container (`max-height: 55vh`), and **bottom action buttons only** (never render top-right `X` close buttons).
 - **Responsive Views**: Render `.desktop-table` on `> 768px` and `.mobile-cards` Modern App Cards on `<= 768px`. Keep component SCSS shallow (`1–2` levels, grouped `@media` at bottom, `< 32 kB`).
-- **i18n Parity**: Use `TranslatePipe` (`| translate`) for user-facing strings and update `public/assets/i18n/{en,zh,ms}.json` in lockstep (`i18n-parity.spec.ts`).
+- **i18n Parity**: Use `TranslatePipe` (`| translate`) for user-facing strings and update `public/assets/i18n/{en,zh}.json` in lockstep (`i18n-parity.spec.ts`).
 - **TypeScript & ESLint**: Zero explicit `any`; `catch (e: unknown)`; use `Map<K, V>` and `.at()` instead of dynamic `obj[key]` / `arr[idx]` indexing (`security/detect-object-injection`); **zero `eslint-disable` comments**.
 - **Unit Specs**: **Never** call `TestBed.overrideComponent(...)`, never write trivial existence assertions (`.toBeTruthy()`, `.toBeDefined()`, `.not.toBeNull()`), and never pass a 3rd timeout arg to `it(...)`.
 

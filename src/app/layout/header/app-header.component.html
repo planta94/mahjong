@@ -1,26 +1,75 @@
 <header class="topbar">
-  <div class="brand">
-    <img class="brand-logo" src="favicon.svg" alt="" width="28" height="28" />
-    <span class="brand-title">{{ 'HEADER.BRAND' | translate }}</span>
-    <span class="brand-badge">
-      @if (session.snapshot()?.lobby; as lob) {
-        {{ (lob.mode === '3p' ? 'HEADER.BADGE_3P' : 'HEADER.BADGE_4P') | translate }}
-      } @else {
-        {{ 'HEADER.BADGE_P2P' | translate }}
+  <div
+    class="brand"
+    [class.brand-clickable]="shellUi.activeGame() !== 'hub'"
+    (click)="onBrandClick()"
+  >
+    <img class="brand-logo" src="favicon.svg" alt="Tabletop Royale" width="28" height="28" />
+    @if (shellUi.activeGame() !== 'hub') {
+      <span class="brand-kicker">{{ 'HEADER.BRAND' | translate }} <span class="brand-sep">/</span></span>
+    }
+    <span class="brand-title">
+      @switch (shellUi.activeGame()) {
+        @case ('mahjong') {
+          {{ 'HEADER.GAME_TITLE_MAHJONG' | translate }}
+        }
+        @case ('monopoly') {
+          {{ 'HEADER.GAME_TITLE_MONOPOLY' | translate }}
+        }
+        @case ('avalon') {
+          {{ 'HEADER.GAME_TITLE_AVALON' | translate }}
+        }
+        @default {
+          {{ 'HEADER.BRAND' | translate }}
+        }
       }
     </span>
-    <span class="fan-summary">
-      {{ 'HEADER.FAN_SUMMARY' | translate: { min: activeRules().minFan, max: activeRules().maxFan } }}
+    <span
+      class="brand-badge"
+      [class.badge-mahjong]="shellUi.activeGame() === 'mahjong'"
+      [class.badge-monopoly]="shellUi.activeGame() === 'monopoly'"
+      [class.badge-avalon]="shellUi.activeGame() === 'avalon'"
+    >
+      @switch (shellUi.activeGame()) {
+        @case ('mahjong') {
+          {{ 'HEADER.BADGE_MAHJONG' | translate }}
+        }
+        @case ('monopoly') {
+          {{ 'HEADER.BADGE_MONOPOLY' | translate }}
+        }
+        @case ('avalon') {
+          {{ 'HEADER.BADGE_AVALON' | translate }}
+        }
+        @default {
+          {{ 'HEADER.BADGE_PAVILION' | translate }}
+        }
+      }
     </span>
   </div>
 
   <div class="topbar-actions">
-    @if (session.snapshot()?.online && session.snapshot()?.roomCode; as code) {
+    @if (shellUi.activeGame() !== 'hub') {
+      <button
+        type="button"
+        class="btn icon-action-btn hub-btn"
+        [attr.aria-label]="'HEADER.SWITCH_GAME' | translate"
+        [attr.title]="'HEADER.SWITCH_GAME' | translate"
+        (click)="switchToHub()"
+      >
+        <svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+          <polyline points="9 22 9 12 15 12 15 22" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span class="action-label">{{ 'HEADER.SWITCH_GAME' | translate }}</span>
+      </button>
+    }
+
+    @if (shellUi.activeRoomCode(); as code) {
       <button
         type="button"
         class="btn btn-gold room-code-btn"
-        [attr.title]="(session.copiedToast() ? 'HEADER.COPIED' : 'HEADER.COPY_LINK') | translate"
-        (click)="session.copyInviteLink()"
+        [attr.title]="(shellUi.copiedToast() ? 'HEADER.COPIED' : 'HEADER.COPY_LINK') | translate"
+        (click)="shellUi.copyInviteLink()"
       >
         <svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true">
           <rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="2.2" />
@@ -28,7 +77,7 @@
         </svg>
         <span class="room-code-short">{{ code }}</span>
         <span class="action-label">
-          · {{ (session.copiedToast() ? 'HEADER.COPIED' : 'HEADER.COPY_LINK') | translate }}
+          · {{ (shellUi.copiedToast() ? 'HEADER.COPIED' : 'HEADER.COPY_LINK') | translate }}
         </span>
       </button>
     }
@@ -48,10 +97,10 @@
 
     <button
       type="button"
-      class="btn icon-action-btn"
+      class="btn icon-action-btn rulebook-btn"
       [attr.aria-label]="'HEADER.RULEBOOK' | translate"
       [attr.title]="'HEADER.RULEBOOK' | translate"
-      (click)="session.showRulebook.set(true)"
+      (click)="shellUi.openRulebook()"
     >
       <svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5V5.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
@@ -63,54 +112,54 @@
     <button
       type="button"
       class="btn icon-action-btn bgm-toggle-btn"
-      [class.toggle-on]="session.bgmEnabled()"
-      [class.toggle-muted]="!session.bgmEnabled()"
-      [attr.aria-label]="(session.bgmEnabled() ? 'HEADER.BGM_ON' : 'HEADER.BGM_OFF') | translate"
-      [attr.title]="(session.bgmEnabled() ? 'HEADER.BGM_ON' : 'HEADER.BGM_OFF') | translate"
-      (click)="session.toggleBgm()"
+      [class.toggle-on]="shellUi.bgmEnabled()"
+      [class.toggle-muted]="!shellUi.bgmEnabled()"
+      [attr.aria-label]="(shellUi.bgmEnabled() ? 'HEADER.BGM_ON' : 'HEADER.BGM_OFF') | translate"
+      [attr.title]="(shellUi.bgmEnabled() ? 'HEADER.BGM_ON' : 'HEADER.BGM_OFF') | translate"
+      (click)="shellUi.toggleBgm()"
     >
       <svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M9 18V6l11-2v12" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
         <circle cx="6.5" cy="18" r="2.5" fill="none" stroke="currentColor" stroke-width="2.1" />
         <circle cx="17.5" cy="16" r="2.5" fill="none" stroke="currentColor" stroke-width="2.1" />
-        @if (!session.bgmEnabled()) {
+        @if (!shellUi.bgmEnabled()) {
           <path d="M3 3l18 18" fill="none" stroke="#f87171" stroke-width="2.4" stroke-linecap="round" />
         }
       </svg>
       <span class="action-label">
-        {{ (session.bgmEnabled() ? 'HEADER.BGM_ON' : 'HEADER.BGM_OFF') | translate }}
+        {{ (shellUi.bgmEnabled() ? 'HEADER.BGM_ON' : 'HEADER.BGM_OFF') | translate }}
       </span>
     </button>
 
     <button
       type="button"
       class="btn icon-action-btn"
-      [class.toggle-on]="session.soundEnabled()"
-      [class.toggle-muted]="!session.soundEnabled()"
-      [attr.aria-label]="(session.soundEnabled() ? 'HEADER.SOUND_ON' : 'HEADER.SOUND_OFF') | translate"
-      [attr.title]="(session.soundEnabled() ? 'HEADER.SOUND_ON' : 'HEADER.SOUND_OFF') | translate"
-      (click)="session.soundEnabled.set(!session.soundEnabled())"
+      [class.toggle-on]="shellUi.soundEnabled()"
+      [class.toggle-muted]="!shellUi.soundEnabled()"
+      [attr.aria-label]="(shellUi.soundEnabled() ? 'HEADER.SOUND_ON' : 'HEADER.SOUND_OFF') | translate"
+      [attr.title]="(shellUi.soundEnabled() ? 'HEADER.SOUND_ON' : 'HEADER.SOUND_OFF') | translate"
+      (click)="shellUi.toggleSound()"
     >
       <svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M11 5L6 9H3v6h3l5 4V5Z" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" />
-        @if (session.soundEnabled()) {
+        @if (shellUi.soundEnabled()) {
           <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
         } @else {
           <path d="M16 9l5 6M21 9l-5 6" fill="none" stroke="#f87171" stroke-width="2.3" stroke-linecap="round" />
         }
       </svg>
       <span class="action-label">
-        {{ (session.soundEnabled() ? 'HEADER.SOUND_ON' : 'HEADER.SOUND_OFF') | translate }}
+        {{ (shellUi.soundEnabled() ? 'HEADER.SOUND_ON' : 'HEADER.SOUND_OFF') | translate }}
       </span>
     </button>
 
-    @if (session.snapshot()) {
+    @if (shellUi.activeRoomCode()) {
       <button
         type="button"
         class="btn icon-action-btn leave-btn"
         [attr.aria-label]="'HEADER.LEAVE_ROOM' | translate"
         [attr.title]="'HEADER.LEAVE_ROOM' | translate"
-        (click)="session.leaveSession()"
+        (click)="shellUi.leaveActiveRoom()"
       >
         <svg class="action-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5M16 17l5-5-5-5M21 12H9" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />

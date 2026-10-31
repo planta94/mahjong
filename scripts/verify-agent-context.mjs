@@ -89,7 +89,19 @@ if (fs.existsSync(agentsMdPath)) {
   }
 }
 
-assertCondition(!fs.existsSync(path.join(repoRoot, '.agents')), 'Duplicate .agents/ exists.');
+const agentsDir = path.join(repoRoot, '.agents');
+if (fs.existsSync(agentsDir)) {
+  const entries = fs.readdirSync(agentsDir);
+  const stray = entries.filter((e) => e !== 'teamwork');
+  assertCondition(
+    stray.length === 0,
+    `Stray config files or directories found in .agents/: ${stray.join(', ')}`
+  );
+  assertCondition(
+    !fs.existsSync(path.join(agentsDir, 'AGENTS.md')),
+    'Duplicate AGENTS.md in .agents/ is forbidden.'
+  );
+}
 
 verifyMarkdownLinks('AGENTS.md');
 for (const refDoc of EXPECTED_REFERENCE_DOCS) {

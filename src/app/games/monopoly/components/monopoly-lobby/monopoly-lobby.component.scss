@@ -1,0 +1,269 @@
+.monopoly-lobby-container {
+  min-height: calc(100vh - 64px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.lobby-card,
+.waiting-card {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 640px;
+  width: 100%;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+
+.lobby-header,
+.waiting-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.lobby-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(230, 57, 70, 0.15);
+  color: #e63946;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.lobby-title,
+.waiting-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #f0f6fc;
+  margin: 0 0 8px 0;
+}
+
+.lobby-subtitle,
+.waiting-subtitle {
+  color: #8b949e;
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.invite-banner {
+  background: rgba(35, 134, 54, 0.15);
+  border: 1px solid #238636;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.invite-text {
+  color: #3fb950;
+  margin: 0;
+  font-size: 15px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.setting-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setting-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #c9d1d9;
+}
+
+.actions-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.actions-row .btn {
+  flex: 1;
+}
+
+.join-section {
+  border-top: 1px solid #30363d;
+  padding-top: 24px;
+}
+
+.join-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f0f6fc;
+  margin: 0 0 12px 0;
+}
+
+.join-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.join-input-group .portal-input {
+  flex: 1;
+}
+
+.room-code-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #238636;
+  color: #ffffff;
+  font-size: 18px;
+  margin-left: 8px;
+  letter-spacing: 1px;
+}
+
+.seats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.seat-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+}
+
+.seat-row.is-me {
+  border-color: #00d285;
+}
+
+.seat-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.seat-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.seat-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f0f6fc;
+}
+
+.seat-status {
+  font-size: 12px;
+  color: #8b949e;
+}
+
+.tag-me {
+  color: #00d285;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.waiting-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.waiting-actions .btn {
+  width: 100%;
+}
+
+.guest-wait-hint {
+  color: #8b949e;
+  font-size: 14px;
+  margin: 0;
+}
+
+.btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+  font-size: 14px;
+}
+
+.btn-lg {
+  padding: 12px 20px;
+  font-size: 15px;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn-emerald {
+  background: #238636;
+  color: #ffffff;
+}
+
+.btn-emerald:hover {
+  background: #2ea043;
+}
+
+.btn-gold {
+  background: #d4a373;
+  color: #1a1a1a;
+}
+
+.btn-gold:hover {
+  background: #e2b487;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+}
+
+.btn-outline:hover {
+  border-color: #8b949e;
+  color: #f0f6fc;
+}
+
+@media (max-width: 768px) {
+  .monopoly-lobby-container {
+    padding: 12px;
+  }
+  .lobby-card,
+  .waiting-card {
+    padding: 20px 16px;
+  }
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+  .actions-row {
+    flex-direction: column;
+  }
+}

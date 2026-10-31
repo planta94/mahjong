@@ -1,12 +1,14 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import {
+  ClaimSeatEntry,
   GameAction,
   GameMode,
   GameRules,
   LobbySeat,
   MatchState,
   PublicLobby,
+  RobKongSeatEntry,
   SessionSnapshot,
   WaitingTileInfo,
 } from '../models/mahjong.model';
@@ -14,10 +16,28 @@ import { windLabel } from '../utils/tiles.util';
 import { chooseBotAction } from './bot.service';
 import { applyAction, createMatch, getPlayerView, startNewHand } from './engine.service';
 import { DEFAULT_RULES, getWaitingTiles } from './scorer.service';
+import { ShellUiService } from './shell-ui.service';
+
+export interface SerializedMahjongSave {
+  lobby: PublicLobby;
+  match: Omit<MatchState, 'pendingRobKong' | 'pendingClaims'> & {
+    pendingRobKong: {
+      seat: number;
+      meldIdx: number;
+      tileId: string;
+      bySeatEntries: [number, RobKongSeatEntry][];
+    } | null;
+    pendingClaims: {
+      fromSeat: number;
+      tileId: string;
+      bySeatEntries: [number, ClaimSeatEntry][];
+    } | null;
+  };
+}
 
 const PEER_PREFIX = 'hkmj-v1-room-';
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const BOT_NAMES: readonly string[] = ['阿發 (Bot)', '十三姨 (Bot)', '雀神強 (Bot)', '六嬸 (Bot)'];
+const BOT_NAMES: readonly string[] = ['阿发 (Bot)', '十三姨 (Bot)', '雀神强 (Bot)', '六婶 (Bot)'];
 
 const PEER_OPTIONS = {
   host: '0.peerjs.com',
@@ -201,7 +221,7 @@ function makeDefaultSeats(
     return {
       seat: idx,
       kind: 'open',
-      name: '等待朋友加入…',
+      name: '等待好友加入…',
       token: null,
       connected: false,
       windLabel: windLabel(idx),
@@ -247,7 +267,7 @@ export class HostSession {
     this.online = online;
     this.roomCode = online ? generateRoomCode() : 'LOCAL';
     this.myToken = token ?? createRandomToken('host');
-    this.status = online ? '正在建立 P2P 房間…' : '單機模式就緒';
+    this.status = online ? '正在建立 P2P 房间…' : '单机模式就绪';
 
     this.lobby = {
       mode,
@@ -303,7 +323,7 @@ export class HostSession {
     }
 
     if (typeof RTCPeerConnection === 'undefined') {
-      this.status = `房號 ${this.roomCode} 已開啟（本機通道就緒）`;
+      this.status = `房号 ${this.roomCode} 已开启（本机通道就绪）`;
       this.broadcastAll();
       return;
     }
@@ -325,7 +345,7 @@ export class HostSession {
 
       peer.on('open', () => {
         if (this.destroyed) return;
-        this.status = `房號 ${this.roomCode} 已開啟（WebRTC P2P 就緒）`;
+        this.status = `房号 ${this.roomCode} 已开启（WebRTC P2P 就绪）`;
         this.broadcastAll();
       });
 
@@ -369,12 +389,12 @@ export class HostSession {
           this.reconnectTimer = setTimeout(() => this.tryReconnectSignaling(), 800);
           return;
         }
-        this.status = `本機分頁連線就緒（外部信令離線：${err?.type ?? 'offline'}）`;
+        this.status = `本机分页连接就绪（外部信令离线：${err?.type ?? 'offline'}）`;
         this.broadcastAll();
       });
     } catch {
       if (this.destroyed) return;
-      this.status = '離線區域模式（支援同瀏覽器多分頁或電腦對戰）';
+      this.status = '离线局域模式（支持同浏览器多分页或电脑对战）';
       this.broadcastAll();
     }
   }
@@ -400,7 +420,7 @@ export class HostSession {
       }
 
       if (this.lobby.started) {
-        replyFn({ type: 'error', message: '牌局已經開始，無法中途加入新座位。' });
+        replyFn({ type: 'error', message: '牌局已经开始，无法中途加入新座位。' });
         return;
       }
 
@@ -408,7 +428,7 @@ export class HostSession {
         this.lobby.seats.find((s) => s.seat > 0 && s.kind === 'open') ??
         this.lobby.seats.find((s) => s.seat > 0 && s.kind === 'bot');
       if (!targetSeat) {
-        replyFn({ type: 'error', message: '房間座位已滿！請房主釋放座位。' });
+        replyFn({ type: 'error', message: '房间座位已满！请房主释放座位。' });
         return;
       }
 
@@ -430,7 +450,7 @@ export class HostSession {
         this.broadcastAll();
         this.scheduleBots();
       } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : '非法動作';
+        const message = e instanceof Error ? e.message : '非法操作';
         replyFn({ type: 'error', message });
       }
     }
@@ -461,7 +481,7 @@ export class HostSession {
     if (!s) return;
     if (s.kind === 'bot') {
       s.kind = 'open';
-      s.name = '等待朋友加入…';
+      s.name = '等待好友加入…';
       s.token = null;
       s.connected = false;
     } else if (s.kind === 'open') {
@@ -485,7 +505,7 @@ export class HostSession {
   startGame(): boolean {
     const hasOpen = this.lobby.seats.some((s) => s.kind === 'open');
     if (hasOpen) {
-      this.error = '仍有空位等待朋友加入！請等待朋友進房，或點擊空位切換為「電腦 Bot」。';
+      this.error = '仍有空位等待好友加入！请等待好友进房，或点击空位切换为「电脑 Bot」。';
       this.broadcastAll();
       return false;
     }
@@ -499,6 +519,14 @@ export class HostSession {
     this.broadcastAll();
     this.scheduleBots();
     return true;
+  }
+
+  resumeRestoredMatch(lobby: PublicLobby, match: MatchState): void {
+    this.error = null;
+    this.lobby = lobby;
+    this.match = match;
+    this.broadcastAll();
+    this.scheduleBots();
   }
 
   nextHand(): void {
@@ -523,7 +551,7 @@ export class HostSession {
       this.broadcastAll();
       this.scheduleBots();
     } catch (e: unknown) {
-      this.error = e instanceof Error ? e.message : '動作失敗';
+      this.error = e instanceof Error ? e.message : '操作失败';
       this.broadcastAll();
     }
   }
@@ -656,7 +684,7 @@ export class GuestSession {
       role: 'guest',
       online: true,
       roomCode: this.roomCode,
-      status: `正在連線至房間 ${this.roomCode}…`,
+      status: `正在连接至房间 ${this.roomCode}…`,
       error: null,
       mySeat: -1,
       lobby: null,
@@ -728,14 +756,14 @@ export class GuestSession {
         this.snapshot = {
           ...(rawMsg['snapshot'] as unknown as SessionSnapshot),
           error: null,
-          status: `已連線至房間 ${this.roomCode}`,
+          status: `已连接至房间 ${this.roomCode}`,
         };
         this.emit();
       } else if (rawMsg['type'] === 'error') {
         this.clearHandshakeTimers();
         this.snapshot = {
           ...this.snapshot,
-          error: typeof rawMsg['message'] === 'string' ? rawMsg['message'] : '連線錯誤',
+          error: typeof rawMsg['message'] === 'string' ? rawMsg['message'] : '连接错误',
         };
         this.emit();
       }
@@ -746,7 +774,7 @@ export class GuestSession {
       this.clearHandshakeTimers();
       this.snapshot = {
         ...this.snapshot,
-        error: `與房主建立 WebRTC 通道失敗（房號 ${this.roomCode}），請請房主保持頁面開啟後重試。`,
+        error: `与房主建立 WebRTC 通道失败（房号 ${this.roomCode}），请房主保持页面开启后重试。`,
       };
       this.emit();
     });
@@ -754,7 +782,7 @@ export class GuestSession {
     conn.on('close', () => {
       if (this.destroyed || this.connectedViaBc) return;
       this.clearHandshakeTimers();
-      this.snapshot = { ...this.snapshot, status: '與房主連線中斷，請重新整理重連。' };
+      this.snapshot = { ...this.snapshot, status: '与房主连接中断，请刷新页面重连。' };
       this.emit();
     });
   }
@@ -771,14 +799,14 @@ export class GuestSession {
           this.snapshot = {
             ...(ev.data['snapshot'] as unknown as SessionSnapshot),
             error: null,
-            status: `已連線至房間 ${this.roomCode}`,
+            status: `已连接至房间 ${this.roomCode}`,
           };
           this.emit();
         } else if (ev.data['type'] === 'error') {
           this.clearHandshakeTimers();
           this.snapshot = {
             ...this.snapshot,
-            error: typeof ev.data['message'] === 'string' ? ev.data['message'] : '連線錯誤',
+            error: typeof ev.data['message'] === 'string' ? ev.data['message'] : '连接错误',
           };
           this.emit();
         }
@@ -796,7 +824,7 @@ export class GuestSession {
       this.clearHandshakeTimers();
       this.snapshot = {
         ...this.snapshot,
-        error: `連線逾時：找不到房號 ${this.roomCode} 或網路防火牆阻擋，請確認房主仍在等候室後再試。`,
+        error: `连接超时：找不到房号 ${this.roomCode} 或网络防火墙阻挡，请确认房主仍在等候室后再试。`,
       };
       this.emit();
     }, 15000);
@@ -823,14 +851,14 @@ export class GuestSession {
         this.clearHandshakeTimers();
         this.snapshot = {
           ...this.snapshot,
-          error: `無法連線至房號 ${this.roomCode}（${err?.type ?? '請確認房號是否正確'}）`,
+          error: `无法连接至房号 ${this.roomCode}（${err?.type ?? '请确认房号是否正确'}）`,
         };
         this.emit();
       });
     } catch {
       if (this.destroyed || this.connectedViaBc) return;
       this.clearHandshakeTimers();
-      this.snapshot = { ...this.snapshot, error: '載入 P2P 連線模組失敗，請檢查網路連線。' };
+      this.snapshot = { ...this.snapshot, error: '加载 P2P 连接模块失败，请检查网络连接。' };
       this.emit();
     }
   }
@@ -848,25 +876,24 @@ export class GuestSession {
 @Injectable({ providedIn: 'root' })
 export class MahjongSessionService {
   private readonly router = inject(Router);
+  private readonly shellUi = inject(ShellUiService);
 
   readonly snapshot = signal<SessionSnapshot | null>(null);
-  readonly soundEnabled = signal<boolean>(true);
-  readonly bgmEnabled = signal<boolean>(true);
+  readonly soundEnabled = this.shellUi.soundEnabled;
+  readonly bgmEnabled = this.shellUi.bgmEnabled;
   readonly hintsEnabled = signal<boolean>(true);
   readonly autoPass = signal<boolean>(false);
   readonly selectionPaused = signal<boolean>(false);
-  readonly showRulebook = signal<boolean>(false);
-  readonly copiedToast = signal<boolean>(false);
+  readonly showRulebook = this.shellUi.showRulebookModal;
+  readonly copiedToast = this.shellUi.copiedToast;
 
   private session: HostSession | GuestSession | null = null;
   private audioCtx: AudioContext | null = null;
-  private bgmAudio: HTMLAudioElement | null = null;
   private autoPassTimer: ReturnType<typeof setTimeout> | undefined;
   private lastLogSeen = '';
 
   toggleBgm(): void {
-    this.bgmEnabled.set(!this.bgmEnabled());
-    this.syncBgm(Boolean(this.snapshot()?.view));
+    this.shellUi.toggleBgm();
   }
 
   toggleAutoPass(enabled?: boolean): void {
@@ -897,41 +924,6 @@ export class MahjongSessionService {
         this.session?.sendAction({ type: 'pass' });
       }
     }, 120);
-  }
-
-  private syncBgm(inMatch: boolean): void {
-    if (
-      typeof window === 'undefined' ||
-      typeof Audio === 'undefined' ||
-      (typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('jsdom'))
-    ) {
-      return;
-    }
-    try {
-      if (!inMatch) {
-        if (this.bgmAudio) {
-          this.bgmAudio.pause();
-          this.bgmAudio.currentTime = 0;
-        }
-        return;
-      }
-      if (!this.bgmEnabled()) {
-        this.bgmAudio?.pause();
-        return;
-      }
-      if (!this.bgmAudio) {
-        const audioSrc = new URL('assets/audio/bgm.mp3', document.baseURI).toString();
-        const audio = new Audio(audioSrc);
-        audio.loop = true;
-        audio.volume = 0.38;
-        this.bgmAudio = audio;
-      }
-      if (this.bgmAudio.paused) {
-        void this.bgmAudio.play().catch(() => undefined);
-      }
-    } catch {
-      // Ignore browser media restrictions
-    }
   }
 
   readonly waitingTiles = computed<WaitingTileInfo[]>(() => {
@@ -1024,14 +1016,16 @@ export class MahjongSessionService {
         this.lastLogSeen = newestLog;
         if (newestLog.startsWith('⚠️')) {
           this.playPenaltyBuzzer();
-          this.speakCallout(newestLog.includes('詐糊') ? '詐糊' : '錯章');
+          this.speakCallout(
+            newestLog.includes('詐糊') || newestLog.includes('诈糊') ? '詐糊' : '錯章'
+          );
         } else if (newestLog.includes('自摸')) this.speakCallout('自摸');
-        else if (newestLog.includes('食糊')) this.speakCallout('食糊');
-        else if (newestLog.includes('槓')) this.speakCallout('槓');
+        else if (newestLog.includes('食糊') || newestLog.includes('食胡')) this.speakCallout('食糊');
+        else if (newestLog.includes('槓') || newestLog.includes('杠')) this.speakCallout('槓');
         else if (newestLog.includes('碰')) this.speakCallout('碰');
         else if (newestLog.includes('上 ')) this.speakCallout('上');
-        else if (newestLog.includes('打飛')) this.speakCallout('打飛');
-        else if (newestLog.includes('換飛')) this.speakCallout('換飛');
+        else if (newestLog.includes('打飛') || newestLog.includes('打飞')) this.speakCallout('打飛');
+        else if (newestLog.includes('換飛') || newestLog.includes('换飞')) this.speakCallout('換飛');
         else this.playClack(580);
       }
 
@@ -1041,7 +1035,12 @@ export class MahjongSessionService {
       }
 
       this.snapshot.set(snap);
-      this.syncBgm(Boolean(snap.view));
+      this.shellUi.setActiveGame('mahjong');
+      if (snap.online && snap.roomCode && snap.roomCode !== 'LOCAL') {
+        this.shellUi.setActiveRoomCode(snap.roomCode);
+      } else if (!snap.online) {
+        this.shellUi.setActiveRoomCode(null);
+      }
       this.scheduleAutoPassIfNeeded(snap);
 
       const queryParams = snap.online && snap.roomCode ? { room: snap.roomCode } : {};
@@ -1116,7 +1115,7 @@ export class MahjongSessionService {
     if (this.session?.role === 'host') this.session.returnToLobby();
   }
 
-  leaveSession(): void {
+  terminateSession(): void {
     clearTimeout(this.autoPassTimer);
     this.autoPass.set(false);
     this.selectionPaused.set(false);
@@ -1124,17 +1123,146 @@ export class MahjongSessionService {
     this.session = null;
     this.lastLogSeen = '';
     this.snapshot.set(null);
-    this.syncBgm(false);
+    this.shellUi.setActiveRoomCode(null);
     if (typeof window !== 'undefined') {
       window.history.replaceState({}, '', window.location.pathname);
       window.dispatchEvent(new CustomEvent('mahjong:leave'));
+      window.dispatchEvent(new CustomEvent('p2p:leave'));
     }
+  }
+
+  leaveSession(): void {
+    this.terminateSession();
     void this.router.navigate(['/lobby'], { queryParams: {}, replaceUrl: true });
+  }
+
+  canExportSave(): boolean {
+    return this.session?.role === 'host' && this.session.match !== null;
+  }
+
+  exportSaveData(): SerializedMahjongSave | null {
+    if (this.session?.role !== 'host' || !this.session.match) return null;
+    const match = this.session.match;
+    const raw: SerializedMahjongSave = {
+      lobby: {
+        mode: this.session.lobby.mode,
+        rules: { ...this.session.lobby.rules },
+        started: true,
+        seats: this.session.lobby.seats.map((s) => ({ ...s, token: null })),
+      },
+      match: {
+        mode: match.mode,
+        numSeats: match.numSeats,
+        rules: { ...match.rules },
+        roundWind: match.roundWind,
+        dealerSeat: match.dealerSeat,
+        dealerStreak: match.dealerStreak,
+        handNumber: match.handNumber,
+        scores: [...match.scores],
+        phase: match.phase,
+        wall: [...match.wall],
+        turnSeat: match.turnSeat,
+        canSelfAct: match.canSelfAct,
+        kongReplacement: match.kongReplacement,
+        isFirstGoAround: match.isFirstGoAround,
+        turnsTaken: [...match.turnsTaken],
+        lastDiscard: match.lastDiscard ? { ...match.lastDiscard } : null,
+        lastPenalty: match.lastPenalty ? { ...match.lastPenalty } : null,
+        discardPool: [...match.discardPool],
+        pendingRobKong: match.pendingRobKong
+          ? {
+              seat: match.pendingRobKong.seat,
+              meldIdx: match.pendingRobKong.meldIdx,
+              tileId: match.pendingRobKong.tileId,
+              bySeatEntries: Array.from(match.pendingRobKong.bySeat.entries()),
+            }
+          : null,
+        pendingClaims: match.pendingClaims
+          ? {
+              fromSeat: match.pendingClaims.fromSeat,
+              tileId: match.pendingClaims.tileId,
+              bySeatEntries: Array.from(match.pendingClaims.bySeat.entries()),
+            }
+          : null,
+        players: match.players,
+        log: [...match.log],
+        result: match.result,
+      },
+    };
+    return JSON.parse(JSON.stringify(raw)) as SerializedMahjongSave;
+  }
+
+  restoreSaveData(saved: SerializedMahjongSave): boolean {
+    if (!saved?.lobby || !saved?.match) return false;
+    this.terminateSession();
+    const cloned = JSON.parse(JSON.stringify(saved)) as SerializedMahjongSave;
+    const hostName = cloned.lobby.seats.at(0)?.name || this.shellUi.playerNickname() || '房主';
+    const host = new HostSession({
+      hostName,
+      mode: cloned.lobby.mode,
+      online: false,
+      fillBots: true,
+      rules: cloned.lobby.rules,
+    });
+
+    const restoredSeats: LobbySeat[] = cloned.lobby.seats.map((s, idx) => {
+      if (idx === 0) {
+        return {
+          seat: 0,
+          kind: 'human',
+          name: s.name || hostName,
+          token: host.myToken,
+          connected: true,
+          windLabel: s.windLabel || windLabel(0),
+        };
+      }
+      return {
+        seat: idx,
+        kind: 'bot',
+        name: s.name || BOT_NAMES.at((idx - 1) % BOT_NAMES.length) || 'Bot',
+        token: `bot_${idx}`,
+        connected: true,
+        windLabel: s.windLabel || windLabel(idx),
+      };
+    });
+
+    const restoredLobby: PublicLobby = {
+      mode: cloned.lobby.mode,
+      rules: { ...DEFAULT_RULES, ...cloned.lobby.rules },
+      started: true,
+      seats: restoredSeats,
+    };
+
+    const { pendingRobKong, pendingClaims, ...restMatch } = cloned.match;
+    const restoredMatch: MatchState = {
+      ...restMatch,
+      pendingRobKong: pendingRobKong
+        ? {
+            seat: pendingRobKong.seat,
+            meldIdx: pendingRobKong.meldIdx,
+            tileId: pendingRobKong.tileId,
+            bySeat: new Map<number, RobKongSeatEntry>(pendingRobKong.bySeatEntries),
+          }
+        : null,
+      pendingClaims: pendingClaims
+        ? {
+            fromSeat: pendingClaims.fromSeat,
+            tileId: pendingClaims.tileId,
+            bySeat: new Map<number, ClaimSeatEntry>(pendingClaims.bySeatEntries),
+          }
+        : null,
+    };
+
+    this.autoPass.set(false);
+    this.selectionPaused.set(false);
+    this.hintsEnabled.set(restoredLobby.rules.showHints !== false);
+    this.attach(host);
+    host.resumeRestoredMatch(restoredLobby, restoredMatch);
+    return true;
   }
 
   sendAction(action: GameAction): void {
     this.playClack(action.type === 'discard' ? 640 : 740);
-    this.syncBgm(Boolean(this.snapshot()?.view));
     this.session?.sendAction(action);
   }
 

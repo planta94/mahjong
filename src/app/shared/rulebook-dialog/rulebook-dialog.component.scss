@@ -1,7 +1,41 @@
 .dialog-title {
   color: #fef08a;
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 800;
+}
+
+.rulebook-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 4px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  margin-bottom: 6px;
+}
+
+.rulebook-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.rulebook-tab-btn.active {
+  background: rgba(0, 210, 133, 0.2);
+  border-color: rgba(0, 210, 133, 0.5);
+  color: #6ee7b7;
 }
 
 .fan-tier-list {
@@ -17,5 +51,21 @@
   color: #fde047;
   font-size: 0.98rem;
   font-weight: 700;
-  margin-top: 4px;
+  margin-top: 6px;
+}
+
+.matrix-note {
+  color: #fca5a5;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .rulebook-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .dialog-title {
+    font-size: 1rem;
+  }
 }

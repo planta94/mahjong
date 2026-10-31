@@ -4,7 +4,11 @@
     <router-outlet />
   </div>
 
-  @if (session.showRulebook()) {
-    <app-rulebook-dialog (closed)="session.showRulebook.set(false)" />
+  @if (shellUi.showRulebookModal()) {
+    <app-rulebook-dialog (closed)="shellUi.closeRulebook()" />
+  }
+
+  @if (gameManager.showExitConfirmModal()) {
+    <app-exit-confirm-dialog />
   }
 </div>

@@ -1,6 +1,6 @@
 <div class="modal-backdrop" (click)="close()">
   <div
-    class="modal-card"
+    class="modal-card rulebook-modal-card"
     role="dialog"
     aria-modal="true"
     aria-labelledby="rulebook-dialog-title"
@@ -8,72 +8,205 @@
   >
     <div class="modal-header">
       <h2 id="rulebook-dialog-title" class="dialog-title">
-        📖 {{ 'RULEBOOK.TITLE' | translate }}
+        📖
+        @switch (activeTab()) {
+          @case ('monopoly') {
+            {{ 'RULEBOOK.MONOPOLY_TITLE' | translate }}
+          }
+          @case ('avalon') {
+            {{ 'RULEBOOK.AVALON_TITLE' | translate }}
+          }
+          @default {
+            {{ 'RULEBOOK.TITLE' | translate }}
+          }
+        }
       </h2>
     </div>
 
     <div class="modal-body">
-      <div class="fan-tier-list">
-        <p>🔹 {{ 'RULEBOOK.TIER_1' | translate }}</p>
-        <p>🔹 {{ 'RULEBOOK.TIER_2' | translate }}</p>
-        <p>🔹 {{ 'RULEBOOK.TIER_3' | translate }}</p>
-        <p>🔹 {{ 'RULEBOOK.TIER_4' | translate }}</p>
-        <p>🔹 {{ 'RULEBOOK.TIER_5_8' | translate }}</p>
-        <p>🔹 {{ 'RULEBOOK.TIER_LIMIT' | translate }}</p>
-        <p>⚠️ {{ 'RULEBOOK.PENALTY_NOTE' | translate }}</p>
-      </div>
-
-      <h3 class="schedule-title">💰 {{ 'RULEBOOK.PAYOUT_TITLE' | translate }}</h3>
-
-      <table class="desktop-table">
-        <thead>
-          <tr>
-            <th>{{ 'RULEBOOK.COL_FAN' | translate }}</th>
-            <th>{{ 'RULEBOOK.COL_BASE' | translate }}</th>
-            <th>{{ 'RULEBOOK.COL_DISCARD' | translate }}</th>
-            <th>{{ 'RULEBOOK.COL_SELFDRAW' | translate }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (r of payoutRows; track r.fan) {
-            <tr>
-              <td>
-                <strong>
-                  {{ r.fan }} {{ r.fan === 10 ? ('RULEBOOK.LIMIT_TAG' | translate) : '' }}
-                </strong>
-              </td>
-              <td>{{ r.base }}</td>
-              <td>4P: <strong>{{ 4 * r.base }}</strong> / 3P: <strong>{{ 3 * r.base }}</strong></td>
-              <td>
-                {{ 'RULEBOOK.EACH_PREFIX' | translate }} <strong>{{ 2 * r.base }}</strong>
-                (4P: {{ 6 * r.base }} / 3P: {{ 4 * r.base }})
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-
-      <div class="mobile-cards">
-        @for (r of payoutRows; track r.fan) {
-          <div class="mobile-app-card">
-            <div class="mobile-card-row">
-              <strong>
-                {{ 'RULEBOOK.COL_FAN' | translate }}: {{ r.fan }}
-                {{ r.fan === 10 ? ('RULEBOOK.LIMIT_TAG' | translate) : '' }}
-              </strong>
-              <span>{{ 'RULEBOOK.COL_BASE' | translate }}: {{ r.base }}</span>
-            </div>
-            <div class="mobile-card-row">
-              <span>{{ 'RULEBOOK.COL_DISCARD' | translate }}</span>
-              <strong>4P: {{ 4 * r.base }} · 3P: {{ 3 * r.base }}</strong>
-            </div>
-            <div class="mobile-card-row">
-              <span>{{ 'RULEBOOK.COL_SELFDRAW' | translate }}</span>
-              <strong>{{ 'RULEBOOK.EACH_PREFIX' | translate }} {{ 2 * r.base }}</strong>
-            </div>
-          </div>
+      <div class="rulebook-tabs" role="tablist">
+        @for (tab of gameTabs; track tab.id) {
+          <button
+            type="button"
+            role="tab"
+            class="rulebook-tab-btn"
+            [class.active]="activeTab() === tab.id"
+            [attr.aria-selected]="activeTab() === tab.id"
+            (click)="selectGame(tab.id)"
+          >
+            <span>{{ tab.icon }}</span>
+            <span>{{ tab.labelKey | translate }}</span>
+          </button>
         }
       </div>
+
+      @switch (activeTab()) {
+        @case ('monopoly') {
+          <div class="fan-tier-list">
+            <p>🏁 {{ 'RULEBOOK.MONOPOLY_RULE_1' | translate }}</p>
+            <p>💰 {{ 'RULEBOOK.MONOPOLY_RULE_2' | translate }}</p>
+            <p>⛓️ {{ 'RULEBOOK.MONOPOLY_RULE_3' | translate }}</p>
+            <p>🏘️ {{ 'RULEBOOK.MONOPOLY_RULE_4' | translate }}</p>
+            <p>🏆 {{ 'RULEBOOK.MONOPOLY_RULE_5' | translate }}</p>
+          </div>
+
+          <h3 class="schedule-title">📊 {{ 'RULEBOOK.MONOPOLY_SCHEDULE_TITLE' | translate }}</h3>
+
+          <table class="desktop-table">
+            <thead>
+              <tr>
+                <th>{{ 'RULEBOOK.MONOPOLY_COL_TYPE' | translate }}</th>
+                <th>{{ 'RULEBOOK.MONOPOLY_COL_COUNT' | translate }}</th>
+                <th>{{ 'RULEBOOK.MONOPOLY_COL_EFFECT' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of monopolyScheduleRows; track row.typeKey) {
+                <tr>
+                  <td><strong>{{ row.typeKey | translate }}</strong></td>
+                  <td>{{ row.countKey | translate }}</td>
+                  <td><strong>{{ row.effectKey | translate }}</strong></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <div class="mobile-cards">
+            @for (row of monopolyScheduleRows; track row.typeKey) {
+              <div class="mobile-app-card">
+                <div class="mobile-card-row">
+                  <strong>{{ row.typeKey | translate }}</strong>
+                </div>
+                <div class="mobile-card-row">
+                  <span>{{ row.countKey | translate }}</span>
+                  <strong>{{ row.effectKey | translate }}</strong>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        @case ('avalon') {
+          <div class="fan-tier-list">
+            <p>🛡️ {{ 'RULEBOOK.AVALON_RULE_1' | translate }}</p>
+            <p>🔮 {{ 'RULEBOOK.AVALON_RULE_2' | translate }}</p>
+            <p>🗳️ {{ 'RULEBOOK.AVALON_RULE_3' | translate }}</p>
+            <p>⚔️ {{ 'RULEBOOK.AVALON_RULE_4' | translate }}</p>
+            <p>🗡️ {{ 'RULEBOOK.AVALON_RULE_5' | translate }}</p>
+          </div>
+
+          <h3 class="schedule-title">📜 {{ 'RULEBOOK.AVALON_SCHEDULE_TITLE' | translate }}</h3>
+
+          <table class="desktop-table">
+            <thead>
+              <tr>
+                <th>{{ 'RULEBOOK.AVALON_COL_PLAYERS' | translate }}</th>
+                <th>{{ 'RULEBOOK.AVALON_COL_RATIO' | translate }}</th>
+                <th>{{ 'RULEBOOK.AVALON_COL_QUESTS' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of avalonMatrixRows; track row.players) {
+                <tr>
+                  <td><strong>{{ row.players }}P</strong></td>
+                  <td>🔵 {{ row.good }} vs 🔴 {{ row.evil }}</td>
+                  <td>
+                    <strong>{{ row.questsLabel }}</strong>
+                    @if (row.twoFailsOnQ4) {
+                      <span class="matrix-note"> ({{ 'RULEBOOK.AVALON_TWO_FAILS_TAG' | translate }})</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <div class="mobile-cards">
+            @for (row of avalonMatrixRows; track row.players) {
+              <div class="mobile-app-card">
+                <div class="mobile-card-row">
+                  <strong>{{ row.players }}P</strong>
+                  <span>🔵 {{ row.good }} vs 🔴 {{ row.evil }}</span>
+                </div>
+                <div class="mobile-card-row">
+                  <span>{{ 'RULEBOOK.AVALON_COL_QUESTS' | translate }}</span>
+                  <strong>
+                    {{ row.questsLabel }}
+                    @if (row.twoFailsOnQ4) {
+                      ({{ 'RULEBOOK.AVALON_TWO_FAILS_TAG' | translate }})
+                    }
+                  </strong>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        @default {
+          <div class="fan-tier-list">
+            <p>🔹 {{ 'RULEBOOK.TIER_1' | translate }}</p>
+            <p>🔹 {{ 'RULEBOOK.TIER_2' | translate }}</p>
+            <p>🔹 {{ 'RULEBOOK.TIER_3' | translate }}</p>
+            <p>🔹 {{ 'RULEBOOK.TIER_4' | translate }}</p>
+            <p>🔹 {{ 'RULEBOOK.TIER_5_8' | translate }}</p>
+            <p>🔹 {{ 'RULEBOOK.TIER_LIMIT' | translate }}</p>
+            <p>🃏 {{ 'RULEBOOK.MAHJONG_FLY_NOTE' | translate }}</p>
+            <p>⚠️ {{ 'RULEBOOK.PENALTY_NOTE' | translate }}</p>
+          </div>
+
+          <h3 class="schedule-title">💰 {{ 'RULEBOOK.PAYOUT_TITLE' | translate }}</h3>
+
+          <table class="desktop-table">
+            <thead>
+              <tr>
+                <th>{{ 'RULEBOOK.COL_FAN' | translate }}</th>
+                <th>{{ 'RULEBOOK.COL_BASE' | translate }}</th>
+                <th>{{ 'RULEBOOK.COL_DISCARD' | translate }}</th>
+                <th>{{ 'RULEBOOK.COL_SELFDRAW' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of payoutRows; track r.fan) {
+                <tr>
+                  <td>
+                    <strong>
+                      {{ r.fan }} {{ r.fan === 10 ? ('RULEBOOK.LIMIT_TAG' | translate) : '' }}
+                    </strong>
+                  </td>
+                  <td>{{ r.base }}</td>
+                  <td>4P: <strong>{{ 4 * r.base }}</strong> / 3P: <strong>{{ 3 * r.base }}</strong></td>
+                  <td>
+                    {{ 'RULEBOOK.EACH_PREFIX' | translate }} <strong>{{ 2 * r.base }}</strong>
+                    (4P: {{ 6 * r.base }} / 3P: {{ 4 * r.base }})
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <div class="mobile-cards">
+            @for (r of payoutRows; track r.fan) {
+              <div class="mobile-app-card">
+                <div class="mobile-card-row">
+                  <strong>
+                    {{ 'RULEBOOK.COL_FAN' | translate }}: {{ r.fan }}
+                    {{ r.fan === 10 ? ('RULEBOOK.LIMIT_TAG' | translate) : '' }}
+                  </strong>
+                  <span>{{ 'RULEBOOK.COL_BASE' | translate }}: {{ r.base }}</span>
+                </div>
+                <div class="mobile-card-row">
+                  <span>{{ 'RULEBOOK.COL_DISCARD' | translate }}</span>
+                  <strong>4P: {{ 4 * r.base }} · 3P: {{ 3 * r.base }}</strong>
+                </div>
+                <div class="mobile-card-row">
+                  <span>{{ 'RULEBOOK.COL_SELFDRAW' | translate }}</span>
+                  <strong>{{ 'RULEBOOK.EACH_PREFIX' | translate }} {{ 2 * r.base }}</strong>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      }
     </div>
 
     <div class="modal-footer">

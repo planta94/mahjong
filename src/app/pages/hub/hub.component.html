@@ -1,0 +1,197 @@
+<main class="page-container hub-container">
+  <!-- Hero Section -->
+  <header class="hub-hero">
+    <h1 class="hero-title">{{ 'HUB.HERO_TITLE' | translate }}</h1>
+
+    <!-- Player Nickname Bar -->
+    <div class="nickname-card">
+      <span class="nickname-label">{{ 'HUB.NICKNAME_LABEL' | translate }}</span>
+      @if (isEditingNickname()) {
+      <div class="nickname-edit-row">
+        <input type="text" class="portal-input nickname-input" [ngModel]="nicknameInput()"
+          (ngModelChange)="onNicknameChange($event)" maxlength="16"
+          [placeholder]="'HUB.NICKNAME_PLACEHOLDER' | translate" />
+        <button type="button" class="btn btn-emerald" (click)="saveNickname()">
+          {{ 'COMMON.SAVE' | translate }}
+        </button>
+        <button type="button" class="btn" (click)="cancelEditNickname()">
+          {{ 'COMMON.CANCEL' | translate }}
+        </button>
+      </div>
+      } @else {
+      <div class="nickname-display-row">
+        <span class="nickname-val">{{ shellUi.playerNickname() }}</span>
+        <button type="button" class="btn btn-sm" (click)="startEditNickname()">
+          {{ 'HUB.EDIT_NICKNAME' | translate }}
+        </button>
+      </div>
+      }
+    </div>
+  </header>
+
+  <!-- Saved Game Resume Banner -->
+  @if (gameManager.savedGame(); as saved) {
+  <section class="saved-game-card portal-card">
+    <div class="saved-game-info">
+      <span class="saved-badge">💾 {{ 'HUB.SAVED_BADGE' | translate }}</span>
+      <h2 class="saved-title">{{ 'HUB.SAVED_TITLE' | translate }}</h2>
+      <p class="saved-subtitle">{{ getSavedSubtitle(saved.game, saved.summary, saved.savedAt) }}</p>
+    </div>
+    <div class="saved-game-actions">
+      <button type="button" class="btn btn-emerald resume-saved-btn" (click)="resumeSaved()">
+        ▶ {{ 'HUB.SAVED_RESUME_BTN' | translate }}
+      </button>
+      <button type="button" class="btn delete-saved-btn" (click)="deleteSaved()">
+        {{ 'HUB.SAVED_DELETE_BTN' | translate }}
+      </button>
+    </div>
+  </section>
+  }
+
+  <!-- Universal Room Join Section -->
+  <section class="join-card portal-card">
+    <h2 class="section-heading">{{ 'HUB.JOIN_HEADING' | translate }}</h2>
+    <p class="section-subtext">{{ 'HUB.JOIN_SUBTEXT' | translate }}</p>
+
+    <div class="join-form-row">
+      <input type="text" class="portal-input room-code-input" [ngModel]="roomCodeInput()"
+        (ngModelChange)="onRoomCodeChange($event)" [placeholder]="'HUB.JOIN_PLACEHOLDER' | translate"
+        (keyup.enter)="joinRoom()" />
+      <button type="button" class="btn btn-emerald join-btn" (click)="joinRoom()">
+        {{ 'HUB.JOIN_BUTTON' | translate }}
+      </button>
+    </div>
+
+    @if (joinError()) {
+    <div class="banner-alert join-alert" role="alert">
+      {{ joinError()! | translate }}
+    </div>
+    }
+  </section>
+
+  <!-- Interactive Game Launcher Tiles -->
+  <section class="games-section">
+    <h2 class="games-section-heading">{{ 'HUB.SELECT_GAME_HEADING' | translate }}</h2>
+    <div class="games-grid">
+      @for (tile of gameTiles; track tile.id) {
+      <button type="button" class="game-card game-tile portal-card" [ngClass]="tile.cardClass"
+        (click)="openGameDetail(tile.id)">
+        <span class="card-badge" [ngClass]="tile.badgeClass">{{ tile.badgeKey | translate }}</span>
+
+        <div class="tile-emblem" [ngClass]="'emblem-' + tile.id" aria-hidden="true">
+          @switch (tile.id) {
+          @case ('mahjong') {
+          <svg viewBox="0 0 64 64" class="tile-svg">
+            <rect x="14" y="9" width="36" height="46" rx="7" fill="#059669" />
+            <rect x="14" y="6" width="36" height="46" rx="7" fill="#fdfaf0" stroke="#e2d9c5" stroke-width="1.5" />
+            <rect x="21" y="19" width="22" height="14" rx="2.5" fill="none" stroke="#dc2626" stroke-width="3.2" />
+            <line x1="32" y1="11" x2="32" y2="45" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" />
+          </svg>
+          }
+          @case ('monopoly') {
+          <svg viewBox="0 0 64 64" class="tile-svg">
+            <rect x="10" y="12" width="28" height="36" rx="5" fill="#fef3c7" stroke="#eab308" stroke-width="2" />
+            <rect x="13" y="15" width="22" height="9" rx="2" fill="#dc2626" />
+            <line x1="15" y1="30" x2="33" y2="30" stroke="#92400e" stroke-width="2.2" stroke-linecap="round" />
+            <line x1="15" y1="36" x2="29" y2="36" stroke="#92400e" stroke-width="2.2" stroke-linecap="round" />
+            <rect x="28" y="26" width="26" height="26" rx="6" fill="#ffffff" stroke="#ca8a04" stroke-width="2" />
+            <circle cx="35" cy="33" r="2.4" fill="#dc2626" />
+            <circle cx="41" cy="39" r="2.4" fill="#1e293b" />
+            <circle cx="47" cy="45" r="2.4" fill="#dc2626" />
+          </svg>
+          }
+          @case ('avalon') {
+          <svg viewBox="0 0 64 64" class="tile-svg">
+            <path d="M32 8 L50 15 V31 C50 43 42 52 32 56 C22 52 14 43 14 31 V15 Z" fill="#31102f" stroke="#f87171"
+              stroke-width="2" />
+            <line x1="32" y1="14" x2="32" y2="48" stroke="#fde047" stroke-width="3.2" stroke-linecap="round" />
+            <line x1="23" y1="24" x2="41" y2="24" stroke="#f59e0b" stroke-width="3.2" stroke-linecap="round" />
+            <circle cx="32" cy="24" r="3" fill="#ef4444" />
+          </svg>
+          }
+          }
+        </div>
+
+        <h3 class="card-title">{{ tile.titleKey | translate }}</h3>
+        <span class="card-players">{{ tile.playersKey | translate }}</span>
+        <span class="tile-cta-hint">
+          {{ 'HUB.TAP_FOR_DETAILS' | translate }} <span aria-hidden="true">›</span>
+        </span>
+      </button>
+      }
+    </div>
+  </section>
+
+  <!-- Bounded Game Detail Modal (Bottom-Only Actions per UI Conventions) -->
+  @if (selectedGameMeta(); as meta) {
+  <div class="modal-backdrop" (click)="closeGameDetail()">
+    <div class="modal-card game-detail-modal" [ngClass]="'detail-' + meta.id" role="dialog" aria-modal="true"
+      [attr.aria-label]="meta.titleKey | translate" (click)="$event.stopPropagation()">
+      <div class="modal-header detail-modal-header">
+        <div class="detail-header-row">
+          <div class="tile-emblem detail-emblem" [ngClass]="'emblem-' + meta.id" aria-hidden="true">
+            @switch (meta.id) {
+            @case ('mahjong') {
+            <svg viewBox="0 0 64 64" class="tile-svg">
+              <rect x="14" y="9" width="36" height="46" rx="7" fill="#059669" />
+              <rect x="14" y="6" width="36" height="46" rx="7" fill="#fdfaf0" stroke="#e2d9c5" stroke-width="1.5" />
+              <rect x="21" y="19" width="22" height="14" rx="2.5" fill="none" stroke="#dc2626" stroke-width="3.2" />
+              <line x1="32" y1="11" x2="32" y2="45" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" />
+            </svg>
+            }
+            @case ('monopoly') {
+            <svg viewBox="0 0 64 64" class="tile-svg">
+              <rect x="10" y="12" width="28" height="36" rx="5" fill="#fef3c7" stroke="#eab308" stroke-width="2" />
+              <rect x="13" y="15" width="22" height="9" rx="2" fill="#dc2626" />
+              <line x1="15" y1="30" x2="33" y2="30" stroke="#92400e" stroke-width="2.2" stroke-linecap="round" />
+              <line x1="15" y1="36" x2="29" y2="36" stroke="#92400e" stroke-width="2.2" stroke-linecap="round" />
+              <rect x="28" y="26" width="26" height="26" rx="6" fill="#ffffff" stroke="#ca8a04" stroke-width="2" />
+              <circle cx="35" cy="33" r="2.4" fill="#dc2626" />
+              <circle cx="41" cy="39" r="2.4" fill="#1e293b" />
+              <circle cx="47" cy="45" r="2.4" fill="#dc2626" />
+            </svg>
+            }
+            @case ('avalon') {
+            <svg viewBox="0 0 64 64" class="tile-svg">
+              <path d="M32 8 L50 15 V31 C50 43 42 52 32 56 C22 52 14 43 14 31 V15 Z" fill="#31102f" stroke="#f87171"
+                stroke-width="2" />
+              <line x1="32" y1="14" x2="32" y2="48" stroke="#fde047" stroke-width="3.2" stroke-linecap="round" />
+              <line x1="23" y1="24" x2="41" y2="24" stroke="#f59e0b" stroke-width="3.2" stroke-linecap="round" />
+              <circle cx="32" cy="24" r="3" fill="#ef4444" />
+            </svg>
+            }
+            }
+          </div>
+          <div class="detail-header-copy">
+            <span class="card-badge" [ngClass]="meta.badgeClass">{{ meta.badgeKey | translate }}</span>
+            <h2 class="detail-modal-title">{{ meta.titleKey | translate }}</h2>
+            <span class="card-players">{{ meta.playersKey | translate }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <p class="card-desc">{{ meta.descKey | translate }}</p>
+        <ul class="card-features">
+          @for (featKey of meta.featureKeys; track featKey) {
+          <li>{{ featKey | translate }}</li>
+          }
+        </ul>
+      </div>
+
+      <div class="modal-footer detail-modal-footer">
+        <button type="button" class="btn detail-close-btn" (click)="closeGameDetail()">
+          {{ 'COMMON.CLOSE' | translate }}
+        </button>
+        <button type="button" class="btn detail-rules-btn" (click)="openRulebook(meta.id)">
+          {{ 'HUB.VIEW_RULES' | translate }}
+        </button>
+        <button type="button" class="btn card-primary-btn detail-enter-btn" [ngClass]="meta.btnClass"
+          (click)="enterSelectedGame()">
+          {{ meta.enterKey | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
+  }
+</main>

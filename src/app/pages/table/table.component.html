@@ -516,7 +516,7 @@
                 @if (res.winningBonus?.length) {
                   <div class="bonus-row">
                     <span class="bonus-caption">{{ 'TABLE.BONUS_LABEL' | translate }}</span>
-                    @for (b of res.winningBonus ?? []; track b) {
+                    @for (b of res.winningBonus; track b) {
                       <mj-tile [tile]="b" size="xs" />
                     }
                   </div>

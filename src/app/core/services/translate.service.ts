@@ -1,6 +1,5 @@
 import { Injectable, signal } from '@angular/core';
 import en from '../../../../public/assets/i18n/en.json';
-import ms from '../../../../public/assets/i18n/ms.json';
 import zh from '../../../../public/assets/i18n/zh.json';
 import { SupportedLang } from '../models/mahjong.model';
 
@@ -19,7 +18,6 @@ function flattenToMap(obj: Record<string, unknown>, prefix = '', out = new Map<s
 const DICTIONARIES: ReadonlyMap<SupportedLang, ReadonlyMap<string, string>> = new Map([
   ['en', flattenToMap(en as Record<string, unknown>)],
   ['zh', flattenToMap(zh as Record<string, unknown>)],
-  ['ms', flattenToMap(ms as Record<string, unknown>)],
 ]);
 
 @Injectable({ providedIn: 'root' })
@@ -29,7 +27,7 @@ export class TranslateService {
   private loadInitialLang(): SupportedLang {
     try {
       const saved = localStorage.getItem('hkmj_lang');
-      if (saved === 'en' || saved === 'zh' || saved === 'ms') {
+      if (saved === 'en' || saved === 'zh') {
         return saved;
       }
     } catch {

@@ -75,7 +75,7 @@ export class TableComponent implements OnInit {
 
   ngOnInit(): void {
     if (!this.session.snapshot()?.view) {
-      void this.router.navigate(['/lobby']);
+      void this.router.navigate(['/lobby'], { queryParamsHandling: 'preserve' });
     }
   }
 

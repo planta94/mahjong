@@ -1,0 +1,993 @@
+.monopoly-screen {
+  min-height: calc(100dvh - 54px);
+  height: calc(100dvh - 54px);
+  background: radial-gradient(circle at 50% 20%, #0f241c 0%, #070d12 75%);
+  padding: 10px 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.monopoly-layout {
+  width: 100%;
+  max-width: 1240px;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 16px;
+}
+
+.board-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.monopoly-grid {
+  display: grid;
+  grid-template-columns: 1.32fr repeat(9, minmax(0, 1fr)) 1.32fr;
+  grid-template-rows: 1.32fr repeat(9, minmax(0, 1fr)) 1.32fr;
+  gap: 2px;
+  padding: 5px;
+  background: #2b1d12;
+  width: min(calc(100dvh - 76px), calc(100vw - 410px), 760px);
+  aspect-ratio: 1 / 1;
+  border: 3px solid #d4a373;
+  border-radius: 14px;
+  box-shadow:
+    0 20px 48px rgba(0, 0, 0, 0.68),
+    inset 0 0 0 2px #1a110a;
+  user-select: none;
+}
+
+.board-space {
+  background: linear-gradient(180deg, #fcf9f0 0%, #efe7d2 100%);
+  border: 1px solid #cbbda0;
+  border-radius: 4px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.board-space:hover {
+  transform: scale(1.04);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  z-index: 6;
+}
+
+.board-space.is-corner {
+  background: linear-gradient(145deg, #f8f0dc 0%, #e5d4b0 100%);
+  border-color: #bfa67a;
+}
+
+.board-space.is-active-landing {
+  background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+  box-shadow: inset 0 0 0 2.5px #f59e0b, 0 0 14px rgba(250, 204, 21, 0.72);
+  z-index: 4;
+}
+
+.space-color-bar {
+  height: 14px;
+  width: 100%;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.space-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 2px 5px;
+  text-align: center;
+  color: #1e293b;
+}
+
+.space-icon {
+  font-size: 13px;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.space-name {
+  font-weight: 700;
+  line-height: 1.1;
+  font-size: 9px;
+  color: #0f172a;
+  max-width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.space-cost {
+  color: #0f766e;
+  font-weight: 800;
+  font-size: 8.5px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.owner-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  border-top: 1px solid rgba(15, 23, 42, 0.65);
+  z-index: 2;
+}
+
+.badge-hotel {
+  font-size: 10px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+}
+
+.badge-houses {
+  font-size: 8.5px;
+  line-height: 1;
+  color: #ffffff;
+  font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+}
+
+.badge-mortgaged {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 8px;
+  font-weight: 800;
+  padding: 1px 3px;
+  border-radius: 3px;
+}
+
+.tokens-container {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  justify-content: center;
+  position: absolute;
+  bottom: 7px;
+  left: 2px;
+  right: 2px;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.player-token {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  outline: 1.5px solid rgba(15, 23, 42, 0.88);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.75);
+}
+
+.player-token.is-active-token {
+  z-index: 5;
+  box-shadow:
+    0 0 0 2.5px #facc15,
+    0 4px 12px rgba(0, 0, 0, 0.88);
+  animation: tokenPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes tokenPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.16);
+  }
+}
+
+.center-hub {
+  grid-column: 2 / 11;
+  grid-row: 2 / 11;
+  background: radial-gradient(circle at 50% 45%, #115e43 0%, #073223 65%, #041d14 100%);
+  border: 2px solid rgba(212, 163, 115, 0.55);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  color: #f8fafc;
+  box-shadow: inset 0 0 42px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+  gap: 8px;
+}
+
+.hub-top-bar {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.hub-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.round-badge,
+.mode-badge {
+  background: rgba(4, 18, 13, 0.72);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 163, 115, 0.35);
+  color: #fde68a;
+}
+
+.jackpot-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(180deg, rgba(12, 24, 19, 0.88), rgba(5, 12, 9, 0.94));
+  border: 1.5px solid #d4a373;
+  border-radius: 999px;
+  padding: 4px 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.jackpot-title {
+  font-size: 10.5px;
+  color: #e6c28b;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.jackpot-amount {
+  font-size: 15px;
+  font-weight: 900;
+  color: #fef08a;
+  letter-spacing: 0.4px;
+}
+
+.hub-center-stage {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.active-player-banner {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  background: rgba(4, 15, 11, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-left: 4px solid #38bdf8;
+  border-radius: 999px;
+  padding: 5px 14px;
+}
+
+.player-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.active-cash-tag {
+  font-weight: 800;
+  color: #6ee7b7;
+}
+
+.current-space-chip {
+  font-size: 11px;
+  color: #fde68a;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.jail-status-tag {
+  background: #dc2626;
+  color: #ffffff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.dice-arena {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 0;
+}
+
+.hub-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}
+
+.roll-dice-hero-btn {
+  height: 46px;
+  padding: 0 28px;
+  font-size: 1.04rem;
+  border-radius: 999px;
+  box-shadow: 0 8px 22px rgba(0, 210, 133, 0.35);
+}
+
+.distress-banner {
+  width: 100%;
+  background: rgba(239, 68, 68, 0.22);
+  border: 1px solid #ef4444;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #fecaca;
+  text-align: center;
+}
+
+.waiting-turn-hint {
+  font-size: 13px;
+  color: #cbd5e1;
+  background: rgba(4, 15, 11, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 6px 16px;
+  border-radius: 999px;
+  margin: 0;
+}
+
+.hub-bottom-slot {
+  width: 100%;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hub-board-tip {
+  font-size: 11px;
+  color: rgba(226, 232, 240, 0.72);
+}
+
+.drawn-card-banner {
+  max-width: 390px;
+  width: 100%;
+  background: rgba(14, 116, 144, 0.32);
+  border: 1px solid rgba(56, 189, 248, 0.55);
+  border-radius: 10px;
+  padding: 6px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.drawn-card-banner.deck-nasib {
+  background: rgba(180, 83, 9, 0.32);
+  border-color: rgba(251, 191, 36, 0.55);
+}
+
+.drawn-card-tag {
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #fde68a;
+}
+
+.drawn-card-title {
+  font-size: 12px;
+  color: #ffffff;
+}
+
+.drawn-card-desc {
+  font-size: 10.5px;
+  color: #e2e8f0;
+}
+
+.board-mobile-hint {
+  display: none;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.board-sidebar {
+  flex: 1 1 320px;
+  max-width: 380px;
+  height: min(calc(100dvh - 76px), 760px);
+  max-height: calc(100dvh - 76px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar-card {
+  background: rgba(13, 22, 30, 0.92);
+  border: 1px solid rgba(212, 163, 115, 0.28);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tycoon-sidebar-card {
+  flex: 1 1 60%;
+}
+
+.log-sidebar-card {
+  flex: 1 1 40%;
+}
+
+.sidebar-title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #fef08a;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.tycoon-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.tycoon-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tycoon-card.is-active-turn {
+  border-color: #00d285;
+  background: rgba(0, 210, 133, 0.08);
+}
+
+.tycoon-card.is-bankrupt {
+  opacity: 0.48;
+}
+
+.tycoon-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tycoon-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #ffffff;
+  flex-shrink: 0;
+}
+
+.tycoon-ident {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.tycoon-name {
+  font-size: 0.88rem;
+  color: #f8fafc;
+}
+
+.tycoon-balances {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.tycoon-cash {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #6ee7b7;
+}
+
+.tycoon-worth {
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.tycoon-deeds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.deed-chip {
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-left-width: 4px;
+  color: #f1f5f9;
+  border-radius: 5px;
+  padding: 3px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.deed-chip.is-mortgaged {
+  opacity: 0.68;
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.deed-chip-meta {
+  font-size: 10px;
+  font-weight: 800;
+  color: #fde68a;
+}
+
+.no-deeds-text {
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+.live-logs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.live-log-item {
+  font-size: 12px;
+  color: #cbd5e1;
+  padding: 5px 8px;
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 6px;
+  line-height: 1.35;
+}
+
+.mobile-cards {
+  display: none;
+  width: 100%;
+  max-width: 500px;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mobile-app-card {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.mobile-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  font-size: 13.5px;
+  color: #f0f6fc;
+}
+
+.jackpot-mobile-text {
+  font-size: 18px;
+  color: #fef08a;
+}
+
+.card-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f0f6fc;
+  margin: 0 0 10px 0;
+}
+
+.mobile-players-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-player-block {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid #21262d;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-player-block.is-active-turn {
+  border-color: #00d285;
+  background: rgba(0, 210, 133, 0.07);
+}
+
+.mobile-player-block.is-bankrupt {
+  opacity: 0.5;
+}
+
+.player-asset-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #c9d1d9;
+}
+
+.player-asset-row.is-bankrupt {
+  text-decoration: line-through;
+}
+
+.player-seat-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid #ffffff;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.player-name-text {
+  flex: 1;
+  min-width: 70px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.player-cash-text {
+  font-weight: 800;
+  color: #6ee7b7;
+}
+
+.player-worth-text {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.deed-space-num {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.deed-header-band {
+  height: 16px;
+  border-radius: 4px 4px 0 0;
+  margin-bottom: 8px;
+}
+
+.deed-rent-table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.rent-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid #21262d;
+}
+
+.deed-meta-box {
+  background: #0d1117;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.management-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.auction-info-card {
+  text-align: center;
+  padding: 16px;
+  background: #0d1117;
+  border-radius: 8px;
+}
+
+.current-bid-display {
+  font-size: 24px;
+  color: #38bdf8;
+}
+
+.trade-target-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.trade-columns {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.trade-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trade-props-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.trade-prop-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.trade-summary-box {
+  background: #0d1117;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 10px;
+}
+
+.winner-podium {
+  text-align: center;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.trophy-icon {
+  font-size: 40px;
+}
+
+.winner-name {
+  font-size: 24px;
+  font-weight: 800;
+  color: #fef08a;
+  margin: 8px 0;
+}
+
+@media (max-width: 1120px) {
+  .monopoly-screen {
+    height: auto;
+    align-items: flex-start;
+    overflow: visible;
+    padding: 12px 14px 24px;
+  }
+
+  .monopoly-layout {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .monopoly-grid {
+    width: min(calc(100dvh - 80px), calc(100vw - 28px), 720px);
+  }
+
+  .board-sidebar {
+    height: auto;
+    max-height: none;
+    max-width: 720px;
+    width: 100%;
+  }
+
+  .live-logs-list {
+    max-height: 200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .monopoly-screen {
+    padding: 8px 8px 24px;
+  }
+
+  .board-stage {
+    width: 100%;
+  }
+
+  .monopoly-grid {
+    width: 100%;
+    max-width: 480px;
+    gap: 1px;
+    padding: 3px;
+    border-width: 2px;
+    border-radius: 10px;
+  }
+
+  .board-space {
+    border-radius: 2px;
+  }
+
+  .space-color-bar {
+    height: 6px;
+  }
+
+  .space-content {
+    padding: 1px;
+    justify-content: center;
+  }
+
+  .space-icon {
+    font-size: 9px;
+  }
+
+  .space-name {
+    font-size: 6px;
+    line-height: 1.02;
+    -webkit-line-clamp: 1;
+  }
+
+  .space-cost,
+  .badge-houses,
+  .badge-hotel {
+    display: none;
+  }
+
+  .owner-indicator {
+    height: 5px;
+  }
+
+  .tokens-container {
+    bottom: 5px;
+    gap: 2px;
+  }
+
+  .player-token {
+    width: 15px;
+    height: 15px;
+    font-size: 9px;
+    border-width: 1.5px;
+    outline-width: 1px;
+  }
+
+  .center-hub {
+    padding: 6px 8px;
+    border-radius: 6px;
+    gap: 4px;
+  }
+
+  .hub-top-bar {
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .mode-badge,
+  .jackpot-title,
+  .current-space-chip,
+  .hub-bottom-slot {
+    display: none;
+  }
+
+  .round-badge {
+    font-size: 9.5px;
+    padding: 2px 8px;
+  }
+
+  .jackpot-box {
+    padding: 2px 10px;
+    border-width: 1px;
+  }
+
+  .jackpot-amount {
+    font-size: 12px;
+  }
+
+  .hub-center-stage {
+    gap: 6px;
+  }
+
+  .active-player-banner {
+    font-size: 10.5px;
+    padding: 2px 10px;
+    gap: 5px;
+  }
+
+  .hub-actions {
+    gap: 5px;
+  }
+
+  .hub-actions .btn {
+    min-height: 28px;
+    padding: 3px 11px;
+    font-size: 11px;
+  }
+
+  .roll-dice-hero-btn {
+    height: auto;
+    min-height: 30px;
+    padding: 4px 16px;
+    font-size: 12px;
+  }
+
+  .waiting-turn-hint {
+    font-size: 10.5px;
+    padding: 3px 10px;
+  }
+
+  .board-mobile-hint {
+    display: block;
+  }
+
+  .board-sidebar {
+    display: none;
+  }
+
+  .mobile-cards {
+    display: flex;
+  }
+
+  .trade-columns {
+    grid-template-columns: 1fr;
+  }
+}

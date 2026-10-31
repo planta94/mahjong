@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { GameMode } from '../../core/models/mahjong.model';
@@ -7,6 +7,7 @@ import {
   extractRoomCode,
 } from '../../core/services/mahjong-session.service';
 import { DEFAULT_RULES } from '../../core/services/scorer.service';
+import { ShellUiService } from '../../core/services/shell-ui.service';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 
 @Component({
@@ -16,8 +17,9 @@ import { TranslatePipe } from '../../shared/pipes/translate.pipe';
   templateUrl: './lobby.component.html',
   styleUrl: './lobby.component.scss',
 })
-export class LobbyComponent {
+export class LobbyComponent implements OnInit {
   readonly session = inject(MahjongSessionService);
+  readonly shellUi = inject(ShellUiService);
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -56,12 +58,12 @@ export class LobbyComponent {
     }
   }
 
+  ngOnInit(): void {
+    this.shellUi.setActiveGame('mahjong');
+  }
+
   private loadInitialNickname(): string {
-    try {
-      return localStorage.getItem('hkmj_nickname') || '雀神';
-    } catch {
-      return '雀神';
-    }
+    return this.shellUi.playerNickname();
   }
 
   private loadUrlRoom(): string {
@@ -72,14 +74,10 @@ export class LobbyComponent {
     }
   }
 
-  private persistNickname(): string {
-    const clean = this.nickname.trim() || '雀神';
+  persistNickname(): string {
+    const clean = this.nickname.trim() || '雀友';
     this.nickname = clean;
-    try {
-      localStorage.setItem('hkmj_nickname', clean);
-    } catch {
-      // Ignore restricted storage environments
-    }
+    this.shellUi.setPlayerNickname(clean);
     return clean;
   }
 

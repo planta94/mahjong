@@ -182,65 +182,75 @@ describe('MonopolyLobbyComponent', () => {
 
   it('creates a multiplayer room, copies invite link, toggles open/bot seats, and starts match', async () => {
     const writeTextSpy = vi.fn().mockResolvedValue(undefined);
+    const clipboardDesc = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText: writeTextSpy },
       configurable: true,
+      writable: true,
     });
 
-    const { fixture, comp, session, shellUi, router } = await setupLobby();
-    const host = fixture.nativeElement as HTMLElement;
+    try {
+      const { fixture, comp, session, shellUi, router } = await setupLobby();
+      const host = fixture.nativeElement as HTMLElement;
 
-    comp.playerCount = 4;
-    const createBtn = host.querySelectorAll('.actions-row button').item(1) as HTMLButtonElement;
-    createBtn.click();
-    fixture.detectChanges();
+      comp.playerCount = 4;
+      const createBtn = host.querySelectorAll('.actions-row button').item(1) as HTMLButtonElement;
+      createBtn.click();
+      fixture.detectChanges();
 
-    const roomCode = session.snapshot()?.roomCode ?? '';
-    expect(roomCode).toMatch(/^P[A-Z0-9]{5}$/);
-    expect(shellUi.activeRoomCode()).toBe(roomCode);
-    expect(host.querySelector('.room-code-tag')?.textContent?.trim()).toBe(roomCode);
+      const roomCode = session.snapshot()?.roomCode ?? '';
+      expect(roomCode).toMatch(/^P[A-Z0-9]{5}$/);
+      expect(shellUi.activeRoomCode()).toBe(roomCode);
+      expect(host.querySelector('.room-code-tag')?.textContent?.trim()).toBe(roomCode);
 
-    // Copy invite link via ShellUiService bound to the active room created by the lobby
-    shellUi.copyInviteLink();
-    expect(shellUi.copiedToast()).toBe(true);
-    expect(writeTextSpy).toHaveBeenCalledTimes(1);
-    expect(String(writeTextSpy.mock.calls.at(0)?.at(0))).toContain(`?game=monopoly&room=${roomCode}`);
+      // Copy invite link via ShellUiService bound to the active room created by the lobby
+      shellUi.copyInviteLink();
+      expect(shellUi.copiedToast()).toBe(true);
+      expect(writeTextSpy).toHaveBeenCalledTimes(1);
+      expect(String(writeTextSpy.mock.calls.at(0)?.at(0))).toContain(`?game=monopoly&room=${roomCode}`);
 
-    // Verify 4 seat rows render and seat 0 has no toggle button while seats 1..3 have toggle buttons
-    const seatRows = host.querySelectorAll('.seats-list .seat-row');
-    expect(seatRows.length).toBe(4);
-    expect(seatRows.item(0).querySelector('button')).toBeNull();
+      // Verify 4 seat rows render and seat 0 has no toggle button while seats 1..3 have toggle buttons
+      const seatRows = host.querySelectorAll('.seats-list .seat-row');
+      expect(seatRows.length).toBe(4);
+      expect(seatRows.item(0).querySelector('button')).toBeNull();
 
-    const seat1ToggleBtn = seatRows.item(1).querySelector('button') as HTMLButtonElement;
-    expect(session.currentLobby()?.seats.at(1)?.kind).toBe('open');
+      const seat1ToggleBtn = seatRows.item(1).querySelector('button') as HTMLButtonElement;
+      expect(session.currentLobby()?.seats.at(1)?.kind).toBe('open');
 
-    // Toggle seat 1: open -> bot -> open -> bot
-    seat1ToggleBtn.click();
-    fixture.detectChanges();
-    expect(session.currentLobby()?.seats.at(1)?.kind).toBe('bot');
+      // Toggle seat 1: open -> bot -> open -> bot
+      seat1ToggleBtn.click();
+      fixture.detectChanges();
+      expect(session.currentLobby()?.seats.at(1)?.kind).toBe('bot');
 
-    const seat1ToggleAgainBtn = host
-      .querySelectorAll('.seats-list .seat-row')
-      .item(1)
-      .querySelector('button') as HTMLButtonElement;
-    seat1ToggleAgainBtn.click();
-    fixture.detectChanges();
-    expect(session.currentLobby()?.seats.at(1)?.kind).toBe('open');
+      const seat1ToggleAgainBtn = host
+        .querySelectorAll('.seats-list .seat-row')
+        .item(1)
+        .querySelector('button') as HTMLButtonElement;
+      seat1ToggleAgainBtn.click();
+      fixture.detectChanges();
+      expect(session.currentLobby()?.seats.at(1)?.kind).toBe('open');
 
-    comp.toggleSeat(1);
-    fixture.detectChanges();
-    expect(session.currentLobby()?.seats.at(1)?.kind).toBe('bot');
+      comp.toggleSeat(1);
+      fixture.detectChanges();
+      expect(session.currentLobby()?.seats.at(1)?.kind).toBe('bot');
 
-    // Start match from waiting room
-    const startBtn = host.querySelector('.waiting-actions .btn-emerald') as HTMLButtonElement;
-    startBtn.click();
-    fixture.detectChanges();
+      // Start match from waiting room
+      const startBtn = host.querySelector('.waiting-actions .btn-emerald') as HTMLButtonElement;
+      startBtn.click();
+      fixture.detectChanges();
 
-    expect(session.snapshot()?.lobby?.started).toBe(true);
-    expect(session.currentLobby()?.seats.every((s) => s.kind !== 'open')).toBe(true);
-    expect(router.navigate).toHaveBeenCalledWith(['/monopoly/board']);
+      expect(session.snapshot()?.lobby?.started).toBe(true);
+      expect(session.currentLobby()?.seats.every((s) => s.kind !== 'open')).toBe(true);
+      expect(router.navigate).toHaveBeenCalledWith(['/monopoly/board']);
 
-    session.leaveRoom();
+      session.leaveRoom();
+    } finally {
+      if (clipboardDesc) {
+        Object.defineProperty(navigator, 'clipboard', clipboardDesc);
+      } else {
+        Reflect.deleteProperty(navigator, 'clipboard');
+      }
+    }
   });
 
   it('joins a room by entered code, renders guest waiting state, and resets state on leaveRoom', async () => {

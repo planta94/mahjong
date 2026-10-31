@@ -48,7 +48,7 @@ describe('MonopolyCardsData & Authentic Malaysian Action Decks', () => {
     expect(shuffleCards(single).length).toBe(1);
 
     // Test fallback when crypto getRandomValues is unavailable
-    const origCrypto = globalThis.crypto;
+    const cryptoDesc = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
     try {
       Object.defineProperty(globalThis, 'crypto', {
         value: { getRandomValues: undefined },
@@ -58,11 +58,11 @@ describe('MonopolyCardsData & Authentic Malaysian Action Decks', () => {
       const shuffledFallback = shuffleCards(DANA_CARDS);
       expect(shuffledFallback.length).toBe(16);
     } finally {
-      Object.defineProperty(globalThis, 'crypto', {
-        value: origCrypto,
-        configurable: true,
-        writable: true,
-      });
+      if (cryptoDesc) {
+        Object.defineProperty(globalThis, 'crypto', cryptoDesc);
+      } else {
+        Reflect.deleteProperty(globalThis, 'crypto');
+      }
     }
   });
 });

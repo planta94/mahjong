@@ -1,6 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { BGM_TRACK_MAP, ShellUiService } from './shell-ui.service';
 
+function restoreProp(target: object, key: string, desc: PropertyDescriptor | undefined): void {
+  if (desc) {
+    Object.defineProperty(target, key, desc);
+  } else {
+    Reflect.deleteProperty(target, key);
+  }
+}
+
 describe('ShellUiService', () => {
   let service: ShellUiService;
 
@@ -154,10 +162,14 @@ describe('ShellUiService', () => {
       destination: {},
     };
 
-    const originalCtx = globalThis.AudioContext;
-    (globalThis as unknown as Record<string, unknown>)['AudioContext'] = function () {
-      return mockAudioContext;
-    };
+    const audioCtxDesc = Object.getOwnPropertyDescriptor(globalThis, 'AudioContext');
+    Object.defineProperty(globalThis, 'AudioContext', {
+      configurable: true,
+      writable: true,
+      value: function () {
+        return mockAudioContext;
+      },
+    });
 
     try {
       const audioSvc = new ShellUiService();
@@ -174,7 +186,7 @@ describe('ShellUiService', () => {
       expect(audioSvc.soundEnabled()).toBe(false);
       audioSvc.ngOnDestroy();
     } finally {
-      globalThis.AudioContext = originalCtx;
+      restoreProp(globalThis, 'AudioContext', audioCtxDesc);
     }
   });
 
@@ -191,12 +203,20 @@ describe('ShellUiService', () => {
       },
     };
 
-    const originalSpeech = globalThis.speechSynthesis;
-    const originalUtterance = (globalThis as unknown as Record<string, unknown>)['SpeechSynthesisUtterance'];
-    (globalThis as unknown as Record<string, unknown>)['speechSynthesis'] = mockSpeech;
-    (globalThis as unknown as Record<string, unknown>)['SpeechSynthesisUtterance'] = function (text: string) {
-      return { text, lang: '', rate: 1, voice: null };
-    };
+    const speechDesc = Object.getOwnPropertyDescriptor(globalThis, 'speechSynthesis');
+    const utteranceDesc = Object.getOwnPropertyDescriptor(globalThis, 'SpeechSynthesisUtterance');
+    Object.defineProperty(globalThis, 'speechSynthesis', {
+      configurable: true,
+      writable: true,
+      value: mockSpeech,
+    });
+    Object.defineProperty(globalThis, 'SpeechSynthesisUtterance', {
+      configurable: true,
+      writable: true,
+      value: function (text: string) {
+        return { text, lang: '', rate: 1, voice: null };
+      },
+    });
 
     try {
       service.speak('碰！', 'zh-HK');
@@ -207,20 +227,24 @@ describe('ShellUiService', () => {
       // When muted, does not speak
       expect(service.soundEnabled()).toBe(false);
     } finally {
-      (globalThis as unknown as Record<string, unknown>)['speechSynthesis'] = originalSpeech;
-      (globalThis as unknown as Record<string, unknown>)['SpeechSynthesisUtterance'] = originalUtterance;
+      restoreProp(globalThis, 'speechSynthesis', speechDesc);
+      restoreProp(globalThis, 'SpeechSynthesisUtterance', utteranceDesc);
     }
   });
 
   it('copies invite link to clipboard and activates copied toast', async () => {
     let copiedStr = '';
-    const originalClipboard = navigator.clipboard;
-    (navigator as unknown as Record<string, unknown>)['clipboard'] = {
-      writeText: (val: string) => {
-        copiedStr = val;
-        return Promise.resolve();
+    const clipboardDesc = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      writable: true,
+      value: {
+        writeText: (val: string) => {
+          copiedStr = val;
+          return Promise.resolve();
+        },
       },
-    };
+    });
 
     try {
       service.setActiveGame('monopoly');
@@ -231,7 +255,7 @@ describe('ShellUiService', () => {
       expect(copiedStr).toContain('P1234');
       expect(copiedStr).toContain('game=monopoly');
     } finally {
-      (navigator as unknown as Record<string, unknown>)['clipboard'] = originalClipboard;
+      restoreProp(navigator, 'clipboard', clipboardDesc);
     }
   });
 
@@ -302,8 +326,12 @@ describe('ShellUiService', () => {
     };
     MockAudio.isMockAudio = true;
 
-    const originalAudio = globalThis.Audio;
-    (globalThis as unknown as Record<string, unknown>)['Audio'] = MockAudio;
+    const audioDesc = Object.getOwnPropertyDescriptor(globalThis, 'Audio');
+    Object.defineProperty(globalThis, 'Audio', {
+      configurable: true,
+      writable: true,
+      value: MockAudio,
+    });
 
     try {
       expect(BGM_TRACK_MAP.get('mahjong')).toBe('assets/audio/bgm.mp3');
@@ -354,7 +382,7 @@ describe('ShellUiService', () => {
       expect(createdAudios.at(2)?.currentTime).toBe(0);
       bgmSvc.ngOnDestroy();
     } finally {
-      globalThis.Audio = originalAudio;
+      restoreProp(globalThis, 'Audio', audioDesc);
     }
   });
 
@@ -423,22 +451,34 @@ describe('ShellUiService', () => {
     };
     MockAudio.isMockAudio = true;
 
-    const originalCtx = globalThis.AudioContext;
-    const originalAudio = globalThis.Audio;
-    const originalSpeech = globalThis.speechSynthesis;
+    const audioCtxDesc = Object.getOwnPropertyDescriptor(globalThis, 'AudioContext');
+    const audioDesc = Object.getOwnPropertyDescriptor(globalThis, 'Audio');
+    const speechDesc = Object.getOwnPropertyDescriptor(globalThis, 'speechSynthesis');
     const hiddenDescriptor = Object.getOwnPropertyDescriptor(document, 'hidden');
 
-    (globalThis as unknown as Record<string, unknown>)['AudioContext'] = function () {
-      return mockCtx;
-    };
-    (globalThis as unknown as Record<string, unknown>)['Audio'] = MockAudio;
-    (globalThis as unknown as Record<string, unknown>)['speechSynthesis'] = {
-      cancel: () => {
-        speechCancels += 1;
+    Object.defineProperty(globalThis, 'AudioContext', {
+      configurable: true,
+      writable: true,
+      value: function () {
+        return mockCtx;
       },
-      getVoices: () => [],
-      speak: () => undefined,
-    };
+    });
+    Object.defineProperty(globalThis, 'Audio', {
+      configurable: true,
+      writable: true,
+      value: MockAudio,
+    });
+    Object.defineProperty(globalThis, 'speechSynthesis', {
+      configurable: true,
+      writable: true,
+      value: {
+        cancel: () => {
+          speechCancels += 1;
+        },
+        getVoices: () => [],
+        speak: () => undefined,
+      },
+    });
 
     try {
       service.ngOnDestroy();
@@ -480,14 +520,10 @@ describe('ShellUiService', () => {
 
       powerSvc.ngOnDestroy();
     } finally {
-      globalThis.AudioContext = originalCtx;
-      globalThis.Audio = originalAudio;
-      (globalThis as unknown as Record<string, unknown>)['speechSynthesis'] = originalSpeech;
-      if (hiddenDescriptor) {
-        Object.defineProperty(document, 'hidden', hiddenDescriptor);
-      } else {
-        Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
-      }
+      restoreProp(globalThis, 'AudioContext', audioCtxDesc);
+      restoreProp(globalThis, 'Audio', audioDesc);
+      restoreProp(globalThis, 'speechSynthesis', speechDesc);
+      restoreProp(document, 'hidden', hiddenDescriptor);
       vi.useRealTimers();
     }
   });

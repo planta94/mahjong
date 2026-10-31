@@ -320,13 +320,17 @@ describe('LobbyComponent', () => {
 
   it('creates online waiting room, toggles seats, updates lobby fan selects and checkboxes, copies room link, and starts match', async () => {
     let copiedUrl = '';
-    const originalClipboard = navigator.clipboard;
-    (navigator as unknown as Record<string, unknown>)['clipboard'] = {
-      writeText: (val: string) => {
-        copiedUrl = val;
-        return Promise.resolve();
+    const clipboardDesc = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      writable: true,
+      value: {
+        writeText: (val: string) => {
+          copiedUrl = val;
+          return Promise.resolve();
+        },
       },
-    };
+    });
 
     try {
       const fixture = TestBed.createComponent(LobbyComponent);
@@ -441,7 +445,11 @@ describe('LobbyComponent', () => {
       expect(session.snapshot()?.lobby?.started).toBe(true);
       expect(session.snapshot()?.view?.phase).toBe('turn');
     } finally {
-      (navigator as unknown as Record<string, unknown>)['clipboard'] = originalClipboard;
+      if (clipboardDesc) {
+        Object.defineProperty(navigator, 'clipboard', clipboardDesc);
+      } else {
+        Reflect.deleteProperty(navigator, 'clipboard');
+      }
     }
   });
 

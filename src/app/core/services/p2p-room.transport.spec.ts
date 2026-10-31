@@ -848,10 +848,14 @@ describe('P2PRoomTransport & Universal Transport Protocol', () => {
 
     it('covers GenericHostSession and GenericGuestSession WebRTC PeerJS signaling, DataChannel, reconnects, and error fallbacks', async () => {
       vi.useFakeTimers();
-      const origRtc = (globalThis as unknown as Record<string, unknown>)['RTCPeerConnection'];
-      (globalThis as unknown as Record<string, unknown>)['RTCPeerConnection'] = function () {
-        return {};
-      };
+      const rtcDesc = Object.getOwnPropertyDescriptor(globalThis, 'RTCPeerConnection');
+      Object.defineProperty(globalThis, 'RTCPeerConnection', {
+        configurable: true,
+        writable: true,
+        value: function () {
+          return {};
+        },
+      });
 
       class FakeConn implements PeerConnectionLike {
         open = false;
@@ -1047,7 +1051,11 @@ describe('P2PRoomTransport & Universal Transport Protocol', () => {
         retryGuest.destroy();
         host.destroy();
       } finally {
-        (globalThis as unknown as Record<string, unknown>)['RTCPeerConnection'] = origRtc;
+        if (rtcDesc) {
+          Object.defineProperty(globalThis, 'RTCPeerConnection', rtcDesc);
+        } else {
+          Reflect.deleteProperty(globalThis, 'RTCPeerConnection');
+        }
         vi.useRealTimers();
       }
     });

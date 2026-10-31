@@ -73,107 +73,165 @@ describe('E2E: Hub & Shell Architecture Suite', () => {
     it('migrates legacy hkmj_nickname into party_pavilion_nickname and dual-persists', () => {
       localStorage.setItem('hkmj_nickname', '雀后');
       const service = new ShellUiService();
+      try {
+        expect(service.playerNickname()).toBe('雀后');
 
-      expect(service.playerNickname()).toBe('雀后');
-
-      service.setPlayerNickname('財神大亨');
-      expect(service.playerNickname()).toBe('財神大亨');
-      expect(localStorage.getItem('party_pavilion_nickname')).toBe('財神大亨');
-      expect(localStorage.getItem('hkmj_nickname')).toBe('財神大亨');
+        service.setPlayerNickname('財神大亨');
+        expect(service.playerNickname()).toBe('財神大亨');
+        expect(localStorage.getItem('party_pavilion_nickname')).toBe('財神大亨');
+        expect(localStorage.getItem('hkmj_nickname')).toBe('財神大亨');
+      } finally {
+        service.ngOnDestroy();
+      }
     });
 
     it('switches themes and sets document.body.dataset[theme] contextually', () => {
       const service = new ShellUiService();
+      try {
+        service.setActiveGame('monopoly');
+        expect(service.activeGame()).toBe('monopoly');
+        expect(document.body.dataset['theme']).toBe('monopoly');
 
-      service.setActiveGame('monopoly');
-      expect(service.activeGame()).toBe('monopoly');
-      expect(document.body.dataset['theme']).toBe('monopoly');
+        service.setActiveGame('avalon');
+        expect(service.activeGame()).toBe('avalon');
+        expect(document.body.dataset['theme']).toBe('avalon');
 
-      service.setActiveGame('avalon');
-      expect(service.activeGame()).toBe('avalon');
-      expect(document.body.dataset['theme']).toBe('avalon');
+        service.setActiveGame('mahjong');
+        expect(service.activeGame()).toBe('mahjong');
+        expect(document.body.dataset['theme']).toBe('mahjong');
 
-      service.setActiveGame('mahjong');
-      expect(service.activeGame()).toBe('mahjong');
-      expect(document.body.dataset['theme']).toBe('mahjong');
-
-      service.setActiveGame('hub');
-      expect(service.activeGame()).toBe('hub');
-      expect(document.body.dataset['theme']).toBe('hub');
+        service.setActiveGame('hub');
+        expect(service.activeGame()).toBe('hub');
+        expect(document.body.dataset['theme']).toBe('hub');
+      } finally {
+        service.ngOnDestroy();
+      }
     });
 
     it('tracks active room code and computes hasActiveRoom state', () => {
       const service = new ShellUiService();
-      expect(service.hasActiveRoom()).toBe(false);
+      try {
+        expect(service.hasActiveRoom()).toBe(false);
 
-      service.setActiveRoomCode('P1234');
-      expect(service.activeRoomCode()).toBe('P1234');
-      expect(service.hasActiveRoom()).toBe(true);
+        service.setActiveRoomCode('P1234');
+        expect(service.activeRoomCode()).toBe('P1234');
+        expect(service.hasActiveRoom()).toBe(true);
 
-      service.setActiveRoomCode(null);
-      expect(service.activeRoomCode()).toBe(null);
-      expect(service.hasActiveRoom()).toBe(false);
+        service.setActiveRoomCode(null);
+        expect(service.activeRoomCode()).toBe(null);
+        expect(service.hasActiveRoom()).toBe(false);
+      } finally {
+        service.ngOnDestroy();
+      }
     });
 
     it('toggles sound and BGM flags and persists state to localStorage', () => {
       localStorage.removeItem('party_sound_enabled');
       localStorage.removeItem('party_bgm_enabled');
       const service = new ShellUiService();
-      expect(service.soundEnabled()).toBe(true);
-      expect(service.bgmEnabled()).toBe(false);
+      try {
+        expect(service.soundEnabled()).toBe(true);
+        expect(service.bgmEnabled()).toBe(false);
 
-      service.toggleSound();
-      expect(service.soundEnabled()).toBe(false);
-      expect(localStorage.getItem('party_sound_enabled')).toBe('false');
+        service.toggleSound();
+        expect(service.soundEnabled()).toBe(false);
+        expect(localStorage.getItem('party_sound_enabled')).toBe('false');
 
-      service.toggleBgm();
-      expect(service.bgmEnabled()).toBe(true);
-      expect(localStorage.getItem('party_bgm_enabled')).toBe('true');
+        service.toggleBgm();
+        expect(service.bgmEnabled()).toBe(true);
+        expect(localStorage.getItem('party_bgm_enabled')).toBe('true');
+      } finally {
+        service.ngOnDestroy();
+      }
     });
 
     it('opens and closes contextual rulebook modal for target game', () => {
       const service = new ShellUiService();
-      expect(service.showRulebookModal()).toBe(false);
+      try {
+        expect(service.showRulebookModal()).toBe(false);
 
-      service.openRulebook('monopoly');
-      expect(service.showRulebookModal()).toBe(true);
-      expect(service.rulebookGame()).toBe('monopoly');
+        service.openRulebook('monopoly');
+        expect(service.showRulebookModal()).toBe(true);
+        expect(service.rulebookGame()).toBe('monopoly');
 
-      service.closeRulebook();
-      expect(service.showRulebookModal()).toBe(false);
+        service.closeRulebook();
+        expect(service.showRulebookModal()).toBe(false);
 
-      service.setActiveGame('avalon');
-      service.openRulebook();
-      expect(service.showRulebookModal()).toBe(true);
-      expect(service.rulebookGame()).toBe('avalon');
+        service.setActiveGame('avalon');
+        service.openRulebook();
+        expect(service.showRulebookModal()).toBe(true);
+        expect(service.rulebookGame()).toBe('avalon');
+      } finally {
+        service.ngOnDestroy();
+      }
     });
 
     it('triggers procedural Web Audio sound synthesis safely without crashing', () => {
       const service = new ShellUiService();
-      const soundTypes = ['click', 'deal', 'dice', 'alert', 'fanfare', 'fail'] as const;
+      const speechDesc = Object.getOwnPropertyDescriptor(globalThis, 'speechSynthesis');
+      const utteranceDesc = Object.getOwnPropertyDescriptor(globalThis, 'SpeechSynthesisUtterance');
 
-      for (const st of soundTypes) {
-        expect(() => service.playSfx(st)).not.toThrow();
-      }
+      try {
+        const soundTypes = ['click', 'deal', 'dice', 'alert', 'fanfare', 'fail'] as const;
 
-      // Test sound disabled branch
-      service.toggleSound();
-      expect(service.soundEnabled()).toBe(false);
-      expect(() => service.playSfx('click')).not.toThrow();
-      service.toggleSound();
-      expect(service.soundEnabled()).toBe(true);
+        for (const st of soundTypes) {
+          expect(() => service.playSfx(st)).not.toThrow();
+        }
 
-      // Speech synthesis voice fallback branches
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        // Test sound disabled branch
+        service.toggleSound();
+        expect(service.soundEnabled()).toBe(false);
+        expect(() => service.playSfx('click')).not.toThrow();
+        service.toggleSound();
+        expect(service.soundEnabled()).toBe(true);
+
+        // Speech synthesis voice fallback branches
         const dummyVoices = [
           { lang: 'zh-CN', name: 'Chinese Mainland' } as SpeechSynthesisVoice,
           { lang: 'en-US', name: 'US English' } as SpeechSynthesisVoice,
         ];
-        const origGetVoices = window.speechSynthesis.getVoices;
-        window.speechSynthesis.getVoices = () => dummyVoices;
+        const spokenUtterances: Array<{
+          text: string;
+          lang: string;
+          voice: SpeechSynthesisVoice | null;
+        }> = [];
+
+        Object.defineProperty(globalThis, 'SpeechSynthesisUtterance', {
+          configurable: true,
+          writable: true,
+          value: function (text: string) {
+            return { text, lang: '', rate: 1, voice: null };
+          },
+        });
+        Object.defineProperty(globalThis, 'speechSynthesis', {
+          configurable: true,
+          writable: true,
+          value: {
+            cancel: () => undefined,
+            getVoices: () => dummyVoices,
+            speak: (u: { text: string; lang: string; voice: SpeechSynthesisVoice | null }) => {
+              spokenUtterances.push(u);
+            },
+          },
+        });
+
         expect(() => service.speak('遊戲開始', 'zh')).not.toThrow();
         expect(() => service.speak('Game Start', 'en')).not.toThrow();
-        window.speechSynthesis.getVoices = origGetVoices;
+        expect(spokenUtterances.length).toBe(2);
+        expect(spokenUtterances.at(0)?.voice?.lang).toBe('zh-CN');
+        expect(spokenUtterances.at(1)?.voice?.lang).toBe('en-US');
+      } finally {
+        if (speechDesc) {
+          Object.defineProperty(globalThis, 'speechSynthesis', speechDesc);
+        } else {
+          Reflect.deleteProperty(globalThis, 'speechSynthesis');
+        }
+        if (utteranceDesc) {
+          Object.defineProperty(globalThis, 'SpeechSynthesisUtterance', utteranceDesc);
+        } else {
+          Reflect.deleteProperty(globalThis, 'SpeechSynthesisUtterance');
+        }
+        service.ngOnDestroy();
       }
     });
   });

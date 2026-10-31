@@ -14,6 +14,14 @@ import {
 } from './mahjong-session.service';
 import { DEFAULT_RULES } from './scorer.service';
 
+function restoreProp(target: object, key: string, desc: PropertyDescriptor | undefined): void {
+  if (desc) {
+    Object.defineProperty(target, key, desc);
+  } else {
+    Reflect.deleteProperty(target, key);
+  }
+}
+
 describe('MahjongSessionService & Host/Guest P2P Sync', () => {
   it('extracts room codes from invite URLs, isolates Host/Guest tokens across tabs, and syncs seats', async () => {
     expect(generateRoomCode(6).length).toBe(6);
@@ -896,12 +904,11 @@ describe('MahjongSessionService & Host/Guest P2P Sync', () => {
 
   it('synthesizes Web Audio clack and penalty buzzer, selects Cantonese TTS voices, and handles clipboard/prompt invite links', async () => {
     vi.useFakeTimers();
-    const originalAudioCtx = globalThis.AudioContext;
-    const originalSpeech = globalThis.speechSynthesis;
-    const originalUtterance = (globalThis as unknown as Record<string, unknown>)[
-      'SpeechSynthesisUtterance'
-    ];
-    const originalClipboard = navigator.clipboard;
+    const audioCtxDesc = Object.getOwnPropertyDescriptor(globalThis, 'AudioContext');
+    const speechDesc = Object.getOwnPropertyDescriptor(globalThis, 'speechSynthesis');
+    const utteranceDesc = Object.getOwnPropertyDescriptor(globalThis, 'SpeechSynthesisUtterance');
+    const clipboardDesc = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    const hiddenDesc = Object.getOwnPropertyDescriptor(document, 'hidden');
 
     try {
       TestBed.resetTestingModule();
@@ -958,9 +965,13 @@ describe('MahjongSessionService & Host/Guest P2P Sync', () => {
         },
       };
 
-      (globalThis as unknown as Record<string, unknown>)['AudioContext'] = function () {
-        return mockCtx;
-      };
+      Object.defineProperty(globalThis, 'AudioContext', {
+        configurable: true,
+        writable: true,
+        value: function () {
+          return mockCtx;
+        },
+      });
 
       svc.soundEnabled.set(true);
       svc.playClack(660);
@@ -977,15 +988,10 @@ describe('MahjongSessionService & Host/Guest P2P Sync', () => {
       expect(ctxState).toBe('running');
       expect(oscTypes.length).toBe(4);
 
-      const hiddenDesc = Object.getOwnPropertyDescriptor(document, 'hidden');
       Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
       document.dispatchEvent(new Event('visibilitychange'));
       expect(suspendCount).toBe(2);
-      if (hiddenDesc) {
-        Object.defineProperty(document, 'hidden', hiddenDesc);
-      } else {
-        Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
-      }
+      restoreProp(document, 'hidden', hiddenDesc);
 
       throwOsc = true;
       svc.playClack(500);
@@ -1005,19 +1011,25 @@ describe('MahjongSessionService & Host/Guest P2P Sync', () => {
       const spokenItems: Array<{ text: string; voice: { lang: string } | null }> = [];
       let throwSpeak = false;
 
-      (globalThis as unknown as Record<string, unknown>)['SpeechSynthesisUtterance'] = function (
-        text: string
-      ) {
-        return { text, voice: null, lang: '', rate: 1 };
-      };
-      (globalThis as unknown as Record<string, unknown>)['speechSynthesis'] = {
-        cancel: () => undefined,
-        getVoices: () => voicesList,
-        speak: (u: { text: string; voice: { lang: string } | null }) => {
-          if (throwSpeak) throw new Error('tts error');
-          spokenItems.push(u);
+      Object.defineProperty(globalThis, 'SpeechSynthesisUtterance', {
+        configurable: true,
+        writable: true,
+        value: function (text: string) {
+          return { text, voice: null, lang: '', rate: 1 };
         },
-      };
+      });
+      Object.defineProperty(globalThis, 'speechSynthesis', {
+        configurable: true,
+        writable: true,
+        value: {
+          cancel: () => undefined,
+          getVoices: () => voicesList,
+          speak: (u: { text: string; voice: { lang: string } | null }) => {
+            if (throwSpeak) throw new Error('tts error');
+            spokenItems.push(u);
+          },
+        },
+      });
 
       svc.speakCallout('食糊');
       expect(spokenItems.at(0)?.voice?.lang).toBe('zh-HK');
@@ -1037,13 +1049,17 @@ describe('MahjongSessionService & Host/Guest P2P Sync', () => {
       // copyInviteLink: idle no-op, clipboard success + toast auto-clear, and prompt fallback
       let copiedText = '';
       let rejectClipboard = false;
-      (navigator as unknown as Record<string, unknown>)['clipboard'] = {
-        writeText: (val: string) => {
-          if (rejectClipboard) return Promise.reject(new Error('denied'));
-          copiedText = val;
-          return Promise.resolve();
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        writable: true,
+        value: {
+          writeText: (val: string) => {
+            if (rejectClipboard) return Promise.reject(new Error('denied'));
+            copiedText = val;
+            return Promise.resolve();
+          },
         },
-      };
+      });
       const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue(null);
 
       await svc.copyInviteLink();
@@ -1063,11 +1079,11 @@ describe('MahjongSessionService & Host/Guest P2P Sync', () => {
       promptSpy.mockRestore();
       svc.leaveSession();
     } finally {
-      globalThis.AudioContext = originalAudioCtx;
-      (globalThis as unknown as Record<string, unknown>)['speechSynthesis'] = originalSpeech;
-      (globalThis as unknown as Record<string, unknown>)['SpeechSynthesisUtterance'] =
-        originalUtterance;
-      (navigator as unknown as Record<string, unknown>)['clipboard'] = originalClipboard;
+      restoreProp(globalThis, 'AudioContext', audioCtxDesc);
+      restoreProp(globalThis, 'speechSynthesis', speechDesc);
+      restoreProp(globalThis, 'SpeechSynthesisUtterance', utteranceDesc);
+      restoreProp(navigator, 'clipboard', clipboardDesc);
+      restoreProp(document, 'hidden', hiddenDesc);
       vi.useRealTimers();
     }
   });
@@ -1177,10 +1193,14 @@ describe('MahjongSessionService & Host/Guest P2P Sync', () => {
 
   it('covers HostSession and GuestSession WebRTC PeerJS transport, reconnects, retries, and timeouts', async () => {
     vi.useFakeTimers();
-    const origRtc = (globalThis as unknown as Record<string, unknown>)['RTCPeerConnection'];
-    (globalThis as unknown as Record<string, unknown>)['RTCPeerConnection'] = function () {
-      return {};
-    };
+    const rtcDesc = Object.getOwnPropertyDescriptor(globalThis, 'RTCPeerConnection');
+    Object.defineProperty(globalThis, 'RTCPeerConnection', {
+      configurable: true,
+      writable: true,
+      value: function () {
+        return {};
+      },
+    });
 
     class FakeMjConn implements PeerConnectionLike {
       open = false;
@@ -1412,7 +1432,7 @@ describe('MahjongSessionService & Host/Guest P2P Sync', () => {
 
       host.destroy();
     } finally {
-      (globalThis as unknown as Record<string, unknown>)['RTCPeerConnection'] = origRtc;
+      restoreProp(globalThis, 'RTCPeerConnection', rtcDesc);
       vi.useRealTimers();
     }
   });

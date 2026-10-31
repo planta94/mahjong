@@ -66,15 +66,28 @@ describe('BotService & Tactical 5-Fan AI Decisions', () => {
     const claimChow = chooseBotAction(getPlayerView(m2, 1));
     expect(claimChow?.type).toBe('chow');
 
-    // 5. 3P exposeFly when surplus jokers need extra Fan
+    // 5. 3P retrieveFly when holding natural tile matching exposed Fly meld, then exposeFly
     const m3 = createMatch({ mode: '3p' });
     const m3p0 = m3.players.at(0)!;
     m3p0.bonus = ['f2_0'];
-    m3p0.melds = [{ type: 'chow', codes: ['p1', 'p2', 'p3'], concealed: false, fromSeat: 2 }];
+    m3p0.melds = [
+      {
+        type: 'chow',
+        codes: ['p1', 'p2', 'p3'],
+        tileIds: ['p1_0', 'jk_2', 'p3_0'],
+        concealed: false,
+        fromSeat: 2,
+      },
+    ];
     m3p0.hand = [
-      'jk_0', 'jk_1', 'p4_0', 'p5_0', 'p7_0', 'p9_0',
+      'jk_0', 'p2_0', 'p4_0', 'p5_0', 'p7_0', 'p9_0',
       'ws_0', 'ww_0', 'dr_0', 'dg_0', 'dw_0',
     ];
+    const retrieveAct = chooseBotAction(getPlayerView(m3, 0));
+    expect(retrieveAct).toEqual({ type: 'retrieveFly', code: 'p2' });
+    applyAction(m3, 0, retrieveAct!);
+    expect(m3p0.hand.includes('jk_2')).toBe(true);
+
     const flyAct = chooseBotAction(getPlayerView(m3, 0));
     expect(flyAct?.type).toBe('exposeFly');
 

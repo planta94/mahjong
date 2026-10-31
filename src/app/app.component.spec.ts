@@ -176,9 +176,14 @@ describe('AppComponent, LobbyComponent, TableComponent & Modals', () => {
      session.hintsEnabled.set(true);
      appFixture.detectChanges();
 
-     // Always-available action buttons in 3P claim phase: Chow, Pong, Kong, Fly, Hu, Pass = 6
+     // Always-available action buttons in 3P claim phase: Chow, Pong, Kong, Expose Fly, Retrieve Fly, Hu, Pass = 7
      const actionBtns = rootEl.querySelectorAll('.action-bar button');
-     expect(actionBtns.length).toBe(6);
+     expect(actionBtns.length).toBe(7);
+
+     // Click Retrieve Fly button to verify retrieveFly selection prompt, then switch to Pong
+     (actionBtns.item(4) as HTMLButtonElement).click();
+     appFixture.detectChanges();
+     expect(rootEl.querySelector('.selection-prompt')?.textContent).toContain('換回副露中的「飛」');
 
      // Click Pong button to enter manual tile-selection mode, toggle 2 tiles, then Confirm
      (actionBtns.item(1) as HTMLButtonElement).click();

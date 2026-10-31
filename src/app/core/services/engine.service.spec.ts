@@ -198,6 +198,82 @@ describe('EngineService & Match State Machine', () => {
     expect(m.phase).toBe('turn');
     expect(m.turnSeat).toBe(2);
     expect(p2.melds.at(0)?.codes).toEqual(['p8', 'p8', 'p8']);
+
+    // 5. Immediately after Pong (canSelfAct === false), retrieveFly is penalized as WRONG_FLY
+    p2.hand.splice(0, 1, 'p8_0');
+    applyAction(m, 2, { type: 'retrieveFly', tileIds: ['p8_0'] });
+    expect(m.lastPenalty?.reasonCode).toBe('WRONG_FLY');
+
+    // 6. On a normal self-draw turn (canSelfAct === true), Seat 2 retrieves jk_1 from Pong using p8_0,
+    //    which turns the Pong into 3 real p8 tiles and unlocks Added Kong when holding 4th p8_3!
+    m.canSelfAct = true;
+    m.wall = ['we_3', 'ws_3', 'ww_3'];
+    p2.hand = [
+      'p8_0', 'p8_3', 'p6_2', 'p7_2', 'p9_2', 'we_2',
+      'ws_2', 'ww_2', 'wn_2', 'dr_2', 'dw_2',
+    ];
+    const p2LegalBefore = getLegalActions(m, 2);
+    expect(p2LegalBefore?.phase).toBe('turn');
+    if (p2LegalBefore?.phase === 'turn') {
+      expect(p2LegalBefore.retrieveFlys).toEqual(['p8']);
+      expect(p2LegalBefore.addedKongs).toEqual([]);
+    }
+
+    // Wrong tile for retrieveFly triggers WRONG_FLY
+    applyAction(m, 2, { type: 'retrieveFly', tileIds: ['we_2'] });
+    expect(m.lastPenalty?.reasonCode).toBe('WRONG_FLY');
+
+    // Valid retrieveFly swaps p8_0 into the Pong and returns jk_1 to hand
+    applyAction(m, 2, { type: 'retrieveFly', tileIds: ['p8_0'] });
+    expect(m.lastPenalty).toBeNull();
+    expect(p2.melds.at(0)?.tileIds).toEqual(['p8_2', 'p8_0', 'p8_1']);
+    expect(p2.hand.includes('jk_1')).toBe(true);
+    expect(p2.hand.includes('p8_0')).toBe(false);
+    expect(p2.hand.length).toBe(11);
+
+    // Now the natural Pong [p8,p8,p8] can be upgraded to Added Kong with p8_3!
+    const p2LegalAfter = getLegalActions(m, 2);
+    if (p2LegalAfter?.phase === 'turn') {
+      expect(p2LegalAfter.addedKongs).toEqual(['p8']);
+    }
+    applyAction(m, 2, { type: 'kong', tileIds: ['p8_3'] });
+    if (m.phase === 'robKong') {
+      applyAction(m, 0, { type: 'pass' });
+      applyAction(m, 1, { type: 'pass' });
+    }
+    expect(p2.melds.at(0)?.type).toBe('kong');
+    expect(p2.melds.at(0)?.codes).toEqual(['p8', 'p8', 'p8', 'p8']);
+
+    // 7. Retrieve Fly from open-ended wildcard Chow ([p4, p5, jk] + p3 -> [p3, p4, p5]) and 2-joker Chow
+    p1.melds = [
+      {
+        type: 'chow',
+        codes: ['p4', 'p5', 'p6'],
+        tileIds: ['p4_0', 'p5_0', 'jk_0'],
+        concealed: false,
+        fromSeat: 0,
+      },
+      {
+        type: 'chow',
+        codes: ['p5', 'p6', 'p7'],
+        tileIds: ['p5_1', 'jk_2', 'jk_3'],
+        concealed: false,
+        fromSeat: 0,
+      },
+    ];
+    m.phase = 'turn';
+    m.turnSeat = 1;
+    m.canSelfAct = true;
+    p1.hand = ['p3_1', 'p7_3', 'dr_1', 'dr_2', 'dg_1', 'dg_2', 'dw_1', 'dw_2'];
+    applyAction(m, 1, { type: 'retrieveFly', tileIds: ['p3_1'] });
+    expect(p1.melds.at(0)?.codes).toEqual(['p3', 'p4', 'p5']);
+    expect(p1.melds.at(0)?.tileIds).toEqual(['p3_1', 'p4_0', 'p5_0']);
+    expect(p1.hand.includes('jk_0')).toBe(true);
+
+    applyAction(m, 1, { type: 'retrieveFly', code: 'p7' });
+    expect(p1.melds.at(1)?.codes).toEqual(['p5', 'p6', 'p7']);
+    expect(p1.melds.at(1)?.tileIds).toEqual(['p5_1', 'jk_3', 'p7_3']);
+    expect(p1.hand.includes('jk_2')).toBe(true);
   });
 
   it('covers chicken-hand FALSE_WIN_FAN, open Kong claim, robKong win, and wrong Kong/Chow/Fly penalties', () => {
@@ -227,6 +303,8 @@ describe('EngineService & Match State Machine', () => {
     applyAction(m, 0, { type: 'chow' });
     expect(m.lastPenalty?.reasonCode).toBe('WRONG_CHOW');
     applyAction(m, 0, { type: 'exposeFly' });
+    expect(m.lastPenalty?.reasonCode).toBe('WRONG_FLY');
+    applyAction(m, 0, { type: 'retrieveFly' });
     expect(m.lastPenalty?.reasonCode).toBe('WRONG_FLY');
     applyAction(m, 0, { type: 'kong', tileIds: ['p2_0', 'p3_0'] });
     expect(m.lastPenalty?.reasonCode).toBe('WRONG_KONG');

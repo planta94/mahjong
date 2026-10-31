@@ -126,6 +126,7 @@ export type LegalActions =
       canDiscard: boolean;
       win: WinEvalResult | null;
       exposeFly: boolean;
+      retrieveFlys: string[];
       concealedKongs: string[];
       addedKongs: string[];
     }
@@ -191,6 +192,7 @@ export interface GameAction {
   type:
     | 'win'
     | 'exposeFly'
+    | 'retrieveFly'
     | 'concealedKong'
     | 'addedKong'
     | 'discard'

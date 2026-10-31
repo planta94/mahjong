@@ -6,7 +6,7 @@ import { tileSpec, windLabel } from '../../core/utils/tiles.util';
 import { TranslatePipe } from '../../shared/pipes/translate.pipe';
 import { TileComponent } from '../../shared/tile/tile.component';
 
-export type SelectionMode = 'chow' | 'pong' | 'kong' | 'exposeFly';
+export type SelectionMode = 'chow' | 'pong' | 'kong' | 'exposeFly' | 'retrieveFly';
 
 @Component({
   selector: 'app-table',

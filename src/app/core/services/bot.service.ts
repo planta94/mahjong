@@ -566,6 +566,10 @@ export function chooseBotAction(view: PlayerView): GameAction | null {
   }
 
   if (legal.phase === 'turn') {
+    if (legal.retrieveFlys.length > 0) {
+      return { type: 'retrieveFly', code: legal.retrieveFlys.at(0) };
+    }
+
     const hand = me.hand ?? [];
     const tenpai = evaluateBestTenpaiDiscard(hand, me.melds, me.bonus, view, me, seen);
 

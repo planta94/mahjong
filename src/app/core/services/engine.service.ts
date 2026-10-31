@@ -7,6 +7,7 @@ import {
   GameRules,
   LegalActions,
   MatchState,
+  Meld,
   PenaltyReasonCode,
   PlayerView,
   RobKongSeatEntry,
@@ -261,6 +262,102 @@ function validateChowClaim(
   return { usedIds, meldCodes: [...chosen.meldCodes], orderedTileIds };
 }
 
+interface FlySwapPlan {
+  meldIdx: number;
+  flyId: string;
+  nextCodes: string[];
+  nextTileIds: string[];
+}
+
+function findReplaceableFlySwap(
+  melds: readonly Meld[],
+  naturalTileId: string
+): FlySwapPlan | null {
+  const natCode = tileCode(naturalTileId);
+  const natIdx = CODE_INDEX_MAP.get(natCode);
+  if (!natCode || natCode === 'jk' || isBonusTile(naturalTileId) || natIdx === undefined) {
+    return null;
+  }
+
+  for (let mIdx = 0; mIdx < melds.length; mIdx++) {
+    const m = melds.at(mIdx);
+    if (!m || m.concealed || !m.tileIds) continue;
+    const jokers = m.tileIds.filter((id) => tileCode(id) === 'jk');
+    const flyId = jokers.at(0);
+    if (!flyId) continue;
+
+    if (m.type === 'pong') {
+      const pongCode = tileCode(m.codes.at(0) ?? '');
+      if (pongCode === natCode) {
+        const jkSlot = m.tileIds.findIndex((id) => id === flyId);
+        const nextTileIds = [...m.tileIds];
+        nextTileIds.splice(jkSlot, 1, naturalTileId);
+        return {
+          meldIdx: mIdx,
+          flyId,
+          nextCodes: [pongCode, pongCode, pongCode],
+          nextTileIds,
+        };
+      }
+    } else if (m.type === 'chow' && natIdx < 27) {
+      const suitBase = Math.floor(natIdx / 9) * 9;
+      const natPos = natIdx - suitBase;
+      const naturals: Array<{ id: string; pos: number }> = [{ id: naturalTileId, pos: natPos }];
+      let validSuitAndUnique = true;
+
+      for (const id of m.tileIds) {
+        const c = tileCode(id);
+        if (c === 'jk') continue;
+        const idx = CODE_INDEX_MAP.get(c);
+        if (idx === undefined || idx >= 27 || Math.floor(idx / 9) * 9 !== suitBase) {
+          validSuitAndUnique = false;
+          break;
+        }
+        const pos = idx - suitBase;
+        if (naturals.some((n) => n.pos === pos)) {
+          validSuitAndUnique = false;
+          break;
+        }
+        naturals.push({ id, pos });
+      }
+      if (!validSuitAndUnique) continue;
+
+      let chosenStart = -1;
+      for (let start = 0; start <= 6; start++) {
+        if (naturals.every((n) => n.pos >= start && n.pos <= start + 2)) {
+          chosenStart = start;
+        }
+      }
+      if (chosenStart === -1) continue;
+
+      const remainingJokers = jokers.slice(1);
+      const nextCodes: string[] = [];
+      const nextTileIds: string[] = [];
+      let jCursor = 0;
+      for (let offset = 0; offset < 3; offset++) {
+        const targetPos = chosenStart + offset;
+        const c = PLAYABLE_CODES.at(suitBase + targetPos) ?? natCode;
+        nextCodes.push(c);
+        const nat = naturals.find((n) => n.pos === targetPos);
+        if (nat) {
+          nextTileIds.push(nat.id);
+        } else {
+          nextTileIds.push(remainingJokers.at(jCursor) ?? naturalTileId);
+          jCursor++;
+        }
+      }
+      return {
+        meldIdx: mIdx,
+        flyId,
+        nextCodes,
+        nextTileIds,
+      };
+    }
+  }
+
+  return null;
+}
+
 function finishExhaustiveDraw(state: MatchState): void {
   state.phase = 'handOver';
   state.pendingClaims = null;
@@ -397,6 +494,7 @@ export function getLegalActions(state: MatchState, seat: number): LegalActions |
       canDiscard: true,
       win: null,
       exposeFly: false,
+      retrieveFlys: [],
       concealedKongs: [],
       addedKongs: [],
     };
@@ -420,6 +518,18 @@ export function getLegalActions(state: MatchState, seat: number): LegalActions |
         rules: state.rules,
       });
       if (winEval.canWin) actions.win = winEval;
+
+      if (state.mode === '3p') {
+        const seenRetrieve = new Set<string>();
+        for (const id of p.hand) {
+          const c = tileCode(id);
+          if (c === 'jk' || seenRetrieve.has(c)) continue;
+          seenRetrieve.add(c);
+          if (findReplaceableFlySwap(p.melds, id)) {
+            actions.retrieveFlys.push(c);
+          }
+        }
+      }
 
       if (state.wall.length > 0) {
         if (state.mode === '3p') {
@@ -983,6 +1093,40 @@ export function applyAction(state: MatchState, seat: number, action: GameAction)
       return state;
     }
 
+    if (action.type === 'retrieveFly') {
+      const candidateIds =
+        action.tileIds ??
+        (action.code && legal.retrieveFlys.includes(action.code)
+          ? p.hand.filter((id) => tileCode(id) === action.code).slice(0, 1)
+          : legal.retrieveFlys.length > 0
+            ? p.hand.filter((id) => tileCode(id) === legal.retrieveFlys.at(0)).slice(0, 1)
+            : []);
+      const picked =
+        state.canSelfAct && state.mode === '3p'
+          ? extractDistinctFromHand(p.hand, candidateIds, 1)
+          : null;
+      const natId = picked?.at(0);
+      const swap = natId ? findReplaceableFlySwap(p.melds, natId) : null;
+      const targetMeld = swap ? p.melds.at(swap.meldIdx) : undefined;
+      if (!natId || !swap || !targetMeld) {
+        applyPenalty(state, seat, 'retrieveFly', 'WRONG_FLY');
+        return state;
+      }
+
+      const natCode = tileCode(natId);
+      p.hand.splice(p.hand.indexOf(natId), 1);
+      targetMeld.codes = swap.nextCodes;
+      targetMeld.tileIds = swap.nextTileIds;
+      p.hand.push(swap.flyId);
+      p.hand = sortHandIds(p.hand);
+      p.lastDrawnId = swap.flyId;
+      state.lastPenalty = null;
+      state.kongReplacement = false;
+      state.canSelfAct = true;
+      pushLog(state, `座位 ${seat + 1} 換飛（${tileSpec(natCode).name}）`);
+      return state;
+    }
+
     if (
       action.type === 'concealedKong' ||
       action.type === 'addedKong' ||
@@ -1215,8 +1359,8 @@ export function applyAction(state: MatchState, seat: number, action: GameAction)
       return state;
     }
 
-    if (type === 'exposeFly') {
-      applyPenalty(state, seat, 'exposeFly', 'WRONG_FLY');
+    if (type === 'exposeFly' || type === 'retrieveFly') {
+      applyPenalty(state, seat, type, 'WRONG_FLY');
       entry.decision = { type: 'pass', chowIndex: 0 };
       resolveClaimsIfReady(state);
       return state;
@@ -1285,6 +1429,7 @@ export function applyAction(state: MatchState, seat: number, action: GameAction)
       ['addedKong', 'WRONG_KONG'],
       ['chow', 'WRONG_CHOW'],
       ['exposeFly', 'WRONG_FLY'],
+      ['retrieveFly', 'WRONG_FLY'],
     ]);
     applyPenalty(state, seat, action.type, reasonMap.get(action.type) ?? 'OUT_OF_TURN');
     entry.decision = { type: 'pass' };

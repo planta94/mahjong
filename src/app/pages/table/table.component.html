@@ -324,6 +324,15 @@
                 >
                   ✨ {{ 'TABLE.BTN_FLY' | translate }}
                 </button>
+
+                <button
+                  type="button"
+                  class="btn btn-jade"
+                  [class.active-call]="selMode === 'retrieveFly'"
+                  (click)="startSelection('retrieveFly')"
+                >
+                  🔄 {{ 'TABLE.BTN_RETRIEVE_FLY' | translate }}
+                </button>
               }
 
               <button
@@ -371,6 +380,9 @@
                   }
                   @case ('exposeFly') {
                     {{ 'TABLE.SELECT_HINT_FLY' | translate: { count: selCount } }}
+                  }
+                  @case ('retrieveFly') {
+                    {{ 'TABLE.SELECT_HINT_RETRIEVE_FLY' | translate: { count: selCount } }}
                   }
                 }
               </span>

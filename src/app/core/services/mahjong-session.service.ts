@@ -1031,6 +1031,7 @@ export class MahjongSessionService {
         else if (newestLog.includes('碰')) this.speakCallout('碰');
         else if (newestLog.includes('上 ')) this.speakCallout('上');
         else if (newestLog.includes('打飛')) this.speakCallout('打飛');
+        else if (newestLog.includes('換飛')) this.speakCallout('換飛');
         else this.playClack(580);
       }
 

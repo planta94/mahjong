@@ -98,15 +98,15 @@ mahjong/
 └── src/
     ├── styles/                   # Design tokens, breakpoints & mixins
     └── app/
-        ├── core/                 # Mahjong engine/scorer/AI, universal P2P transport, shell & save manager
-        ├── games/
+        ├── core/                 # Mahjong module (engine, scorer, AI bot, session) + P2P transport, shell & save manager
+        ├── games/                # Expansion game modules (Mahjong UI lives in pages/lobby & pages/table)
         │   ├── avalon/           # Avalon engine, deduction AI bot, P2P session, lobby & table
         │   ├── monopoly/         # Monopoly engine, trade AI bot, P2P session, lobby & 11x11 board
         │   └── pandemic/         # Pandemic 48-city co-op engine, BFS AI bot, Solo Commander, lobby & SVG map
         ├── layout/header/        # Contextual game emblem header, All Games nav, invite copy & audio toggles
         ├── pages/
         │   ├── hub/              # Tabletop Royale Hub, 4 game launchers, room join & saved-game banner
-        │   ├── lobby/            # Mahjong 3P/4P lobby & P2P waiting room
-        │   └── table/            # Mahjong 3P/4P tabletop, Tenpai helper & settlement modal
+        │   ├── lobby/            # Mahjong (/mahjong/lobby) 3P/4P setup & P2P waiting room
+        │   └── table/            # Mahjong (/mahjong/table) 3P/4P tabletop, Tenpai helper & settlement modal
         └── shared/               # SVG Mahjong tiles, SVG dice, 4-game rulebook, exit modal & i18n pipe
 ```

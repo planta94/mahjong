@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import {
   CityCubes,
   createSerializableMap,
+  CUBES_PER_COLOR,
   PandemicPlayerState,
   PandemicPlayerView,
 } from '../models/pandemic.model';
@@ -25,6 +26,18 @@ describe('PandemicBotService & Cooperative Tactical AI', () => {
       numPlayers: 4,
       roles: ['medic', 'scientist', 'researcher', 'dispatcher'],
     });
+    for (const cityId of rawState.cityCubes.keys()) {
+      rawState.cityCubes.set(cityId, { blue: 0, yellow: 0, black: 0, red: 0 });
+    }
+    rawState.cubesRemaining.set('blue', CUBES_PER_COLOR);
+    rawState.cubesRemaining.set('yellow', CUBES_PER_COLOR);
+    rawState.cubesRemaining.set('black', CUBES_PER_COLOR);
+    rawState.cubesRemaining.set('red', CUBES_PER_COLOR);
+    rawState.infectionDiscard = [];
+    rawState.playerDiscard = [];
+    for (const player of rawState.players) {
+      player.cards = [];
+    }
     rawState.players[0].cityId = 'atlanta';
     rawState.players[1].cityId = 'paris';
     rawState.players[2].cityId = 'tokyo';

@@ -918,4 +918,188 @@ describe('MonopolyBoardComponent', () => {
     expect(session.showTradeModal()).toBe(false);
     expect(comp.calculatePlayerNetWorth(testPlayer)).toBe(0);
   });
+
+  it('validates trade proposal inputs inline, shows validation errors, and clears request on partner switch', async () => {
+    const { fixture, comp, session } = await setupBoard();
+    const host = fixture.nativeElement as HTMLElement;
+
+    patchView(session, (view) => ({
+      ...view,
+      players: [
+        { ...view.players[0], cash: 200 },
+        { ...view.players[1], cash: 300 },
+      ],
+      properties: [
+        [1, { ownerSeat: 0, houses: 0, isMortgaged: false }],
+        [3, { ownerSeat: 1, houses: 0, isMortgaged: false }],
+      ],
+    }));
+    fixture.detectChanges();
+
+    comp.openTrade();
+    fixture.detectChanges();
+    expect(session.showTradeModal()).toBe(true);
+
+    // 1. Propose empty trade -> triggers TRADE_ERR_EMPTY
+    comp.tradeOfferCash = 0;
+    comp.tradeRequestCash = 0;
+    comp.tradeOfferProps = [];
+    comp.tradeRequestProps = [];
+    comp.proposeTrade();
+    fixture.detectChanges();
+
+    expect(comp.tradeErrorKey()).toBe('MONOPOLY.TRADE_ERR_EMPTY');
+    expect(session.showTradeModal()).toBe(true);
+    const errEl = host.querySelector('.trade-validation-error');
+    expect(errEl instanceof HTMLElement).toBe(true);
+    expect(
+      errEl?.textContent?.includes('Trade proposal must offer') ||
+      errEl?.textContent?.includes('必须包含出价')
+    ).toBe(true);
+
+    // 2. Offer cash exceeds available player cash -> triggers TRADE_ERR_OFFER_CASH
+    comp.tradeOfferCash = 500; // my cash is 200
+    comp.tradeRequestProps = [3];
+    comp.proposeTrade();
+    fixture.detectChanges();
+
+    expect(comp.tradeErrorKey()).toBe('MONOPOLY.TRADE_ERR_OFFER_CASH');
+    expect(session.showTradeModal()).toBe(true);
+
+    // 3. Request cash exceeds available opponent cash -> triggers TRADE_ERR_REQUEST_CASH
+    comp.tradeOfferCash = 50;
+    comp.tradeRequestCash = 999; // target cash is 300
+    comp.proposeTrade();
+    fixture.detectChanges();
+
+    expect(comp.tradeErrorKey()).toBe('MONOPOLY.TRADE_ERR_REQUEST_CASH');
+    expect(session.showTradeModal()).toBe(true);
+
+    // 4. Partner change resets tradeRequestProps and tradeErrorKey
+    comp.tradeRequestProps = [3];
+    comp.onTradeTargetChange();
+    expect(comp.tradeRequestProps).toEqual([]);
+    expect(comp.tradeErrorKey()).toBe(null);
+
+    // 5. Valid trade closes modal cleanly
+    comp.tradeOfferCash = 100;
+    comp.tradeOfferProps = [1];
+    comp.tradeRequestCash = 50;
+    comp.tradeRequestProps = [3];
+    comp.proposeTrade();
+    expect(session.showTradeModal()).toBe(false);
+    expect(comp.tradeErrorKey()).toBe(null);
+  });
+
+  it('renders pending trade indicator for proposing player and handles Trade Outcome modal lifecycle', async () => {
+    const { fixture, comp, session, shellUi } = await setupBoard();
+    const host = fixture.nativeElement as HTMLElement;
+    const sfxSpy = vi.spyOn(shellUi, 'playSfx');
+
+    // 1. Pending trade indicator visible when pendingTrade.fromSeat === mySeat
+    patchView(session, (view) => ({
+      ...view,
+      pendingTrade: {
+        fromSeat: 0,
+        toSeat: 1,
+        offerCash: 100,
+        offerProperties: [1],
+        requestCash: 50,
+        requestProperties: [3],
+      },
+    }));
+    fixture.detectChanges();
+
+    const indicator = host.querySelector('.pending-trade-indicator');
+    expect(indicator?.textContent?.includes('KL Tycoon')).toBe(true);
+
+    // Indicator hidden when pendingTrade targets someone else
+    patchView(session, (view) => ({
+      ...view,
+      pendingTrade: {
+        fromSeat: 1,
+        toSeat: 2,
+        offerCash: 50,
+        offerProperties: [],
+        requestCash: 0,
+        requestProperties: [],
+      },
+    }));
+    fixture.detectChanges();
+    expect(host.querySelector('.pending-trade-indicator')).toBe(null);
+
+    // 2. Trade Outcome Modal: displays when lastTradeOutcome has fromSeat === mySeat
+    patchView(session, (view) => ({
+      ...view,
+      pendingTrade: null,
+      lastTradeOutcome: {
+        id: 42,
+        fromSeat: 0,
+        toSeat: 1,
+        accepted: true,
+        reasonKey: 'MONOPOLY.TRADE_REASON_ACCEPTED',
+        offerCash: 100,
+        requestCash: 50,
+        offerProperties: [1],
+        requestProperties: [3],
+      },
+    }));
+    fixture.detectChanges();
+
+    const outcomeModal = host.querySelector('.trade-outcome-modal');
+    expect(outcomeModal?.textContent?.includes('KL Tycoon')).toBe(true);
+    // Enforces bounded modal: NO top-right X button
+    expect(outcomeModal?.querySelector('.modal-header button')).toBe(null);
+
+    // Click confirm button in modal-footer to dismiss
+    const confirmBtn = outcomeModal?.querySelector('.modal-footer button') as HTMLButtonElement;
+    sfxSpy.mockClear();
+    confirmBtn.click();
+    fixture.detectChanges();
+
+    expect(sfxSpy).toHaveBeenCalledWith('click');
+    expect(comp.dismissedTradeOutcomeId()).toBe(42);
+    expect(host.querySelector('.trade-outcome-modal')).toBe(null);
+
+    // 3. Trade outcome for another proposer is not shown to local player
+    patchView(session, (view) => ({
+      ...view,
+      lastTradeOutcome: {
+        id: 43,
+        fromSeat: 1,
+        toSeat: 2,
+        accepted: false,
+        reasonKey: 'MONOPOLY.TRADE_REASON_LOW_VALUE',
+        offerCash: 10,
+        requestCash: 0,
+        offerProperties: [],
+        requestProperties: [],
+      },
+    }));
+    fixture.detectChanges();
+    expect(host.querySelector('.trade-outcome-modal')).toBe(null);
+
+    // 4. Bilingual reason keys and error messages coverage
+    comp.translate.use('en');
+    expect(comp.getTradeReasonText('MONOPOLY.TRADE_REASON_MUTUAL_SETS')).toContain('Mutual monopoly swap');
+    expect(comp.getTradeReasonText('MONOPOLY.TRADE_REASON_PREMIUM_BUYOUT')).toContain('High premium buyout');
+    expect(comp.getTradeReasonText('MONOPOLY.TRADE_REASON_CASH_RESERVE')).toContain('Insufficient cash reserves');
+    expect(comp.getTradeReasonText('MONOPOLY.TRADE_REASON_GRANTS_MONOPOLY')).toContain('Grants opponent a monopoly');
+    expect(comp.getTradeReasonText('MONOPOLY.TRADE_REASON_LOW_VALUE')).toContain('Offer value is too low');
+    expect(comp.getTradeReasonText('MONOPOLY.TRADE_REASON_DECLINED_PLAYER')).toContain('Player declined');
+    expect(comp.getTradeErrorMessage('MONOPOLY.TRADE_ERR_OFFER_CASH')).toContain('Offered cash exceeds');
+    expect(comp.getTradeErrorMessage('MONOPOLY.TRADE_ERR_REQUEST_CASH')).toContain('Requested cash exceeds');
+    expect(comp.getTradeErrorMessage('MONOPOLY.TRADE_ERR_EMPTY')).toContain('Trade proposal must offer');
+
+    comp.translate.use('zh');
+    expect(comp.getTradeReasonText('MONOPOLY.TRADE_REASON_MUTUAL_SETS')).toContain('互利共赢');
+    expect(comp.getTradeReasonText('MONOPOLY.TRADE_REASON_PREMIUM_BUYOUT')).toContain('买断');
+    expect(comp.getTradeReasonText('MONOPOLY.TRADE_REASON_CASH_RESERVE')).toContain('现金储备不足');
+    expect(comp.getTradeReasonText('MONOPOLY.TRADE_REASON_GRANTS_MONOPOLY')).toContain('独占垄断');
+    expect(comp.getTradeReasonText('MONOPOLY.TRADE_REASON_LOW_VALUE')).toContain('过低');
+    expect(comp.getTradeReasonText('MONOPOLY.TRADE_REASON_DECLINED_PLAYER')).toContain('拒绝了该交易');
+    expect(comp.getTradeErrorMessage('MONOPOLY.TRADE_ERR_OFFER_CASH')).toContain('出价现金超出');
+    expect(comp.getTradeErrorMessage('MONOPOLY.TRADE_ERR_REQUEST_CASH')).toContain('要价现金超出');
+    expect(comp.getTradeErrorMessage('MONOPOLY.TRADE_ERR_EMPTY')).toContain('必须包含出价及要价');
+  });
 });

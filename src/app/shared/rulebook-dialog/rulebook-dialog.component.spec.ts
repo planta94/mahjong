@@ -67,7 +67,7 @@ describe('RulebookDialogComponent', () => {
     const el = fixture.nativeElement as HTMLElement;
 
     const tabs = el.querySelectorAll('.rulebook-tab-btn');
-    expect(tabs.length).toBe(3);
+    expect(tabs.length).toBe(4);
 
     // 1. Mahjong tab (default)
     expect(tabs.item(0).classList.contains('active')).toBe(true);
@@ -101,6 +101,18 @@ describe('RulebookDialogComponent', () => {
     expect(el.querySelectorAll('.mobile-cards .mobile-app-card').length).toBe(6);
     // 7P, 8P, 9P, 10P require 2 fails on Quest 4 (4 rows with .matrix-note)
     expect(el.querySelectorAll('.desktop-table .matrix-note').length).toBe(4);
+
+    // 4. Switch to Pandemic tab
+    (tabs.item(3) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(shellUi.rulebookGame()).toBe('pandemic');
+    expect(tabs.item(3).classList.contains('active')).toBe(true);
+    expect(el.querySelector('#rulebook-dialog-title')?.textContent).toContain('瘟疫危机');
+    expect(el.querySelectorAll('.desktop-table').length).toBe(2);
+    expect(el.querySelectorAll('.mobile-cards').length).toBe(2);
+    // 7 roles + 3 difficulties = 10 rows
+    expect(el.querySelectorAll('.desktop-table tbody tr').length).toBe(10);
+    expect(el.querySelectorAll('.mobile-cards .mobile-app-card').length).toBe(10);
   });
 
   it('uses defensive fallback defaults for payoutRows and avalonMatrixRows when table lookups return undefined', () => {

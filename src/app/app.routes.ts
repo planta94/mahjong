@@ -7,6 +7,8 @@ import { MonopolyLobbyComponent } from './games/monopoly/components/monopoly-lob
 import { MonopolyBoardComponent } from './games/monopoly/components/monopoly-board/monopoly-board.component';
 import { AvalonLobbyComponent } from './games/avalon/components/avalon-lobby/avalon-lobby.component';
 import { AvalonTableComponent } from './games/avalon/components/avalon-table/avalon-table.component';
+import { PandemicBoardComponent } from './games/pandemic/components/pandemic-board/pandemic-board.component';
+import { PandemicLobbyComponent } from './games/pandemic/components/pandemic-lobby/pandemic-lobby.component';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', component: HubComponent },
@@ -34,6 +36,14 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'lobby' },
       { path: 'lobby', component: AvalonLobbyComponent },
       { path: 'table', component: AvalonTableComponent },
+    ],
+  },
+  {
+    path: 'pandemic',
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'lobby' },
+      { path: 'lobby', component: PandemicLobbyComponent },
+      { path: 'board', component: PandemicBoardComponent },
     ],
   },
   { path: '**', redirectTo: '' },

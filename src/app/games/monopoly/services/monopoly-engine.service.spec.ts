@@ -1068,6 +1068,13 @@ describe('MonopolyEngineService & Saidina Family House Rules', () => {
       });
       expect(state.pendingTrade).toBe(null);
 
+      // Propose empty (0-for-0) trade -> ignored
+      engine.applyMonopolyAction(state, 0, {
+        type: 'proposeTrade',
+        trade: { fromSeat: 0, toSeat: 1, offerCash: 0, offerProperties: [], requestCash: 0, requestProperties: [] },
+      });
+      expect(state.pendingTrade).toBe(null);
+
       // Propose trade offering more cash than owned -> ignored
       state.players[0].cash = 50;
       engine.applyMonopolyAction(state, 0, {
@@ -1084,32 +1091,51 @@ describe('MonopolyEngineService & Saidina Family House Rules', () => {
       });
       expect(state.pendingTrade).toBe(null);
 
-      // Valid proposal
+      // Valid proposal with float cash sanitization
       state.properties.get(1)!.ownerSeat = 0;
       state.properties.get(3)!.ownerSeat = 1;
       state.players[0].cash = 100;
       state.players[1].cash = 100;
       engine.applyMonopolyAction(state, 0, {
         type: 'proposeTrade',
-        trade: { fromSeat: 0, toSeat: 1, offerCash: 20, offerProperties: [1], requestCash: 10, requestProperties: [3] },
+        trade: { fromSeat: 0, toSeat: 1, offerCash: 20.8, offerProperties: [1], requestCash: 10.4, requestProperties: [3] },
       });
       expect(state.pendingTrade?.fromSeat).toBe(0);
+      expect(state.pendingTrade?.offerCash).toBe(20);
+      expect(state.pendingTrade?.requestCash).toBe(10);
 
-      // Reject trade
-      engine.applyMonopolyAction(state, 1, { type: 'rejectTrade' });
+      // Reject trade records lastTradeOutcome with auto-incrementing id 1
+      engine.applyMonopolyAction(state, 1, {
+        type: 'rejectTrade',
+        reasonKey: 'MONOPOLY.TRADE_REASON_LOW_VALUE',
+      });
       expect(state.pendingTrade).toBe(null);
+      expect(state.lastTradeOutcome?.id).toBe(1);
+      expect(state.lastTradeOutcome?.accepted).toBe(false);
+      expect(state.lastTradeOutcome?.reasonKey).toBe('MONOPOLY.TRADE_REASON_LOW_VALUE');
 
-      // Propose and accept trade
+      // Propose and accept trade records lastTradeOutcome with auto-incrementing id 2
       engine.applyMonopolyAction(state, 0, {
         type: 'proposeTrade',
         trade: { fromSeat: 0, toSeat: 1, offerCash: 20, offerProperties: [1], requestCash: 10, requestProperties: [3] },
       });
-      engine.applyMonopolyAction(state, 1, { type: 'acceptTrade' });
+      engine.applyMonopolyAction(state, 1, {
+        type: 'acceptTrade',
+        reasonKey: 'MONOPOLY.TRADE_REASON_MUTUAL_SETS',
+      });
       expect(state.pendingTrade).toBe(null);
+      expect(state.lastTradeOutcome?.id).toBe(2);
+      expect(state.lastTradeOutcome?.accepted).toBe(true);
+      expect(state.lastTradeOutcome?.reasonKey).toBe('MONOPOLY.TRADE_REASON_MUTUAL_SETS');
       expect(state.properties.get(1)?.ownerSeat).toBe(1);
       expect(state.properties.get(3)?.ownerSeat).toBe(0);
       expect(state.players[0].cash).toBe(90); // 100 - 20 + 10
       expect(state.players[1].cash).toBe(110); // 100 + 20 - 10
+
+      // View projection includes lastTradeOutcome
+      const view = engine.getMonopolyPlayerView(state, 0);
+      expect(view.lastTradeOutcome?.id).toBe(2);
+      expect(view.lastTradeOutcome?.accepted).toBe(true);
     });
 
     it('handles jail bail payment and get-out-of-jail card usage', () => {

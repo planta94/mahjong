@@ -27,16 +27,17 @@ export class AppHeaderComponent {
       // Track both active game and active language to keep document.title synchronized
       const game = this.shellUi.activeGame();
       this.translate.currentLang();
-      const brand = this.translate.instant('HEADER.BRAND');
       if (typeof document !== 'undefined') {
         if (game === 'mahjong') {
-          document.title = `${this.translate.instant('HEADER.GAME_TITLE_MAHJONG')} · ${brand}`;
+          document.title = this.translate.instant('HEADER.GAME_TITLE_MAHJONG');
         } else if (game === 'monopoly') {
-          document.title = `${this.translate.instant('HEADER.GAME_TITLE_MONOPOLY')} · ${brand}`;
+          document.title = this.translate.instant('HEADER.GAME_TITLE_MONOPOLY');
         } else if (game === 'avalon') {
-          document.title = `${this.translate.instant('HEADER.GAME_TITLE_AVALON')} · ${brand}`;
+          document.title = this.translate.instant('HEADER.GAME_TITLE_AVALON');
+        } else if (game === 'pandemic') {
+          document.title = this.translate.instant('HEADER.GAME_TITLE_PANDEMIC');
         } else {
-          document.title = brand;
+          document.title = this.translate.instant('HEADER.BRAND');
         }
       }
     });
@@ -55,5 +56,10 @@ export class AppHeaderComponent {
     if (this.shellUi.activeGame() !== 'hub') {
       this.switchToHub();
     }
+  }
+
+  onLeaveClick(): void {
+    this.shellUi.playSfx('click');
+    this.gameManager.requestLeaveCurrentGame();
   }
 }

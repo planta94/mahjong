@@ -5,8 +5,8 @@
   width: 100%;
   min-height: 50px;
   padding: 8px 24px;
-  background: linear-gradient(180deg, rgba(6, 28, 20, 0.96), rgba(4, 18, 13, 0.94));
-  border-bottom: 1px solid var(--panel-border);
+  background: var(--topbar-bg, linear-gradient(180deg, rgba(6, 28, 20, 0.96), rgba(4, 18, 13, 0.94)));
+  border-bottom: 1px solid var(--topbar-border, var(--panel-border));
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.32);
   backdrop-filter: blur(10px);
   gap: 12px;
@@ -35,24 +35,43 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
 }
 
-.brand-kicker {
-  font-size: 0.86rem;
-  font-weight: 700;
-  color: rgba(254, 240, 138, 0.72);
-  white-space: nowrap;
-  flex-shrink: 0;
+.brand-emblem {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.45);
 }
 
-.brand-sep {
-  opacity: 0.5;
-  margin-left: 4px;
+.emblem-svg {
+  width: 22px;
+  height: 22px;
+}
+
+.emblem-mahjong {
+  background: radial-gradient(circle at 35% 30%, rgba(16, 185, 129, 0.35), rgba(6, 78, 59, 0.75));
+  border: 1px solid rgba(110, 231, 183, 0.4);
+}
+
+.emblem-monopoly {
+  background: radial-gradient(circle at 35% 30%, rgba(234, 179, 8, 0.35), rgba(113, 63, 18, 0.75));
+  border: 1px solid rgba(253, 224, 71, 0.45);
+}
+
+.emblem-avalon {
+  background: radial-gradient(circle at 35% 30%, rgba(225, 29, 72, 0.35), rgba(49, 16, 47, 0.8));
+  border: 1px solid rgba(252, 165, 165, 0.42);
+}
+
+.emblem-pandemic {
+  background: radial-gradient(circle at 35% 30%, rgba(6, 182, 212, 0.35), rgba(8, 47, 73, 0.8));
+  border: 1px solid rgba(103, 232, 249, 0.42);
 }
 
 .brand-title {
   font-weight: 800;
   font-size: 1.04rem;
   letter-spacing: 0.25px;
-  color: #fef08a;
+  color: var(--brand-title-color, #fef08a);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -82,6 +101,10 @@
 
 .brand-badge.badge-avalon {
   background: linear-gradient(135deg, #e11d48, #9f1239);
+}
+
+.brand-badge.badge-pandemic {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
 }
 
 .topbar-actions {
@@ -157,7 +180,6 @@
 }
 
 @media (max-width: 980px) {
-  .brand-kicker,
   .brand-badge {
     display: none;
   }
@@ -165,28 +187,33 @@
 
 @media (max-width: 768px) {
   .topbar {
-    min-height: 46px;
-    padding: 6px 10px;
-    gap: 8px;
+    min-height: 44px;
+    padding: 5px 8px;
+    gap: 6px;
   }
 
   .brand {
     gap: 6px;
-    min-width: 26px;
+    min-width: 0;
   }
 
   .brand-logo {
-    width: 24px;
-    height: 24px;
+    width: 23px;
+    height: 23px;
     border-radius: 6px;
   }
 
+  .emblem-svg {
+    width: 18px;
+    height: 18px;
+  }
+
   .brand-title {
-    font-size: 0.85rem;
+    font-size: 0.84rem;
   }
 
   .topbar-actions {
-    gap: 4px;
+    gap: 3px;
   }
 
   .action-label {
@@ -194,40 +221,34 @@
   }
 
   .topbar-actions .icon-action-btn {
-    width: 30px;
-    height: 30px;
-    min-height: 30px;
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
     padding: 0;
-    border-radius: 8px;
+    border-radius: 7px;
     white-space: nowrap;
   }
 
   .topbar-actions .room-code-btn {
-    height: 30px;
-    min-height: 30px;
-    padding: 0 7px;
-    font-size: 0.72rem;
-    border-radius: 8px;
-    gap: 4px;
+    height: 28px;
+    min-height: 28px;
+    padding: 0 6px;
+    font-size: 0.7rem;
+    border-radius: 7px;
+    gap: 3px;
     white-space: nowrap;
   }
 
   .lang-switcher {
-    height: 30px;
-    border-radius: 8px;
+    height: 28px;
+    border-radius: 7px;
     padding: 2px;
     gap: 2px;
   }
 
   .lang-btn {
-    padding: 0 6px;
-    font-size: 0.71rem;
-    border-radius: 6px;
-  }
-}
-
-@media (max-width: 440px) {
-  .brand-title {
-    max-width: 136px;
+    padding: 0 5px;
+    font-size: 0.69rem;
+    border-radius: 5px;
   }
 }

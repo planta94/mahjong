@@ -491,10 +491,6 @@ export class MonopolyBotService {
     bot: MonopolyPlayerView['players'][number],
     trade: TradeProposal
   ): MonopolyAction {
-    if (trade.requestCash > bot.cash) {
-      return { type: 'rejectTrade' };
-    }
-
     // Check if trade hands opponent a monopoly
     let opponentGainsMonopoly = false;
     for (const propIdx of trade.requestProperties) {
@@ -506,23 +502,8 @@ export class MonopolyBotService {
         }
       }
     }
-    if (opponentGainsMonopoly) {
-      return { type: 'rejectTrade' };
-    }
 
-    // Evaluate Net Cash + Asset Delta
-    const cashDelta = trade.offerCash - trade.requestCash;
-    let offeredValue = 0;
-    for (const p of trade.offerProperties) {
-      offeredValue += BOARD_SPACE_MAP.get(p)?.cost ?? 100;
-    }
-    let requestedValue = 0;
-    for (const p of trade.requestProperties) {
-      requestedValue += BOARD_SPACE_MAP.get(p)?.cost ?? 100;
-    }
-    const netValueDelta = cashDelta + (offeredValue - requestedValue);
-
-    // Check if trade gives bot a monopoly (accept up to a sensible strategic premium without exhausting cash)
+    // Check if trade gives bot a monopoly
     let gainsMonopoly = false;
     for (const propIdx of trade.offerProperties) {
       const space = BOARD_SPACE_MAP.get(propIdx);
@@ -534,19 +515,43 @@ export class MonopolyBotService {
       }
     }
 
-    if (gainsMonopoly) {
-      const maxStrategicOverpay = Math.round(offeredValue * 0.9 + 120);
-      const keepsMinimumReserve = bot.cash - trade.requestCash + trade.offerCash >= 80;
-      if (keepsMinimumReserve && netValueDelta >= -maxStrategicOverpay) {
-        return { type: 'acceptTrade' };
-      }
-      return { type: 'rejectTrade' };
+    const minReserve = gainsMonopoly ? 50 : 100;
+    if (trade.requestCash > bot.cash || bot.cash - trade.requestCash + trade.offerCash < minReserve) {
+      return { type: 'rejectTrade', reasonKey: 'MONOPOLY.TRADE_REASON_CASH_RESERVE' };
     }
 
-    if (netValueDelta >= 15 && bot.cash - trade.requestCash >= 120) {
-      return { type: 'acceptTrade' };
+    // Evaluate Net Cash + Asset Delta
+    const cashDelta = trade.offerCash - trade.requestCash;
+    let offeredPropsValue = 0;
+    for (const p of trade.offerProperties) {
+      offeredPropsValue += BOARD_SPACE_MAP.get(p)?.cost ?? 100;
+    }
+    let requestedValue = 0;
+    for (const p of trade.requestProperties) {
+      requestedValue += BOARD_SPACE_MAP.get(p)?.cost ?? 100;
+    }
+    const offeredValue = cashDelta + offeredPropsValue;
+    const netDelta = cashDelta + (offeredPropsValue - requestedValue);
+
+    if (gainsMonopoly && opponentGainsMonopoly) {
+      return netDelta >= -60
+        ? { type: 'acceptTrade', reasonKey: 'MONOPOLY.TRADE_REASON_MUTUAL_SETS' }
+        : { type: 'rejectTrade', reasonKey: 'MONOPOLY.TRADE_REASON_LOW_VALUE' };
     }
 
-    return { type: 'rejectTrade' };
+    if (opponentGainsMonopoly && !gainsMonopoly) {
+      const buyoutThreshold = Math.max(200, Math.round(requestedValue * 1.8) + 120);
+      return offeredValue >= buyoutThreshold
+        ? { type: 'acceptTrade', reasonKey: 'MONOPOLY.TRADE_REASON_PREMIUM_BUYOUT' }
+        : { type: 'rejectTrade', reasonKey: 'MONOPOLY.TRADE_REASON_GRANTS_MONOPOLY' };
+    }
+
+    if (gainsMonopoly && netDelta >= -80) {
+      return { type: 'acceptTrade', reasonKey: 'MONOPOLY.TRADE_REASON_ACCEPTED' };
+    }
+
+    return netDelta >= 10
+      ? { type: 'acceptTrade', reasonKey: 'MONOPOLY.TRADE_REASON_ACCEPTED' }
+      : { type: 'rejectTrade', reasonKey: 'MONOPOLY.TRADE_REASON_LOW_VALUE' };
   }
 }

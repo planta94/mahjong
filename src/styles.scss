@@ -19,30 +19,78 @@
   --crimson: #c81e1e;
   --jade: #{$jade-700};
   --navy: #1e293b;
+  --topbar-bg: linear-gradient(180deg, rgba(6, 28, 20, 0.96), rgba(4, 18, 13, 0.94));
+  --topbar-border: #{$border-gold};
+  --brand-title-color: #fef08a;
+  --brand-kicker-color: rgba(254, 240, 138, 0.72);
+  --modal-bg: linear-gradient(180deg, #0d3b2c, #072219);
+  --modal-border: rgba(234, 179, 8, 0.65);
+  --modal-title-color: #fef08a;
 }
 
 body[data-theme='hub'] {
   --felt-center: #0f172a;
   --felt-edge: #020617;
   --accent-color: #38bdf8;
+  --topbar-bg: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(8, 13, 26, 0.94));
+  --topbar-border: rgba(56, 189, 248, 0.28);
+  --brand-title-color: #f8fafc;
+  --brand-kicker-color: rgba(148, 163, 184, 0.85);
+  --modal-bg: linear-gradient(180deg, #132038, #09101f);
+  --modal-border: rgba(56, 189, 248, 0.48);
+  --modal-title-color: #f8fafc;
 }
 
 body[data-theme='mahjong'] {
   --felt-center: #125842;
   --felt-edge: #07281e;
   --accent-color: #00d285;
+  --topbar-bg: linear-gradient(180deg, rgba(6, 28, 20, 0.96), rgba(4, 18, 13, 0.94));
+  --topbar-border: rgba(234, 179, 8, 0.35);
+  --brand-title-color: #fef08a;
+  --brand-kicker-color: rgba(254, 240, 138, 0.72);
+  --modal-bg: linear-gradient(180deg, #0d3b2c, #072219);
+  --modal-border: rgba(234, 179, 8, 0.65);
+  --modal-title-color: #fef08a;
 }
 
 body[data-theme='monopoly'] {
   --felt-center: #134e3f;
   --felt-edge: #06231a;
   --accent-color: #eab308;
+  --topbar-bg: linear-gradient(180deg, rgba(28, 20, 13, 0.96), rgba(16, 11, 7, 0.94));
+  --topbar-border: rgba(234, 179, 8, 0.42);
+  --brand-title-color: #fde68a;
+  --brand-kicker-color: rgba(253, 230, 138, 0.72);
+  --modal-bg: linear-gradient(180deg, #271b11, #140d08);
+  --modal-border: rgba(234, 179, 8, 0.68);
+  --modal-title-color: #fde68a;
 }
 
 body[data-theme='avalon'] {
   --felt-center: #1e1b4b;
   --felt-edge: #0a091e;
   --accent-color: #dc2626;
+  --topbar-bg: linear-gradient(180deg, rgba(22, 18, 52, 0.96), rgba(10, 9, 28, 0.94));
+  --topbar-border: rgba(225, 29, 72, 0.42);
+  --brand-title-color: #fecdd3;
+  --brand-kicker-color: rgba(254, 205, 211, 0.72);
+  --modal-bg: linear-gradient(180deg, #1e1b4b, #0c0a24);
+  --modal-border: rgba(225, 29, 72, 0.62);
+  --modal-title-color: #fecdd3;
+}
+
+body[data-theme='pandemic'] {
+  --felt-center: #0c2d48;
+  --felt-edge: #051622;
+  --accent-color: #06b6d4;
+  --topbar-bg: linear-gradient(180deg, rgba(8, 22, 38, 0.96), rgba(4, 12, 24, 0.94));
+  --topbar-border: rgba(56, 189, 248, 0.34);
+  --brand-title-color: #e0f2fe;
+  --brand-kicker-color: rgba(125, 211, 252, 0.78);
+  --modal-bg: linear-gradient(180deg, #0d223a, #071322);
+  --modal-border: rgba(56, 189, 248, 0.58);
+  --modal-title-color: #7dd3fc;
 }
 
 *, *::before, *::after {
@@ -282,8 +330,8 @@ input[type='checkbox'] {
 }
 
 .modal-card {
-  background: linear-gradient(180deg, #0d3b2c, #072219);
-  border: 1px solid rgba(234, 179, 8, 0.65);
+  background: var(--modal-bg);
+  border: 1px solid var(--modal-border);
   border-radius: 16px;
   width: 100%;
   max-width: min(720px, 95vw);

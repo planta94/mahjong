@@ -53,9 +53,9 @@ describe('AppComponent, LobbyComponent, TableComponent & Modals', () => {
     appFixture.detectChanges();
 
     const rootEl = appFixture.nativeElement as HTMLElement;
-    expect(rootEl.textContent).toContain('星冕桌游荟');
+    expect(rootEl.textContent).not.toContain('星冕桌游荟');
     expect(rootEl.querySelector('.brand-title')?.textContent?.trim()).toBe('港马麻将馆');
-    expect(rootEl.querySelector('.brand-logo')?.getAttribute('src')).toBe('favicon.svg');
+    expect(rootEl.querySelector('.brand-logo')?.classList.contains('emblem-mahjong')).toBe(true);
     expect(rootEl.querySelectorAll('.portal-input').length).toBeGreaterThanOrEqual(3);
 
     // Language switch to English and back to Chinese
@@ -64,7 +64,7 @@ describe('AppComponent, LobbyComponent, TableComponent & Modals', () => {
     (langBtns.item(1) as HTMLButtonElement).click();
     appFixture.detectChanges();
     expect(translate.currentLang()).toBe('en');
-    expect(rootEl.textContent).toContain('Tabletop Royale');
+    expect(rootEl.textContent).not.toContain('Tabletop Royale');
     expect(rootEl.querySelector('.brand-title')?.textContent?.trim()).toBe('HK & Fly Mahjong');
 
     (langBtns.item(0) as HTMLButtonElement).click();

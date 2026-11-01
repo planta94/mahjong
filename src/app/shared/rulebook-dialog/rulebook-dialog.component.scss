@@ -1,12 +1,12 @@
 .dialog-title {
-  color: #fef08a;
+  color: var(--modal-title-color, #fef08a);
   font-size: 1.15rem;
   font-weight: 800;
 }
 
 .rulebook-tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   padding: 4px;
   background: rgba(15, 23, 42, 0.72);

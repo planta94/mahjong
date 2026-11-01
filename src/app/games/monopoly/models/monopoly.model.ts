@@ -99,6 +99,27 @@ export interface TradeProposal {
   readonly requestProperties: readonly number[];
 }
 
+export type TradeReasonKey =
+  | 'MONOPOLY.TRADE_REASON_ACCEPTED'
+  | 'MONOPOLY.TRADE_REASON_MUTUAL_SETS'
+  | 'MONOPOLY.TRADE_REASON_PREMIUM_BUYOUT'
+  | 'MONOPOLY.TRADE_REASON_CASH_RESERVE'
+  | 'MONOPOLY.TRADE_REASON_GRANTS_MONOPOLY'
+  | 'MONOPOLY.TRADE_REASON_LOW_VALUE'
+  | 'MONOPOLY.TRADE_REASON_DECLINED_PLAYER';
+
+export interface TradeOutcome {
+  readonly id: number;
+  readonly fromSeat: number;
+  readonly toSeat: number;
+  readonly accepted: boolean;
+  readonly reasonKey: TradeReasonKey;
+  readonly offerCash: number;
+  readonly requestCash: number;
+  readonly offerProperties: number[];
+  readonly requestProperties: number[];
+}
+
 export interface FinancialDistressDebt {
   readonly creditorSeat: number | 'bank' | 'jackpot';
   readonly amountOwed: number;
@@ -148,6 +169,7 @@ export interface MonopolyMatchState {
   activeCard: ActionCard | null;
   activeAuction: AuctionState | null;
   pendingTrade: TradeProposal | null;
+  lastTradeOutcome: TradeOutcome | null;
   debtTarget: FinancialDistressDebt | null;
   winnerSeat: number | null;
   gameOverReason: string | null;
@@ -172,6 +194,7 @@ export interface MonopolyPlayerView {
   readonly activeCard: ActionCard | null;
   readonly activeAuction: AuctionState | null;
   readonly pendingTrade: TradeProposal | null;
+  readonly lastTradeOutcome: TradeOutcome | null;
   readonly debtTarget: FinancialDistressDebt | null;
   readonly winnerSeat: number | null;
   readonly gameOverReason: string | null;
@@ -193,8 +216,8 @@ export type MonopolyAction =
   | { type: 'payJailBail' }
   | { type: 'useJailCard' }
   | { type: 'proposeTrade'; trade: TradeProposal }
-  | { type: 'acceptTrade' }
-  | { type: 'rejectTrade' }
+  | { type: 'acceptTrade'; reasonKey?: TradeReasonKey }
+  | { type: 'rejectTrade'; reasonKey?: TradeReasonKey }
   | { type: 'declareBankruptcy' }
   | { type: 'endTurn' };
 

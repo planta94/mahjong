@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { GameSessionManagerService } from '../../core/services/game-session-manager.service';
 import { ShellUiService } from '../../core/services/shell-ui.service';
+import { TranslateService } from '../../core/services/translate.service';
 import { TranslatePipe } from '../pipes/translate.pipe';
 
 @Component({
@@ -12,11 +13,18 @@ import { TranslatePipe } from '../pipes/translate.pipe';
 })
 export class ExitConfirmDialogComponent {
   readonly gameManager = inject(GameSessionManagerService);
-  private readonly shellUi = inject(ShellUiService);
+  readonly shellUi = inject(ShellUiService);
+  readonly translate = inject(TranslateService);
+  readonly activeTheme = this.gameManager.activeSessionGame;
 
   stay(): void {
     this.shellUi.playSfx('click');
     this.gameManager.cancelExitConfirm();
+  }
+
+  exitToGameLobby(): void {
+    this.shellUi.playSfx('click');
+    this.gameManager.confirmLeaveToGameLobby();
   }
 
   saveAndExit(): void {

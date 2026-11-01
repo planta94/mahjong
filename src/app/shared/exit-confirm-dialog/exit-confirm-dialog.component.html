@@ -1,14 +1,38 @@
 <div class="modal-backdrop exit-confirm-backdrop" (click)="stay()">
   <div
-    class="modal-card exit-confirm-card"
+    [class]="'modal-card exit-confirm-card theme-' + activeTheme()"
+    [attr.data-game-theme]="activeTheme()"
     role="dialog"
     aria-modal="true"
     aria-labelledby="exit-confirm-dialog-title"
     (click)="$event.stopPropagation()"
   >
-    <div class="modal-header">
+    <div class="modal-header exit-header">
+      <span class="exit-theme-pill">
+        @switch (activeTheme()) {
+          @case ('pandemic') {
+            🧪 {{ 'HEADER.GAME_TITLE_PANDEMIC' | translate }}
+          }
+          @case ('monopoly') {
+            🎩 {{ 'HEADER.GAME_TITLE_MONOPOLY' | translate }}
+          }
+          @case ('avalon') {
+            ⚔️ {{ 'HEADER.GAME_TITLE_AVALON' | translate }}
+          }
+          @case ('mahjong') {
+            🀄 {{ 'HEADER.GAME_TITLE_MAHJONG' | translate }}
+          }
+          @default {
+            🎲 {{ 'HEADER.BRAND' | translate }}
+          }
+        }
+      </span>
       <h2 id="exit-confirm-dialog-title" class="dialog-title">
-        🏠 {{ 'EXIT_MODAL.TITLE' | translate }}
+        @if (gameManager.exitDestination() === 'gameLobby') {
+          {{ translate.currentLang() === 'zh' ? '退出当前对局？' : 'Exit Current Match?' }}
+        } @else {
+          {{ translate.currentLang() === 'zh' ? '离开当前游戏？' : 'Leave Current Game?' }}
+        }
       </h2>
     </div>
 
@@ -24,14 +48,17 @@
 
     <div class="modal-footer exit-footer">
       <button type="button" class="btn stay-btn" (click)="stay()">
-        {{ 'EXIT_MODAL.BTN_STAY' | translate }}
+        {{ translate.currentLang() === 'zh' ? '继续游戏' : 'Stay in Game' }}
+      </button>
+      <button type="button" class="btn btn-outline game-lobby-btn" (click)="exitToGameLobby()">
+        {{ translate.currentLang() === 'zh' ? '返回本游戏设置' : 'Back to Game Lobby' }}
       </button>
       <button type="button" class="btn btn-crimson discard-exit-btn" (click)="discardAndExit()">
-        {{ 'EXIT_MODAL.BTN_DISCARD_EXIT' | translate }}
+        {{ translate.currentLang() === 'zh' ? '返回游戏大厅' : 'All Games Hub' }}
       </button>
       @if (gameManager.canSaveCurrentProgress()) {
         <button type="button" class="btn btn-emerald save-exit-btn" (click)="saveAndExit()">
-          💾 {{ 'EXIT_MODAL.BTN_SAVE_EXIT' | translate }}
+          💾 {{ translate.currentLang() === 'zh' ? '保存并返回大厅' : 'Save & Return to Hub' }}
         </button>
       }
     </div>

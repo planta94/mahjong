@@ -79,8 +79,11 @@ export class MonopolySessionService {
     if (typeof window !== 'undefined') {
       window.addEventListener('p2p:leave', (ev: Event) => {
         const detail = (ev as CustomEvent).detail as { game?: string } | undefined;
-        if (!detail || detail.game === 'monopoly') {
+        if (!detail || !detail.game || detail.game === 'monopoly') {
           this.leaveRoom();
+          if (this.router.url?.includes('/monopoly/board')) {
+            void this.router.navigate(['/monopoly/lobby']);
+          }
         }
       });
     }
@@ -243,10 +246,15 @@ export class MonopolySessionService {
   }
 
   dispatchAction(action: MonopolyAction): void {
-    if (this.hostSession) {
-      this.hostSession.dispatchHostAction(action);
-    } else if (this.guestSession) {
+    if (this.guestSession) {
+      if (action.type === 'acceptTrade') {
+        this.shellUi.playSfx('deal');
+      } else if (action.type === 'rejectTrade') {
+        this.shellUi.playSfx('fail');
+      }
       this.guestSession.sendAction(action);
+    } else if (this.hostSession) {
+      this.hostSession.dispatchHostAction(action);
     }
   }
 
@@ -391,6 +399,10 @@ export class MonopolySessionService {
       this.shellUi.playSfx('fail');
     } else if (action.type === 'buyProperty' || action.type === 'buildHouse') {
       this.shellUi.playSfx('click');
+    } else if (action.type === 'acceptTrade') {
+      this.shellUi.playSfx('deal');
+    } else if (action.type === 'rejectTrade') {
+      this.shellUi.playSfx('fail');
     }
   }
 
@@ -424,6 +436,11 @@ export class MonopolySessionService {
             this.hostSession.updateState((state) => {
               this.engine.applyMonopolyAction(state, targetSeatIdx, botAction);
             });
+            if (botAction.type === 'acceptTrade') {
+              this.shellUi.playSfx('deal');
+            } else if (botAction.type === 'rejectTrade') {
+              this.shellUi.playSfx('fail');
+            }
           }
         }, 600);
         return;

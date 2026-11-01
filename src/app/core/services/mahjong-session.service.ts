@@ -900,15 +900,30 @@ export class MahjongSessionService implements OnDestroy {
   private audioIdleTimer: ReturnType<typeof setTimeout> | undefined;
   private autoPassTimer: ReturnType<typeof setTimeout> | undefined;
   private lastLogSeen = '';
+  private isTerminating = false;
   private readonly visibilityHandler = (): void => {
     if (typeof document !== 'undefined' && document.hidden) {
       this.suspendAudioContextNow();
     }
   };
 
+  private readonly p2pLeaveHandler = (ev: Event): void => {
+    if (this.isTerminating) return;
+    const detail = (ev as CustomEvent).detail as { game?: string } | undefined;
+    if (!detail?.game || detail.game === 'mahjong') {
+      this.terminateSession(false);
+      if (this.router.url.includes('/table')) {
+        void this.router.navigate(['/lobby'], { queryParams: {}, replaceUrl: true });
+      }
+    }
+  };
+
   constructor() {
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', this.visibilityHandler);
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('p2p:leave', this.p2pLeaveHandler);
     }
   }
 
@@ -917,6 +932,9 @@ export class MahjongSessionService implements OnDestroy {
     this.suspendAudioContextNow();
     if (typeof document !== 'undefined') {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('p2p:leave', this.p2pLeaveHandler);
     }
   }
 
@@ -1166,20 +1184,26 @@ export class MahjongSessionService implements OnDestroy {
     if (this.session?.role === 'host') this.session.returnToLobby();
   }
 
-  terminateSession(): void {
-    clearTimeout(this.autoPassTimer);
-    this.suspendAudioContextNow();
-    this.autoPass.set(false);
-    this.selectionPaused.set(false);
-    this.session?.destroy();
-    this.session = null;
-    this.lastLogSeen = '';
-    this.snapshot.set(null);
-    this.shellUi.setActiveRoomCode(null);
-    if (typeof window !== 'undefined') {
-      window.history.replaceState({}, '', window.location.pathname);
-      window.dispatchEvent(new CustomEvent('mahjong:leave'));
-      window.dispatchEvent(new CustomEvent('p2p:leave'));
+  terminateSession(dispatchLeave = true): void {
+    if (this.isTerminating) return;
+    this.isTerminating = true;
+    try {
+      clearTimeout(this.autoPassTimer);
+      this.suspendAudioContextNow();
+      this.autoPass.set(false);
+      this.selectionPaused.set(false);
+      this.session?.destroy();
+      this.session = null;
+      this.lastLogSeen = '';
+      this.snapshot.set(null);
+      this.shellUi.setActiveRoomCode(null);
+      if (typeof window !== 'undefined' && dispatchLeave) {
+        window.history.replaceState({}, '', window.location.pathname);
+        window.dispatchEvent(new CustomEvent('mahjong:leave'));
+        window.dispatchEvent(new CustomEvent('p2p:leave', { detail: { game: 'mahjong' } }));
+      }
+    } finally {
+      this.isTerminating = false;
     }
   }
 

@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AvalonSessionService, SerializedAvalonSave } from '../../games/avalon/services/avalon-session.service';
 import { MonopolySessionService, SerializedMonopolySave } from '../../games/monopoly/services/monopoly-session.service';
+import { PandemicSessionService, SerializedPandemicSave } from '../../games/pandemic/services/pandemic-session.service';
 import { GameId } from '../models/party.model';
 import { MahjongSessionService, SerializedMahjongSave } from './mahjong-session.service';
 import { clearBrowserUrlRoom } from './p2p-room.transport';
@@ -9,12 +10,18 @@ import { ShellUiService } from './shell-ui.service';
 
 export const SAVED_GAME_STORAGE_KEY = 'party_saved_game_v1';
 
+export type ExitDestination = 'hub' | 'gameLobby';
+
 export interface SavedGameRecord {
   readonly version: 1;
   readonly game: GameId;
   readonly savedAt: number;
   readonly summary: string;
-  readonly payload: SerializedMahjongSave | SerializedMonopolySave | SerializedAvalonSave;
+  readonly payload:
+    | SerializedMahjongSave
+    | SerializedMonopolySave
+    | SerializedAvalonSave
+    | SerializedPandemicSave;
 }
 
 function isSavedGameRecord(val: unknown): val is SavedGameRecord {
@@ -23,7 +30,7 @@ function isSavedGameRecord(val: unknown): val is SavedGameRecord {
   const game = rec['game'];
   return (
     rec['version'] === 1 &&
-    (game === 'mahjong' || game === 'monopoly' || game === 'avalon') &&
+    (game === 'mahjong' || game === 'monopoly' || game === 'avalon' || game === 'pandemic') &&
     typeof rec['savedAt'] === 'number' &&
     typeof rec['summary'] === 'string' &&
     typeof rec['payload'] === 'object' &&
@@ -40,31 +47,94 @@ export class GameSessionManagerService {
   private readonly mahjong = inject(MahjongSessionService);
   private readonly monopoly = inject(MonopolySessionService);
   private readonly avalon = inject(AvalonSessionService);
+  private readonly pandemic = inject(PandemicSessionService);
 
   readonly savedGame = signal<SavedGameRecord | null>(this.readSavedGame());
   readonly showExitConfirmModal = signal<boolean>(false);
+  readonly exitDestination = signal<ExitDestination>('hub');
 
   readonly hasActiveProgress = computed(
     () =>
       this.mahjong.snapshot() !== null ||
       this.monopoly.snapshot() !== null ||
-      this.avalon.snapshot() !== null
+      this.avalon.snapshot() !== null ||
+      this.pandemic.snapshot() !== null
   );
 
-  readonly canSaveCurrentProgress = computed(
+  readonly hasStartedMatch = computed(
     () =>
-      this.mahjong.canExportSave() ||
-      this.monopoly.canExportSave() ||
-      this.avalon.canExportSave()
+      (this.mahjong.snapshot() !== null && this.mahjong.snapshot()?.view !== null) ||
+      (this.monopoly.snapshot() !== null && this.monopoly.snapshot()?.view !== null) ||
+      (this.avalon.snapshot() !== null && this.avalon.snapshot()?.view !== null) ||
+      (this.pandemic.snapshot() !== null && this.pandemic.snapshot()?.view !== null)
   );
+
+  readonly hasActiveWaitingRoom = computed(
+    () =>
+      (this.mahjong.snapshot() !== null && this.mahjong.snapshot()?.view === null) ||
+      (this.monopoly.snapshot() !== null && this.monopoly.snapshot()?.view === null) ||
+      (this.avalon.snapshot() !== null && this.avalon.snapshot()?.view === null) ||
+      (this.pandemic.snapshot() !== null && this.pandemic.snapshot()?.view === null) ||
+      Boolean(this.shellUi.activeRoomCode() && !this.hasStartedMatch())
+  );
+
+  readonly canSaveCurrentProgress = computed(() => {
+    const mj = this.mahjong.snapshot();
+    const mono = this.monopoly.snapshot();
+    const av = this.avalon.snapshot();
+    const pan = this.pandemic.snapshot();
+    return (
+      (mj !== null && this.mahjong.canExportSave()) ||
+      (mono !== null && this.monopoly.canExportSave()) ||
+      (av !== null && this.avalon.canExportSave()) ||
+      (pan !== null && this.pandemic.canExportSave())
+    );
+  });
+
+  readonly activeSessionGame = computed<GameId | 'hub'>(() => {
+    const current = this.shellUi.activeGame();
+    if (current !== 'hub') return current;
+    if (this.pandemic.snapshot() !== null) return 'pandemic';
+    if (this.monopoly.snapshot() !== null) return 'monopoly';
+    if (this.avalon.snapshot() !== null) return 'avalon';
+    if (this.mahjong.snapshot() !== null) return 'mahjong';
+    return 'hub';
+  });
+
+  getGameLobbyRoute(): string {
+    const game = this.shellUi.activeGame();
+    switch (game) {
+      case 'monopoly':
+        return '/monopoly/lobby';
+      case 'avalon':
+        return '/avalon/lobby';
+      case 'pandemic':
+        return '/pandemic/lobby';
+      case 'mahjong':
+      default:
+        return '/mahjong/lobby';
+    }
+  }
 
   requestGoHome(): void {
-    if (this.hasActiveProgress()) {
+    if (this.hasStartedMatch()) {
+      this.exitDestination.set('hub');
       this.showExitConfirmModal.set(true);
       return;
     }
     this.killAllActiveSessions();
     void this.router.navigate(['/']);
+  }
+
+  requestLeaveCurrentGame(): void {
+    if (this.hasStartedMatch()) {
+      this.exitDestination.set('gameLobby');
+      this.showExitConfirmModal.set(true);
+      return;
+    }
+    const targetLobby = this.getGameLobbyRoute();
+    this.killAllActiveSessions();
+    void this.router.navigate([targetLobby]);
   }
 
   cancelExitConfirm(): void {
@@ -73,12 +143,11 @@ export class GameSessionManagerService {
 
   saveCurrentProgress(): boolean {
     const active = this.shellUi.activeGame();
-    const order: GameId[] =
-      active === 'monopoly'
-        ? ['monopoly', 'mahjong', 'avalon']
-        : active === 'avalon'
-          ? ['avalon', 'mahjong', 'monopoly']
-          : ['mahjong', 'monopoly', 'avalon'];
+    const allGames: GameId[] = ['mahjong', 'monopoly', 'avalon', 'pandemic'];
+    const order: GameId[] = [
+      active !== 'hub' ? active : 'mahjong',
+      ...allGames.filter((g) => g !== active),
+    ];
 
     for (const game of order) {
       if (game === 'mahjong' && this.mahjong.canExportSave()) {
@@ -117,6 +186,18 @@ export class GameSessionManagerService {
           });
         }
       }
+      if (game === 'pandemic' && this.pandemic.canExportSave()) {
+        const payload = this.pandemic.exportSaveData();
+        if (payload) {
+          return this.persistRecord({
+            version: 1,
+            game: 'pandemic',
+            savedAt: Date.now(),
+            summary: `${payload.state.difficulty.toUpperCase()} · ${payload.lobby.seats.length}P`,
+            payload,
+          });
+        }
+      }
     }
     return false;
   }
@@ -134,6 +215,13 @@ export class GameSessionManagerService {
     void this.router.navigate(['/']);
   }
 
+  confirmLeaveToGameLobby(): void {
+    this.showExitConfirmModal.set(false);
+    const targetLobby = this.getGameLobbyRoute();
+    this.killAllActiveSessions();
+    void this.router.navigate([targetLobby]);
+  }
+
   killAllActiveSessions(): void {
     this.showExitConfirmModal.set(false);
     if (this.mahjong.snapshot() !== null) {
@@ -145,7 +233,10 @@ export class GameSessionManagerService {
     if (this.avalon.snapshot() !== null) {
       this.avalon.leaveRoom();
     }
-    this.shellUi.setActiveRoomCode(null);
+    if (this.pandemic.snapshot() !== null) {
+      this.pandemic.leaveRoom();
+    }
+    this.shellUi.leaveActiveRoom();
     clearBrowserUrlRoom();
   }
 
@@ -160,6 +251,10 @@ export class GameSessionManagerService {
         return this.monopoly.restoreSaveData(record.payload as SerializedMonopolySave);
       case 'avalon':
         return this.avalon.restoreSaveData(record.payload as SerializedAvalonSave);
+      case 'pandemic':
+        return this.pandemic.restoreSaveData(record.payload as SerializedPandemicSave);
+      default:
+        return false;
     }
   }
 

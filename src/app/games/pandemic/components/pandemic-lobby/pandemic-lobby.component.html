@@ -1,0 +1,215 @@
+<div class="pandemic-lobby-container">
+  @if (!session.snapshot()) {
+    <div class="lobby-card">
+      <div class="lobby-header">
+        <span class="lobby-badge">🧪 CDC BIO-DEFENSE LAB</span>
+        <h1 class="lobby-title">{{ 'PANDEMIC.LOBBY_TITLE' | translate }}</h1>
+        <p class="lobby-subtitle">{{ 'PANDEMIC.LOBBY_SUBTITLE' | translate }}</p>
+      </div>
+
+      @if (hasUrlInvite()) {
+        <div class="invite-banner">
+          <p class="invite-text">
+            {{ 'PANDEMIC.INVITE_JOIN_TITLE' | translate }} <strong>{{ joinCode }}</strong>
+          </p>
+          <button type="button" class="btn btn-emerald" (click)="joinRoom()">
+            {{ 'PANDEMIC.INVITE_TAKE_SEAT' | translate }}
+          </button>
+        </div>
+      }
+
+      <div class="settings-grid">
+        <div class="setting-item">
+          <label for="pandemic-players-select" class="setting-label">
+            {{ 'PANDEMIC.PLAYERS_COUNT' | translate }}
+          </label>
+          <select id="pandemic-players-select" class="portal-input" [(ngModel)]="playerCount">
+            <option [ngValue]="2">2 {{ 'PANDEMIC.SEAT_LABEL' | translate }}</option>
+            <option [ngValue]="3">3 {{ 'PANDEMIC.SEAT_LABEL' | translate }}</option>
+            <option [ngValue]="4">4 {{ 'PANDEMIC.SEAT_LABEL' | translate }}</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <label for="pandemic-difficulty-select" class="setting-label">
+            {{ 'PANDEMIC.DIFFICULTY_LABEL' | translate }}
+          </label>
+          <select id="pandemic-difficulty-select" class="portal-input" [(ngModel)]="difficulty">
+            <option value="introductory">
+              {{ 'PANDEMIC.DIFF_INTRODUCTORY' | translate }} (4 {{ 'PANDEMIC.EPIDEMICS' | translate }})
+            </option>
+            <option value="standard">
+              {{ 'PANDEMIC.DIFF_STANDARD' | translate }} (5 {{ 'PANDEMIC.EPIDEMICS' | translate }})
+            </option>
+            <option value="heroic">
+              {{ 'PANDEMIC.DIFF_HEROIC' | translate }} (6 {{ 'PANDEMIC.EPIDEMICS' | translate }})
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Role Picker Section -->
+      <div class="role-picker-section">
+        <h2 class="section-title">🛡️ {{ 'PANDEMIC.ROLE_PICKER_TITLE' | translate }}</h2>
+        <div class="role-picker-grid">
+          @for (role of seatRoles.slice(0, playerCount); track $index; let idx = $index) {
+            <div class="role-picker-item">
+              <label [for]="'role-select-' + idx" class="role-seat-label">
+                <span class="seat-idx-badge" [style.background-color]="getRoleColor(role)">
+                  {{ idx + 1 }}
+                </span>
+                {{ 'PANDEMIC.SEAT_PREFIX' | translate }} {{ idx + 1 }}
+              </label>
+              <select
+                [id]="'role-select-' + idx"
+                class="portal-input role-select"
+                [ngModel]="seatRoles.at(idx)"
+                (ngModelChange)="onRoleChange(idx, $event)"
+              >
+                <option value="random">{{ 'PANDEMIC.ROLE_RANDOM' | translate }}</option>
+                @for (availRole of availableRoles; track availRole) {
+                  <option [value]="availRole">
+                    {{ getRoleNameKey(availRole) | translate }}
+                  </option>
+                }
+              </select>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button type="button" class="btn btn-emerald btn-lg" (click)="startSolo()">
+          🤖 {{ 'PANDEMIC.QUICK_SOLO_BTN' | translate }}
+        </button>
+        <button type="button" class="btn btn-cyan btn-lg" (click)="startSoloCommander()">
+          🎮 {{ 'PANDEMIC.SOLO_COMMANDER_BTN' | translate }}
+        </button>
+        <button type="button" class="btn btn-gold btn-lg" (click)="createRoom()">
+          🌐 {{ 'PANDEMIC.CREATE_ROOM_BTN' | translate }}
+        </button>
+      </div>
+
+      <div class="join-section">
+        <h2 class="join-title">{{ 'PANDEMIC.JOIN_ROOM_TITLE' | translate }}</h2>
+        <div class="join-input-group">
+          <input
+            type="text"
+            class="portal-input"
+            [placeholder]="'PANDEMIC.JOIN_PLACEHOLDER' | translate"
+            [(ngModel)]="joinCode"
+          />
+          <button type="button" class="btn btn-emerald" (click)="joinRoom()">
+            {{ 'PANDEMIC.JOIN_ROOM_BTN' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <!-- Waiting Room View -->
+    <div class="waiting-card">
+      <div class="waiting-header">
+        <span class="lobby-badge">🧪 CDC BIO-DEFENSE LAB</span>
+        <h1 class="waiting-title">
+          {{ 'PANDEMIC.WAITING_TITLE' | translate }}
+          <span class="room-code-tag">{{ session.snapshot()?.roomCode }}</span>
+        </h1>
+        <p class="waiting-subtitle">{{ 'PANDEMIC.WAITING_SUBTITLE' | translate }}</p>
+      </div>
+
+      <div class="waiting-meta-bar">
+        <span class="diff-tag">
+          ⚠️ {{ 'PANDEMIC.DIFFICULTY_LABEL' | translate }}: {{ getDifficultyKey(session.currentLobby()?.rules?.difficulty) | translate }}
+        </span>
+        @if (session.isSoloCommander()) {
+          <span class="commander-tag">
+            🎮 {{ 'PANDEMIC.SOLO_COMMANDER_ACTIVE' | translate }}
+          </span>
+        }
+      </div>
+
+      <div class="seats-list">
+        @for (seat of session.currentLobby()?.seats; track seat.seat) {
+          <div class="seat-row" [class.is-me]="seat.seat === session.mySeat()">
+            <div
+              class="seat-badge"
+              [style.background-color]="getRoleColor(seat.role)"
+            >
+              {{ seat.seat + 1 }}
+            </div>
+            <div class="seat-info">
+              <span class="seat-name">
+                {{ seat.name }}
+                @if (seat.seat === session.mySeat()) {
+                  <span class="tag-me">{{ 'LOBBY.YOU_TAG' | translate }}</span>
+                }
+              </span>
+              <span class="seat-status">
+                @if (seat.seat === 0) {
+                  👑 {{ 'PANDEMIC.SEAT_HOST' | translate }}
+                } @else if (seat.kind === 'human') {
+                  👤 {{ 'PANDEMIC.SEAT_HUMAN' | translate }}
+                } @else if (seat.kind === 'bot') {
+                  🤖 {{ 'PANDEMIC.SEAT_BOT' | translate }}
+                } @else {
+                  ⏳ {{ 'PANDEMIC.SEAT_OPEN' | translate }}
+                }
+                ·
+                @if (seat.role && seat.role !== 'random') {
+                  <span class="role-pill" [style.border-color]="getRoleColor(seat.role)">
+                    {{ getRoleNameKey(seat.role) | translate }}
+                  </span>
+                } @else {
+                  <span class="role-pill-random">
+                    🎲 {{ 'PANDEMIC.ROLE_RANDOM' | translate }}
+                  </span>
+                }
+              </span>
+            </div>
+
+            @if (session.isHost()) {
+              <div class="seat-controls">
+                @if (seat.seat !== 0) {
+                  <button type="button" class="btn btn-sm btn-outline" (click)="toggleSeat(seat.seat)">
+                    @if (seat.kind === 'open') {
+                      {{ 'PANDEMIC.TOGGLE_BOT' | translate }}
+                    } @else {
+                      {{ 'PANDEMIC.TOGGLE_OPEN' | translate }}
+                    }
+                  </button>
+                }
+                <select
+                  class="portal-input seat-role-select"
+                  [ngModel]="seat.role || 'random'"
+                  (ngModelChange)="setSeatRole(seat.seat, $event)"
+                >
+                  <option value="random">{{ 'PANDEMIC.ROLE_RANDOM' | translate }}</option>
+                  @for (availRole of availableRoles; track availRole) {
+                    <option [value]="availRole">
+                      {{ getRoleNameKey(availRole) | translate }}
+                    </option>
+                  }
+                </select>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="waiting-actions">
+        @if (session.isHost()) {
+          <button type="button" class="btn btn-emerald btn-lg" (click)="startMatch()">
+            🚀 {{ 'PANDEMIC.START_MATCH_BTN' | translate }}
+          </button>
+        } @else {
+          <p class="guest-wait-hint">
+            {{ 'LOBBY.WAIT_FOR_HOST' | translate }}
+          </p>
+        }
+        <button type="button" class="btn btn-outline" (click)="leaveRoom()">
+          {{ 'HEADER.LEAVE_ROOM' | translate }}
+        </button>
+      </div>
+    </div>
+  }
+</div>

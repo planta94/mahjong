@@ -19,6 +19,7 @@ import {
   MonopolySeat,
   PropertyState,
   TradeProposal,
+  TradeReasonKey,
 } from '../models/monopoly.model';
 
 @Injectable({
@@ -81,6 +82,7 @@ export class MonopolyEngineService {
       activeCard: null,
       activeAuction: null,
       pendingTrade: null,
+      lastTradeOutcome: null,
       debtTarget: null,
       winnerSeat: null,
       gameOverReason: null,
@@ -231,6 +233,13 @@ export class MonopolyEngineService {
       activeCard: state.activeCard ? { ...state.activeCard } : null,
       activeAuction: state.activeAuction ? { ...state.activeAuction } : null,
       pendingTrade: state.pendingTrade ? { ...state.pendingTrade } : null,
+      lastTradeOutcome: state.lastTradeOutcome
+        ? {
+            ...state.lastTradeOutcome,
+            offerProperties: [...state.lastTradeOutcome.offerProperties],
+            requestProperties: [...state.lastTradeOutcome.requestProperties],
+          }
+        : null,
       debtTarget: state.debtTarget ? { ...state.debtTarget } : null,
       winnerSeat: state.winnerSeat,
       gameOverReason: state.gameOverReason,
@@ -275,9 +284,9 @@ export class MonopolyEngineService {
       case 'proposeTrade':
         return this.handleProposeTrade(state, seatIdx, action.trade);
       case 'acceptTrade':
-        return this.handleAcceptTrade(state, seatIdx);
+        return this.handleAcceptTrade(state, seatIdx, action.reasonKey);
       case 'rejectTrade':
-        return this.handleRejectTrade(state, seatIdx);
+        return this.handleRejectTrade(state, seatIdx, action.reasonKey);
       case 'declareBankruptcy':
         return this.handleDeclareBankruptcy(state, seatIdx);
       case 'endTurn':
@@ -950,16 +959,43 @@ export class MonopolyEngineService {
 
     const fromPlayer = state.players.find((p) => p.seat === trade.fromSeat);
     const toPlayer = state.players.find((p) => p.seat === trade.toSeat);
-    if (!fromPlayer || !toPlayer || fromPlayer.cash < trade.offerCash || toPlayer.cash < trade.requestCash) {
+    if (!fromPlayer || !toPlayer) return state;
+
+    const sanitizedOfferCash = Math.max(0, Math.floor(Number(trade.offerCash) || 0));
+    const sanitizedRequestCash = Math.max(0, Math.floor(Number(trade.requestCash) || 0));
+    const offerProps = trade.offerProperties ?? [];
+    const requestProps = trade.requestProperties ?? [];
+
+    if (
+      sanitizedOfferCash === 0 &&
+      sanitizedRequestCash === 0 &&
+      offerProps.length === 0 &&
+      requestProps.length === 0
+    ) {
       return state;
     }
 
-    state.pendingTrade = trade;
+    if (fromPlayer.cash < sanitizedOfferCash || toPlayer.cash < sanitizedRequestCash) {
+      return state;
+    }
+
+    state.pendingTrade = {
+      fromSeat: trade.fromSeat,
+      toSeat: trade.toSeat,
+      offerCash: sanitizedOfferCash,
+      offerProperties: [...offerProps],
+      requestCash: sanitizedRequestCash,
+      requestProperties: [...requestProps],
+    };
     state.logs.push(`[Trade] ${fromPlayer.name} proposed a trade to ${toPlayer.name}.`);
     return state;
   }
 
-  private handleAcceptTrade(state: MonopolyMatchState, seatIdx: number): MonopolyMatchState {
+  private handleAcceptTrade(
+    state: MonopolyMatchState,
+    seatIdx: number,
+    reasonKey?: TradeReasonKey
+  ): MonopolyMatchState {
     const trade = state.pendingTrade;
     if (!trade || trade.toSeat !== seatIdx) return state;
 
@@ -985,17 +1021,47 @@ export class MonopolyEngineService {
       }
     }
 
+    const outcomeId = (state.lastTradeOutcome?.id ?? 0) + 1;
+    state.lastTradeOutcome = {
+      id: outcomeId,
+      fromSeat: trade.fromSeat,
+      toSeat: trade.toSeat,
+      accepted: true,
+      reasonKey: reasonKey ?? 'MONOPOLY.TRADE_REASON_ACCEPTED',
+      offerCash: trade.offerCash,
+      requestCash: trade.requestCash,
+      offerProperties: [...trade.offerProperties],
+      requestProperties: [...trade.requestProperties],
+    };
+
     state.logs.push(`[Trade Accepted] Deal between ${fromPlayer.name} and ${toPlayer.name} confirmed!`);
     state.pendingTrade = null;
 
     return state;
   }
 
-  private handleRejectTrade(state: MonopolyMatchState, seatIdx: number): MonopolyMatchState {
+  private handleRejectTrade(
+    state: MonopolyMatchState,
+    seatIdx: number,
+    reasonKey?: TradeReasonKey
+  ): MonopolyMatchState {
     const trade = state.pendingTrade;
     if (!trade || trade.toSeat !== seatIdx) return state;
 
     const toPlayer = state.players.find((p) => p.seat === trade.toSeat);
+    const outcomeId = (state.lastTradeOutcome?.id ?? 0) + 1;
+    state.lastTradeOutcome = {
+      id: outcomeId,
+      fromSeat: trade.fromSeat,
+      toSeat: trade.toSeat,
+      accepted: false,
+      reasonKey: reasonKey ?? 'MONOPOLY.TRADE_REASON_DECLINED_PLAYER',
+      offerCash: trade.offerCash,
+      requestCash: trade.requestCash,
+      offerProperties: [...trade.offerProperties],
+      requestProperties: [...trade.requestProperties],
+    };
+
     state.logs.push(`[Trade Declined] ${toPlayer?.name ?? `Player ${seatIdx}`} rejected the trade offer.`);
     state.pendingTrade = null;
 

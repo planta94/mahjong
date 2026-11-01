@@ -1,47 +1,43 @@
-# Sentinel Final Handoff Report — Party Game Pavilion (`桌遊館`)
+# Sentinel Handoff Report — Tabletop Royale Expansion
 
 ## 1. Observation
-1. **Mission**:
-   Transform the existing Angular 21 application into a unified Serverless P2P & Offline AI Party Game Pavilion hosting three complete games:
-   - HK 4P & Authentic Malaysian 3P Fly Mahjong (`/mahjong/lobby`, `/mahjong/table`)
-   - Malaysia Landmarks Monopoly (`/monopoly/lobby`, `/monopoly/board`)
-   - The Resistance: Avalon (`/avalon/lobby`, `/avalon/table`)
-   - Universal Game Hub (`/`) with universal room codes and deep-linking (`?game=<id>&room=<code>`)
-2. **Sentinel Coordination & Auditing**:
-   - Dispatched `teamwork_orchestrator` along the General SWE route.
-   - Maintained regular progress monitoring and liveness tracking via background crons.
-   - When completion was claimed, enforced a mandatory blocking victory audit via `teamwork_victory_auditor`.
-   - Initial audit reported `VICTORY REJECTED` due to non-deterministic branch coverage fluctuation in `bot.service.spec.ts` (69.63% vs >= 70.0% threshold).
-   - Successfully forwarded findings to the orchestrator; remediation worker resolved the variance with a deterministic 32-bit LCG PRNG and added fixed-fixture unit tests, raising `bot.service.ts` branch coverage to 85.38%.
-   - Dispatched fresh independent auditor `teamwork_victory_auditor_2` which returned `VICTORY CONFIRMED` across multiple consecutive test runs.
-3. **Independent Empirical Verification Results**:
-   - `npm.cmd run qa:agent-docs`: PASSED (AGENTS.md 4,655 bytes <= 20,000 bytes; 4 reference docs verified; 66 TS files clean).
-   - `npx.cmd tsc --noEmit`: PASSED (0 errors).
-   - `npm.cmd run lint`: PASSED (0 errors, 0 warnings, 0 `eslint-disable` comments).
-   - `npm.cmd run test:ci`: PASSED (Run 1: 301/301 tests, 83.16% lines, 73.25% branches; Run 2: 301/301 tests, 83.00% lines, 73.01% branches).
-   - `npm.cmd run build`: PASSED (clean production bundle generated in `dist/hk-mahjong`).
-   - Repository invariants: 0 `*.sh` scripts touched or created, canary `HKMJ-P2P-CHECK-01` verified intact, bounded modals with bottom action buttons only, 0 explicit `any`, 100% trilingual parity.
+- **Project Scope**: Delivered Header Navigation & Session Exit Clarification, Monopoly Bot Trading AI & Outcome UX, and the full authentic Pandemic 48-city cooperative board game with CDC Bio-Command SVG World Map and P2P multiplayer.
+- **Workflow & Lifecycle**:
+  - Recorded intent to `.agents/teamwork/ORIGINAL_REQUEST.md`.
+  - Dispatched Project Orchestrator (`e6208b09-06b6-4b27-8fa3-e5ee3c6b6cc0`) which divided work across 6 milestones.
+  - Managed background liveness and progress crons throughout execution.
+  - On orchestrator completion claim, dispatched independent `teamwork_victory_auditor` (`90ebf2b3-519c-451f-837f-1d13e76308ab`).
+  - Independent auditor verified 0 facades, 0 stubs, 0 `any`, 0 `eslint-disable`, 0 trivial assertions, untampered Mahjong table code, and executed all 7 QA gates with 100% test passage (590/590 Vitest specs, 95.6% line coverage).
+  - Verdict delivered: **VICTORY CONFIRMED**.
+  - All background cron tasks and subagents successfully cleaned up.
 
 ## 2. Logic Chain
-1. *Multi-Game Architecture*: `ShellUiService` and `P2PRoomTransport` cleanly abstract WebRTC/BroadcastChannel networking, theme variables, and procedural sound across all games without duplicating transport code.
-2. *Mahjong Route Migration*: Preserved authentic HK 4P and Malaysian 3P Fly rule mechanics without regressions; redirected legacy `/lobby` and `/table` paths to `/mahjong/*`.
-3. *Malaysia Monopoly*: Implemented 40-space board with 22 Malaysian landmarks across 8 color groups in RM currency, Saidina house rules (Free Parking jackpot pot, 0 rent in jail), and tactical AI bot.
-4. *The Resistance Avalon*: Implemented official Don Eskridge 5–10 seat configuration, Quest 4 2-fails rule for 7+ players, Arthurian roles, touch/hold Privacy Shield overlay, and Bayesian deduction AI.
-5. *Integrity & Verification*: Strict multi-phase auditing ensured genuine logic, absence of mocks/hardcoded outputs, and compliance with all user-defined AGENTS.md rules.
+1. **Header Navigation & Exit Clarity**: Renamed `.hub-btn` to `"All Games"` (`/`), added context-aware `.leave-btn` ("Leave Room" in unstarted lobby vs "Exit Match" in active match), bottom-only action buttons in `ExitConfirmDialogComponent`, and fixed `p2p:leave` re-entrancy / navigation in Mahjong, Monopoly, and Avalon.
+2. **Monopoly Bot Trading & Outcome UX**: Added 5-tier evaluation heuristics in `MonopolyBotService` (fair mutual swaps, high-premium buyouts, cash reserve thresholds), state machine tracking of `TradeOutcome`, inline modal input validation, audio SFX, and bounded outcome modal.
+3. **Pandemic Board Game (`src/app/games/pandemic/`)**:
+   - Universal P2P `'D'` room code router.
+   - 48 authentic cities with normalized SVG coordinates and Pacific wraparounds.
+   - Core engine: 8 actions, 6-station relocation cap, disease eradication, all 7 roles, 5 events, turn stepper (`Actions` -> `Epidemic Alert` -> `Discard` -> `Infect`), and anti-cheat view sanitization.
+   - AI bot service with BFS multi-hop pathfinding.
+   - Session service supporting Solo AI bots, Solo Commander mode (local player controls 2-4 seats), and P2P online.
+   - CDC Bio-Command UI with interactive SVG map, Region filters, Action drawer, and mobile cards.
+4. **Pavilion Integration**: Registered routes, Hub 4th card, Rulebook 4th tab (.desktop-table & .mobile-cards), CDC Bio-Command theme (`body[data-theme='pandemic']`), 100% bilingual i18n parity across 120 keys, and updated canonical docs (< 20,000 bytes).
 
 ## 3. Caveats
-- PeerJS public STUN/TURN signaling is used for online P2P rooms; in network-isolated or offline environments, local `BroadcastChannel` provides transparent multi-tab play.
-- No `*.sh` scripts were accessed, created, or executed at any point during this run.
+- Host-in-browser WebRTC P2P requires host to maintain browser window to coordinate match state.
+- Pandemic Solo Commander mode gives full control of all seats to local seat 0 without bot timers.
 
 ## 4. Conclusion
-**Verdict: VICTORY CONFIRMED**. All objectives from `ORIGINAL_REQUEST.md` and repository standards have been completely implemented, verified, and audited with zero defects. The project is production ready.
+All requirements from `ORIGINAL_REQUEST.md` have been met, verified, and audited with zero regressions. The implementation is production-ready.
 
 ## 5. Verification Method
-Independently reproducible quality commands:
-```powershell
-npm.cmd run qa:agent-docs
-npx.cmd tsc --noEmit
-npm.cmd run lint
-npm.cmd run test:ci
-npm.cmd run build
-```
+- Independent audit executed by `teamwork_victory_auditor` (`90ebf2b3-519c-451f-837f-1d13e76308ab`).
+- Full 7-step local quality gate passed:
+  1. `npm.cmd run qa:agent-docs` (0 errors)
+  2. `npx.cmd tsc --noEmit` (0 errors)
+  3. `npm.cmd run lint` (0 errors, 0 warnings)
+  4. `npm.cmd run test:ci` (47 files, 590/590 passing, 95.61% lines, 86.32% branches)
+  5. `npm.cmd run qa:scan` (0 errors)
+  6. `npm.cmd run qa:gate` (0 errors)
+  7. `npm.cmd run build` (Production Angular bundle built)
+- Verdict: **VICTORY CONFIRMED**.

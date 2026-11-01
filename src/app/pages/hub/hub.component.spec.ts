@@ -46,10 +46,11 @@ describe('HubComponent', () => {
     expect(component.selectedGame()).toBe(null);
 
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelectorAll('.game-card.game-tile').length).toBe(3);
+    expect(el.querySelectorAll('.game-card.game-tile').length).toBe(4);
     expect(el.querySelector('.mahjong-card') !== null).toBe(true);
     expect(el.querySelector('.monopoly-card') !== null).toBe(true);
     expect(el.querySelector('.avalon-card') !== null).toBe(true);
+    expect(el.querySelector('.pandemic-card') !== null).toBe(true);
     expect(el.querySelector('.game-detail-modal')).toBe(null);
     expect(el.querySelectorAll('.card-features').length).toBe(0);
   });
@@ -157,6 +158,12 @@ describe('HubComponent', () => {
     expect(navigatedPath).toBe('/avalon/lobby');
     expect(navParams).toEqual({ room: 'A1234' });
 
+    // Pandemic code
+    component.onRoomCodeChange('D7777');
+    component.joinRoom();
+    expect(navigatedPath).toBe('/pandemic/lobby');
+    expect(navParams).toEqual({ room: 'D7777' });
+
     // Mahjong code
     component.onRoomCodeChange('M5555');
     component.joinRoom();
@@ -179,6 +186,9 @@ describe('HubComponent', () => {
 
     component.enterGame('avalon');
     expect(target).toBe('/avalon/lobby');
+
+    component.enterGame('pandemic');
+    expect(target).toBe('/pandemic/lobby');
   });
 
   it('opens contextual rulebook modal for target game', () => {
@@ -188,6 +198,9 @@ describe('HubComponent', () => {
 
     component.openRulebook('avalon');
     expect(shellUi.rulebookGame()).toBe('avalon');
+
+    component.openRulebook('pandemic');
+    expect(shellUi.rulebookGame()).toBe('pandemic');
   });
 
   it('redirects on deep-link room query parameters in URL', async () => {

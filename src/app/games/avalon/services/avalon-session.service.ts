@@ -81,8 +81,11 @@ export class AvalonSessionService {
     if (typeof window !== 'undefined') {
       window.addEventListener('p2p:leave', (ev: Event) => {
         const detail = (ev as CustomEvent).detail as { game?: string } | undefined;
-        if (!detail || detail.game === 'avalon') {
+        if (!detail || !detail.game || detail.game === 'avalon') {
           this.leaveRoom();
+          if (this.router.url?.includes('/avalon/table')) {
+            void this.router.navigate(['/avalon/lobby']);
+          }
         }
       });
     }

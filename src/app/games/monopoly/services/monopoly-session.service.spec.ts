@@ -539,4 +539,70 @@ describe('MonopolySessionService & Host/Guest Sync', () => {
     window.dispatchEvent(new CustomEvent('p2p:leave'));
     expect(session.snapshot()).toBeNull();
   });
+
+  it('plays deal SFX on acceptTrade and fail SFX on rejectTrade including bot response execution', () => {
+    vi.useFakeTimers();
+    const { session, shellUi } = setupService();
+    const sfxSpy = vi.spyOn(shellUi, 'playSfx');
+
+    session.createSoloMatch(2, { auctionEnabled: false });
+
+    // Host dispatches acceptTrade -> plays 'deal'
+    sfxSpy.mockClear();
+    session.dispatchAction({ type: 'acceptTrade' });
+    expect(sfxSpy).toHaveBeenCalledWith('deal');
+
+    // Host dispatches rejectTrade -> plays 'fail'
+    sfxSpy.mockClear();
+    session.dispatchAction({ type: 'rejectTrade' });
+    expect(sfxSpy).toHaveBeenCalledWith('fail');
+
+    // Propose trade to bot (seat 1) that will be accepted
+    const bot = TestBed.inject(MonopolyBotService);
+    vi.spyOn(bot, 'evaluateMonopolyBotAction').mockReturnValue({
+      type: 'acceptTrade',
+      reasonKey: 'MONOPOLY.TRADE_REASON_ACCEPTED',
+    });
+
+    sfxSpy.mockClear();
+    session.dispatchAction({
+      type: 'proposeTrade',
+      trade: {
+        fromSeat: 0,
+        toSeat: 1,
+        offerCash: 100,
+        offerProperties: [],
+        requestCash: 0,
+        requestProperties: [],
+      },
+    });
+
+    // Advance timers by 600ms for bot response timer
+    vi.advanceTimersByTime(700);
+    expect(sfxSpy).toHaveBeenCalledWith('deal');
+
+    // Propose trade to bot that will be rejected
+    vi.spyOn(bot, 'evaluateMonopolyBotAction').mockReturnValue({
+      type: 'rejectTrade',
+      reasonKey: 'MONOPOLY.TRADE_REASON_LOW_VALUE',
+    });
+
+    sfxSpy.mockClear();
+    session.dispatchAction({
+      type: 'proposeTrade',
+      trade: {
+        fromSeat: 0,
+        toSeat: 1,
+        offerCash: 10,
+        offerProperties: [],
+        requestCash: 0,
+        requestProperties: [],
+      },
+    });
+
+    vi.advanceTimersByTime(700);
+    expect(sfxSpy).toHaveBeenCalledWith('fail');
+
+    session.leaveRoom();
+  });
 });

@@ -101,6 +101,13 @@
                 }
               </div>
 
+              @if (view.pendingTrade?.fromSeat === session.mySeat()) {
+                <div class="pending-trade-indicator pending-trade-pill">
+                  <span class="spinner-dot">⏳</span>
+                  <span>{{ getPendingTradeText(view) }}</span>
+                </div>
+              }
+
               <div class="dice-arena">
                 <app-real-dice [values]="view.lastDice" [rolling]="isDiceRolling()" />
               </div>
@@ -457,7 +464,7 @@
           <div class="modal-body">
             <div class="trade-target-selector">
               <label for="trade-partner-select">{{ 'MONOPOLY.TRADE_SELECT_PARTNER' | translate }}</label>
-              <select id="trade-partner-select" class="portal-input" [(ngModel)]="tradeTargetSeat">
+              <select id="trade-partner-select" class="portal-input" [(ngModel)]="tradeTargetSeat" (ngModelChange)="onTradeTargetChange()">
                 @for (p of view.players; track p.seat) {
                   @if (p.seat !== session.mySeat() && !p.bankrupt) {
                     <option [ngValue]="p.seat">{{ p.name }} (RM {{ p.cash }})</option>
@@ -465,6 +472,12 @@
                 }
               </select>
             </div>
+
+            @if (tradeErrorKey(); as errKey) {
+              <div class="trade-validation-error">
+                {{ getTradeErrorMessage(errKey) }}
+              </div>
+            }
 
             <div class="trade-columns">
               <div class="trade-col">
@@ -517,6 +530,74 @@
           </div>
         </div>
       </div>
+    }
+
+    <!-- Trade Outcome Modal -->
+    @if (showTradeOutcomeModal(view)) {
+      @if (view.lastTradeOutcome; as outcome) {
+        <div class="modal-backdrop" (click)="dismissTradeOutcome(outcome.id)">
+          <div class="modal-card trade-outcome-modal" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h2 class="dialog-title">
+                @if (outcome.accepted) {
+                  ✅ {{ 'MONOPOLY.TRADE_OUTCOME_ACCEPTED_TITLE' | translate }}
+                } @else {
+                  ❌ {{ 'MONOPOLY.TRADE_OUTCOME_DECLINED_TITLE' | translate }}
+                }
+              </h2>
+            </div>
+
+            <div class="modal-body">
+              <div class="trade-outcome-summary">
+                <p class="trade-outcome-partner">
+                  <strong>{{ getPlayerName(outcome.toSeat) }}</strong>
+                  @if (outcome.accepted) {
+                    <span> {{ getAcceptedText() }}</span>
+                  } @else {
+                    <span> {{ getDeclinedText() }}</span>
+                  }
+                </p>
+
+                <div class="trade-outcome-reason-box">
+                  <span class="reason-label">{{ getReasonLabel() }}:</span>
+                  <p class="reason-text">{{ getTradeReasonText(outcome.reasonKey) }}</p>
+                </div>
+
+                <div class="trade-outcome-details">
+                  <div class="detail-col">
+                    <h5>{{ 'MONOPOLY.TRADE_OFFER_CASH' | translate }}</h5>
+                    <p>RM {{ outcome.offerCash }}</p>
+                    @if (outcome.offerProperties.length > 0) {
+                      <ul>
+                        @for (pIdx of outcome.offerProperties; track pIdx) {
+                          <li>{{ getSpaceName(pIdx) }}</li>
+                        }
+                      </ul>
+                    }
+                  </div>
+                  <div class="detail-col">
+                    <h5>{{ 'MONOPOLY.TRADE_REQUEST_CASH' | translate }}</h5>
+                    <p>RM {{ outcome.requestCash }}</p>
+                    @if (outcome.requestProperties.length > 0) {
+                      <ul>
+                        @for (pIdx of outcome.requestProperties; track pIdx) {
+                          <li>{{ getSpaceName(pIdx) }}</li>
+                        }
+                      </ul>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button type="button" class="btn btn-emerald" (click)="dismissTradeOutcome(outcome.id)">
+                {{ 'COMMON.CONFIRM' | translate }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
     }
 
     <!-- 4. Incoming Trade Proposal Modal -->

@@ -259,14 +259,16 @@ describe('E2E: Hub & Shell Architecture Suite', () => {
       const comp = fixture.componentInstance;
       const el = fixture.nativeElement as HTMLElement;
 
-      // 1. Check hero title and 3 game cards rendered
-      expect(el.querySelectorAll('.game-card').length).toBe(3);
+      // 1. Check hero title and 4 game cards rendered
+      expect(el.querySelectorAll('.game-card').length).toBe(4);
       const mjText = el.querySelector('.mahjong-card')?.textContent ?? '';
       expect(mjText.includes('HUB.MAHJONG_TITLE') || mjText.includes('港马麻将馆')).toBe(true);
       const monoText = el.querySelector('.monopoly-card')?.textContent ?? '';
       expect(monoText.includes('HUB.MONOPOLY_TITLE') || monoText.includes('大马地标大富翁')).toBe(true);
       const avaText = el.querySelector('.avalon-card')?.textContent ?? '';
       expect(avaText.includes('HUB.AVALON_TITLE') || avaText.includes('阿瓦隆')).toBe(true);
+      const panText = el.querySelector('.pandemic-card')?.textContent ?? '';
+      expect(panText.includes('HUB.PANDEMIC_TITLE') || panText.includes('瘟疫危机')).toBe(true);
 
       // 2. Room code join input with invalid/empty code
       comp.onRoomCodeChange('');

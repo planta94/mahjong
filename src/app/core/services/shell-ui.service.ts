@@ -110,7 +110,7 @@ export class ShellUiService implements OnDestroy {
       this.rulebookGame.set(game);
     } else {
       const cur = this.activeGame();
-      if (cur === 'monopoly' || cur === 'avalon' || cur === 'mahjong') {
+      if (cur === 'monopoly' || cur === 'avalon' || cur === 'mahjong' || cur === 'pandemic') {
         this.rulebookGame.set(cur);
       } else {
         this.rulebookGame.set('mahjong');

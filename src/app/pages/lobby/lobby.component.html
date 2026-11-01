@@ -298,6 +298,9 @@
             } @else {
               <span class="wait-host-label">{{ 'LOBBY.WAIT_FOR_HOST' | translate }}</span>
             }
+            <button type="button" class="btn btn-outline leave-room-btn" (click)="session.leaveSession()">
+              {{ 'HEADER.LEAVE_ROOM' | translate }}
+            </button>
           </div>
         </section>
       }

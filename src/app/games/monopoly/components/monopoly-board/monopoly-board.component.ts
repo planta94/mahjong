@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { GameSessionManagerService } from '../../../../core/services/game-session-manager.service';
 import { ShellUiService } from '../../../../core/services/shell-ui.service';
+import { TranslateService } from '../../../../core/services/translate.service';
 import { RealDiceComponent } from '../../../../shared/dice/real-dice.component';
 import { TranslatePipe } from '../../../../shared/pipes/translate.pipe';
 import {
@@ -15,8 +16,10 @@ import {
   BoardSpace,
   ColorGroup,
   MonopolyPlayer,
+  MonopolyPlayerView,
   PropertyState,
   TradeProposal,
+  TradeReasonKey,
 } from '../../models/monopoly.model';
 import { MonopolyEngineService } from '../../services/monopoly-engine.service';
 import { MonopolySessionService } from '../../services/monopoly-session.service';
@@ -80,6 +83,7 @@ export class MonopolyBoardComponent implements OnInit {
   readonly session = inject(MonopolySessionService);
   readonly shellUi = inject(ShellUiService);
   readonly engine = inject(MonopolyEngineService);
+  readonly translate = inject(TranslateService);
   private readonly gameManager = inject(GameSessionManagerService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -97,6 +101,8 @@ export class MonopolyBoardComponent implements OnInit {
   tradeRequestCash = 0;
   tradeOfferProps: number[] = [];
   tradeRequestProps: number[] = [];
+  readonly tradeErrorKey = signal<string | null>(null);
+  readonly dismissedTradeOutcomeId = signal<number | null>(null);
 
   readonly activePlayer = computed<MonopolyPlayer | null>(() => {
     const view = this.session.currentView();
@@ -271,6 +277,11 @@ export class MonopolyBoardComponent implements OnInit {
     this.session.closeDeedModal();
   }
 
+  onTradeTargetChange(): void {
+    this.tradeRequestProps = [];
+    this.tradeErrorKey.set(null);
+  }
+
   openTrade(): void {
     const view = this.session.currentView();
     const mySeat = this.session.mySeat();
@@ -281,26 +292,133 @@ export class MonopolyBoardComponent implements OnInit {
     this.tradeRequestCash = 0;
     this.tradeOfferProps = [];
     this.tradeRequestProps = [];
+    this.tradeErrorKey.set(null);
     this.session.showTradeModal.set(true);
     this.shellUi.playSfx('click');
   }
 
   closeTrade(): void {
+    this.tradeErrorKey.set(null);
     this.session.showTradeModal.set(false);
   }
 
   proposeTrade(): void {
+    const view = this.session.currentView();
     const mySeat = this.session.mySeat();
+    if (!view) return;
+
+    const myPlayer = view.players.find((p: MonopolyPlayer) => p.seat === mySeat);
+    const targetPlayer = view.players.find((p: MonopolyPlayer) => p.seat === this.tradeTargetSeat);
+    if (!myPlayer || !targetPlayer) return;
+
+    const sanitizedOfferCash = Math.max(0, Math.floor(Number(this.tradeOfferCash) || 0));
+    const sanitizedRequestCash = Math.max(0, Math.floor(Number(this.tradeRequestCash) || 0));
+
+    if (sanitizedOfferCash > myPlayer.cash) {
+      this.tradeErrorKey.set('MONOPOLY.TRADE_ERR_OFFER_CASH');
+      return;
+    }
+
+    if (sanitizedRequestCash > targetPlayer.cash) {
+      this.tradeErrorKey.set('MONOPOLY.TRADE_ERR_REQUEST_CASH');
+      return;
+    }
+
+    const hasOffer = sanitizedOfferCash > 0 || this.tradeOfferProps.length > 0;
+    const hasRequest = sanitizedRequestCash > 0 || this.tradeRequestProps.length > 0;
+    if (!hasOffer || !hasRequest) {
+      this.tradeErrorKey.set('MONOPOLY.TRADE_ERR_EMPTY');
+      return;
+    }
+
+    this.tradeErrorKey.set(null);
     const trade: TradeProposal = {
       fromSeat: mySeat,
       toSeat: this.tradeTargetSeat,
-      offerCash: this.tradeOfferCash,
-      offerProperties: this.tradeOfferProps,
-      requestCash: this.tradeRequestCash,
-      requestProperties: this.tradeRequestProps,
+      offerCash: sanitizedOfferCash,
+      offerProperties: [...this.tradeOfferProps],
+      requestCash: sanitizedRequestCash,
+      requestProperties: [...this.tradeRequestProps],
     };
     this.session.dispatchAction({ type: 'proposeTrade', trade });
     this.closeTrade();
+  }
+
+  dismissTradeOutcome(outcomeId: number): void {
+    this.dismissedTradeOutcomeId.set(outcomeId);
+    this.shellUi.playSfx('click');
+  }
+
+  showTradeOutcomeModal(view: MonopolyPlayerView): boolean {
+    const outcome = view.lastTradeOutcome;
+    if (!outcome) return false;
+    if (outcome.fromSeat !== this.session.mySeat()) return false;
+    return this.dismissedTradeOutcomeId() !== outcome.id;
+  }
+
+  getTradeErrorMessage(key: string): string {
+    const translated = this.translate.instant(key);
+    if (translated && translated !== key) return translated;
+    switch (key) {
+      case 'MONOPOLY.TRADE_ERR_OFFER_CASH':
+        return this.translate.currentLang() === 'zh'
+          ? '出价现金超出您所持有的现金！'
+          : 'Offered cash exceeds your available cash!';
+      case 'MONOPOLY.TRADE_ERR_REQUEST_CASH':
+        return this.translate.currentLang() === 'zh'
+          ? '要价现金超出对方所持有的现金！'
+          : 'Requested cash exceeds opponent available cash!';
+      case 'MONOPOLY.TRADE_ERR_EMPTY':
+        return this.translate.currentLang() === 'zh'
+          ? '交易提案必须包含出价及要价（物业或现金）！'
+          : 'Trade proposal must offer and request at least one asset or cash!';
+      default:
+        return key;
+    }
+  }
+
+  getPendingTradeText(view: MonopolyPlayerView): string {
+    const targetPlayer = view.players.find((p: MonopolyPlayer) => p.seat === view.pendingTrade?.toSeat);
+    const targetName = targetPlayer?.name ?? 'opponent';
+    return this.translate.currentLang() === 'zh'
+      ? `等待 ${targetName} 回应交易提案…`
+      : `Waiting for ${targetName} to respond to trade proposal…`;
+  }
+
+  getTradeReasonText(reasonKey: TradeReasonKey): string {
+    const translated = this.translate.instant(reasonKey);
+    if (translated && translated !== reasonKey) return translated;
+    const isZh = this.translate.currentLang() === 'zh';
+    switch (reasonKey) {
+      case 'MONOPOLY.TRADE_REASON_ACCEPTED':
+        return isZh ? '交易条件公平，双方达成共识。' : 'Fair trade terms; both sides agreed.';
+      case 'MONOPOLY.TRADE_REASON_MUTUAL_SETS':
+        return isZh ? '双方均获得完整同色地契垄断，互利共赢！' : 'Mutual monopoly swap completed; benefits both players!';
+      case 'MONOPOLY.TRADE_REASON_PREMIUM_BUYOUT':
+        return isZh ? '出价溢价丰厚，已达到高额买断要求！' : 'High premium buyout threshold met; accepted!';
+      case 'MONOPOLY.TRADE_REASON_CASH_RESERVE':
+        return isZh ? '现金储备不足，无法支付要求的现金。' : 'Insufficient cash reserves to fulfill request.';
+      case 'MONOPOLY.TRADE_REASON_GRANTS_MONOPOLY':
+        return isZh ? '该交易将给予对手独占垄断，而出价未达溢价买断门槛。' : 'Grants opponent a monopoly without sufficient buyout premium.';
+      case 'MONOPOLY.TRADE_REASON_LOW_VALUE':
+        return isZh ? '交易报价资产估值过低，不符合投资回报。' : 'Offer value is too low relative to assets requested.';
+      case 'MONOPOLY.TRADE_REASON_DECLINED_PLAYER':
+        return isZh ? '对方玩家拒绝了该交易提案。' : 'Player declined this trade proposal.';
+      default:
+        return reasonKey;
+    }
+  }
+
+  getAcceptedText(): string {
+    return this.translate.currentLang() === 'zh' ? '接受了您的交易提案！' : 'accepted your trade proposal!';
+  }
+
+  getDeclinedText(): string {
+    return this.translate.currentLang() === 'zh' ? '拒绝了您的交易提案。' : 'declined your trade proposal.';
+  }
+
+  getReasonLabel(): string {
+    return this.translate.currentLang() === 'zh' ? '原因说明' : 'Reason';
   }
 
   acceptTrade(): void {

@@ -78,6 +78,10 @@ describe('ShellUiService', () => {
     service.setActiveGame('avalon');
     expect(service.activeGame()).toBe('avalon');
     expect(document.body.dataset['theme']).toBe('avalon');
+
+    service.setActiveGame('pandemic');
+    expect(service.activeGame()).toBe('pandemic');
+    expect(document.body.dataset['theme']).toBe('pandemic');
   });
 
   it('tracks room code, sanitizes input, and computes hasActiveRoom', () => {
@@ -130,6 +134,15 @@ describe('ShellUiService', () => {
     service.openRulebook();
     expect(service.showRulebookModal()).toBe(true);
     expect(service.rulebookGame()).toBe('avalon');
+
+    service.setActiveGame('pandemic');
+    service.openRulebook();
+    expect(service.showRulebookModal()).toBe(true);
+    expect(service.rulebookGame()).toBe('pandemic');
+
+    service.openRulebook('pandemic');
+    expect(service.showRulebookModal()).toBe(true);
+    expect(service.rulebookGame()).toBe('pandemic');
 
     service.setActiveGame('hub');
     service.openRulebook();

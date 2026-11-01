@@ -2,10 +2,78 @@
   width: min(500px, 95vw);
   max-width: 95vw;
   max-height: 90vh;
+  background: var(--modal-bg, linear-gradient(180deg, #0d3b2c, #072219));
+  border: 1px solid var(--modal-border, rgba(234, 179, 8, 0.65));
+}
+
+.exit-confirm-card.theme-mahjong {
+  background: linear-gradient(180deg, #0d3b2c, #072219);
+  border-color: rgba(234, 179, 8, 0.65);
+  --exit-title: #fef08a;
+  --exit-pill-bg: rgba(16, 185, 129, 0.2);
+  --exit-pill-border: rgba(110, 231, 183, 0.45);
+  --exit-pill-color: #6ee7b7;
+}
+
+.exit-confirm-card.theme-monopoly {
+  background: linear-gradient(180deg, #271b11, #140d08);
+  border-color: rgba(234, 179, 8, 0.72);
+  --exit-title: #fde68a;
+  --exit-pill-bg: rgba(245, 158, 11, 0.18);
+  --exit-pill-border: rgba(251, 191, 36, 0.48);
+  --exit-pill-color: #fde68a;
+}
+
+.exit-confirm-card.theme-avalon {
+  background: linear-gradient(180deg, #1e1b4b, #0c0a24);
+  border-color: rgba(225, 29, 72, 0.65);
+  --exit-title: #fecdd3;
+  --exit-pill-bg: rgba(225, 29, 72, 0.2);
+  --exit-pill-border: rgba(251, 113, 133, 0.48);
+  --exit-pill-color: #fda4af;
+}
+
+.exit-confirm-card.theme-pandemic {
+  background: linear-gradient(180deg, #0d223a, #071322);
+  border-color: rgba(56, 189, 248, 0.62);
+  --exit-title: #7dd3fc;
+  --exit-pill-bg: rgba(14, 165, 233, 0.18);
+  --exit-pill-border: rgba(56, 189, 248, 0.48);
+  --exit-pill-color: #38bdf8;
+}
+
+.exit-confirm-card.theme-hub {
+  background: linear-gradient(180deg, #132038, #09101f);
+  border-color: rgba(56, 189, 248, 0.48);
+  --exit-title: #f8fafc;
+  --exit-pill-bg: rgba(56, 189, 248, 0.15);
+  --exit-pill-border: rgba(56, 189, 248, 0.38);
+  --exit-pill-color: #7dd3fc;
+}
+
+.exit-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.exit-theme-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  background: var(--exit-pill-bg, rgba(16, 185, 129, 0.2));
+  border: 1px solid var(--exit-pill-border, rgba(110, 231, 183, 0.45));
+  color: var(--exit-pill-color, #6ee7b7);
 }
 
 .dialog-title {
-  color: #fef08a;
+  color: var(--exit-title, var(--modal-title-color, #fef08a));
   font-size: 1.15rem;
   font-weight: 800;
 }

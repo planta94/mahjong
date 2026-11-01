@@ -1,0 +1,1178 @@
+<div class="pandemic-screen">
+  @if (view(); as v) {
+    <div class="pandemic-layout">
+      <!-- 1. Top HUD: Bio-Command Operations Bar -->
+      <header class="bio-hud">
+        <div class="hud-top-row">
+          <!-- Game Info & Difficulty -->
+          <div class="hud-brand">
+            <span class="hud-badge">🦠 CDC BIO-DEFENSE</span>
+            <span class="diff-chip">
+              {{ getDifficultyKey(v.difficulty) | translate }}
+            </span>
+            @if (isSoloCommander()) {
+              <span class="commander-chip">🎮 COMMANDER</span>
+            }
+          </div>
+
+          <!-- 4 Cure / Eradication Status Vials -->
+          <div class="cure-vials">
+            @for (col of diseaseColors; track col) {
+              <div
+                class="cure-vial"
+                [ngClass]="'vial-' + col"
+                [class.is-cured]="getCureStatus(col) === 'cured'"
+                [class.is-eradicated]="getCureStatus(col) === 'eradicated'"
+                [title]="(col | uppercase) + ': ' + getCureStatus(col)"
+              >
+                <div class="vial-fluid"></div>
+                <span class="vial-cap"></span>
+                @if (getCureStatus(col) === 'eradicated') {
+                  <span class="vial-icon">🛡️</span>
+                } @else if (getCureStatus(col) === 'cured') {
+                  <span class="vial-icon">🧪</span>
+                } @else {
+                  <span class="vial-icon">⚗️</span>
+                }
+                <span class="vial-label">{{ col | uppercase }}</span>
+              </div>
+            }
+          </div>
+
+          <!-- Outbreak Meter & Infection Rate Track -->
+          <div class="hud-tracks">
+            <!-- Outbreak Track -->
+            <div class="track-box outbreak-track">
+              <span class="track-title">☣️ {{ 'PANDEMIC.OUTBREAKS_LABEL' | translate }}</span>
+              <div class="track-meter">
+                <span class="track-val" [class.is-danger]="v.outbreakCount >= 6">
+                  {{ v.outbreakCount }} / {{ maxOutbreaks }}
+                </span>
+                <div class="track-bar">
+                  <div
+                    class="track-fill outbreak-fill"
+                    [style.width.%]="(v.outbreakCount / maxOutbreaks) * 100"
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Infection Rate Track -->
+            <div class="track-box infection-track">
+              <span class="track-title">📈 {{ 'PANDEMIC.INFECTION_RATE' | translate }}</span>
+              <div class="rate-steps">
+                @for (rate of infectionRates; track $index; let idx = $index) {
+                  <div
+                    class="rate-step"
+                    [class.is-active-step]="idx === v.infectionRateIndex"
+                  >
+                    {{ rate }}
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- Cube Supply Remaining Counters -->
+          <div class="cube-counters">
+            @for (col of diseaseColors; track col) {
+              <div class="cube-counter-item" [ngClass]="'counter-' + col">
+                <span class="cube-swatch"></span>
+                <span class="cube-count">{{ getCubesRemaining(col) }}</span>
+              </div>
+            }
+          </div>
+
+          <!-- Deck / Discard Badges -->
+          <div class="deck-badges">
+            <div
+              class="deck-chip mobile-outbreak-chip"
+              [class.is-danger]="v.outbreakCount >= 6"
+              title="Outbreak Counter"
+            >
+              <span class="deck-icon">💥</span>
+              <span class="deck-num">{{ v.outbreakCount }}/{{ maxOutbreaks }}</span>
+            </div>
+            <div class="deck-chip player-deck-chip" title="Player Cards Remaining">
+              <span class="deck-icon">🎴</span>
+              <span class="deck-num">{{ v.playerDeckCount }}</span>
+              <span class="discard-num">({{ v.playerDiscard.length }})</span>
+            </div>
+            <button
+              type="button"
+              class="deck-chip infection-deck-chip"
+              title="Click to inspect infection discard pile"
+              (click)="session.openInfectionDiscardModal()"
+            >
+              <span class="deck-icon">☣️</span>
+              <span class="deck-num">{{ v.infectionDeckCount }}</span>
+              <span class="discard-num">({{ v.infectionDiscard.length }})</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Turn Stepper & Phase Actions Bar -->
+        <div class="turn-stepper-bar">
+          <div class="active-specialist-info">
+            @if (activePlayer(); as actPlayer) {
+              <span
+                class="specialist-avatar"
+                [style.background-color]="getRoleColor(actPlayer.role)"
+              >
+                {{ actPlayer.seat + 1 }}
+              </span>
+              <div class="specialist-meta">
+                <span class="specialist-name">
+                  {{ actPlayer.name }}
+                  <span
+                    class="role-pill-badge"
+                    [style.border-color]="getRoleColor(actPlayer.role)"
+                  >
+                    {{ getRoleNameKey(actPlayer.role) | translate }}
+                  </span>
+                </span>
+                <span class="location-label">
+                  📍 {{ getCityName(actPlayer.cityId) }}
+                </span>
+              </div>
+            }
+          </div>
+
+          <!-- Phase Stepper -->
+          <div class="stepper-stages">
+            <div
+              class="stepper-step"
+              [class.is-active-phase]="v.phase === 'actions'"
+            >
+              <span class="step-num">1</span>
+              <span class="step-title">{{ 'PANDEMIC.PHASE_ACTIONS' | translate }}</span>
+              @if (v.phase === 'actions') {
+                <span class="ap-badge">{{ v.actionsRemaining }} AP</span>
+              }
+            </div>
+
+            <div
+              class="stepper-step"
+              [class.is-active-phase]="v.phase === 'epidemic'"
+            >
+              <span class="step-num">2</span>
+              <span class="step-title">⚠️ {{ 'PANDEMIC.PHASE_EPIDEMIC' | translate }}</span>
+            </div>
+
+            <div
+              class="stepper-step"
+              [class.is-active-phase]="v.phase === 'discard'"
+            >
+              <span class="step-num">3</span>
+              <span class="step-title">{{ 'PANDEMIC.PHASE_DISCARD' | translate }}</span>
+            </div>
+
+            <div
+              class="stepper-step"
+              [class.is-active-phase]="v.phase === 'infect'"
+            >
+              <span class="step-num">4</span>
+              <span class="step-title">☣️ {{ 'PANDEMIC.PHASE_INFECT' | translate }}</span>
+            </div>
+          </div>
+
+          <!-- Stepper Contextual Buttons -->
+          <div class="stepper-controls">
+            @if (isMyTurn() && v.phase === 'actions') {
+              <button
+                type="button"
+                class="btn btn-sm btn-outline"
+                (click)="endActionsEarly()"
+              >
+                ⏩ {{ 'PANDEMIC.END_ACTIONS_EARLY' | translate }}
+              </button>
+            }
+
+            @if (isMyTurn() && v.phase === 'epidemic') {
+              <button
+                type="button"
+                class="btn btn-sm btn-gold alert-pulse"
+                (click)="resolveEpidemicIntensify()"
+              >
+                🔥 {{ 'PANDEMIC.CONFIRM_INTENSIFY' | translate }}
+              </button>
+            }
+
+            @if (isMyTurn() && v.phase === 'infect') {
+              <button
+                type="button"
+                class="btn btn-sm btn-emerald"
+                (click)="resolveInfectStep()"
+              >
+                ☣️ {{ 'PANDEMIC.RESOLVE_INFECT_STEP' | translate }}
+              </button>
+            }
+          </div>
+        </div>
+      </header>
+
+      <!-- 2. Main World Map & Tactical Stage -->
+      <main class="tactical-stage">
+        <div class="map-column">
+          <!-- Region Filter Pills -->
+          <div class="region-filter-bar">
+          <span class="filter-label">🌍 {{ 'PANDEMIC.REGION_FILTER' | translate }}:</span>
+          <button
+            type="button"
+            class="region-pill pill-all"
+            [class.is-active-pill]="selectedRegion() === 'all'"
+            (click)="setRegion('all')"
+          >
+            {{ 'PANDEMIC.REGION_ALL' | translate }} (48)
+          </button>
+          <button
+            type="button"
+            class="region-pill pill-blue"
+            [class.is-active-pill]="selectedRegion() === 'blue'"
+            (click)="setRegion('blue')"
+          >
+            🔵 {{ 'PANDEMIC.COLOR_BLUE' | translate }} (12)
+          </button>
+          <button
+            type="button"
+            class="region-pill pill-yellow"
+            [class.is-active-pill]="selectedRegion() === 'yellow'"
+            (click)="setRegion('yellow')"
+          >
+            🟡 {{ 'PANDEMIC.COLOR_YELLOW' | translate }} (12)
+          </button>
+          <button
+            type="button"
+            class="region-pill pill-black"
+            [class.is-active-pill]="selectedRegion() === 'black'"
+            (click)="setRegion('black')"
+          >
+            ⚫ {{ 'PANDEMIC.COLOR_BLACK' | translate }} (12)
+          </button>
+          <button
+            type="button"
+            class="region-pill pill-red"
+            [class.is-active-pill]="selectedRegion() === 'red'"
+            (click)="setRegion('red')"
+          >
+            🔴 {{ 'PANDEMIC.COLOR_RED' | translate }} (12)
+          </button>
+        </div>
+
+        <!-- Interactive SVG World Map -->
+        <div
+          #mapContainer
+          class="svg-map-wrapper"
+          [class.is-zoomed]="mapZoom() > 1"
+          [class.is-panning]="isPanning()"
+          (wheel)="onMapWheel($event)"
+          (pointerdown)="onMapPointerDown($event)"
+          (pointermove)="onMapPointerMove($event, mapContainer)"
+          (pointerup)="onMapPointerUp($event)"
+          (pointercancel)="onMapPointerUp($event)"
+          (pointerleave)="onMapPointerUp($event)"
+        >
+          <svg
+            class="pandemic-svg-map"
+            [attr.viewBox]="mapViewBox()"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            <defs>
+              <pattern
+                id="radarGrid"
+                width="40"
+                height="40"
+                patternUnits="userSpaceOnUse"
+              >
+                <path
+                  d="M 40 0 L 0 0 0 40"
+                  fill="none"
+                  stroke="rgba(56, 189, 248, 0.05)"
+                  stroke-width="1"
+                />
+              </pattern>
+            </defs>
+
+            <!-- Map Background with Radar Grid -->
+            <rect width="1000" height="520" fill="#091424" />
+            <rect width="1000" height="520" fill="url(#radarGrid)" />
+
+            <!-- Stylized Continent Vectors Backdrop -->
+            <g class="continent-vectors">
+              <!-- North America -->
+              <path
+                d="M 60 120 L 220 110 L 320 140 L 280 240 L 210 260 L 150 290 L 120 220 L 60 160 Z"
+                class="continent-path"
+              />
+              <!-- South America -->
+              <path
+                d="M 180 320 L 270 300 L 330 350 L 310 470 L 240 500 L 200 420 Z"
+                class="continent-path"
+              />
+              <!-- Europe -->
+              <path
+                d="M 400 120 L 590 110 L 600 200 L 520 240 L 410 230 L 400 160 Z"
+                class="continent-path"
+              />
+              <!-- Africa -->
+              <path
+                d="M 420 250 L 580 250 L 600 370 L 540 480 L 470 480 L 420 340 Z"
+                class="continent-path"
+              />
+              <!-- Asia -->
+              <path
+                d="M 610 110 L 930 110 L 950 260 L 840 360 L 710 350 L 610 260 Z"
+                class="continent-path"
+              />
+              <!-- Australia / Oceania -->
+              <path
+                d="M 790 410 L 950 400 L 960 500 L 830 510 Z"
+                class="continent-path"
+              />
+            </g>
+
+            <!-- Normal Adjacency Route Lines -->
+            <g class="routes-layer">
+              @for (route of normalRoutes; track route.from.id + '-' + route.to.id) {
+                <line
+                  [attr.x1]="route.from.x"
+                  [attr.y1]="route.from.y"
+                  [attr.x2]="route.to.x"
+                  [attr.y2]="route.to.y"
+                  class="route-line"
+                  [class.is-dimmed]="isRouteDimmed(route)"
+                />
+              }
+            </g>
+
+            <!-- Pacific Wraparound Routes (Dashed Lines to Edge) -->
+            <g class="pacific-wraparounds">
+              <!-- San Francisco to West Edge & Tokyo to East Edge -->
+              <line x1="80" y1="180" x2="0" y2="180" class="wraparound-line" />
+              <line x1="1000" y1="195" x2="915" y2="195" class="wraparound-line" />
+              <text x="6" y="174" class="wraparound-label">⇄ Tokyo</text>
+              <text x="944" y="189" class="wraparound-label">⇄ San Francisco</text>
+
+              <!-- San Francisco to Manila -->
+              <line x1="80" y1="180" x2="0" y2="260" class="wraparound-line" />
+              <line x1="1000" y1="355" x2="890" y2="355" class="wraparound-line" />
+              <text x="6" y="254" class="wraparound-label">⇄ Manila</text>
+              <text x="946" y="349" class="wraparound-label">⇄ San Francisco</text>
+
+              <!-- Los Angeles to Sydney -->
+              <line x1="70" y1="245" x2="0" y2="330" class="wraparound-line" />
+              <line x1="1000" y1="465" x2="915" y2="465" class="wraparound-line" />
+              <text x="6" y="324" class="wraparound-label">⇄ Sydney</text>
+              <text x="940" y="459" class="wraparound-label">⇄ Los Angeles</text>
+            </g>
+
+            <!-- 48 City Nodes -->
+            <g class="cities-layer">
+              @for (city of cities; track city.id) {
+                <g
+                  class="city-group"
+                  [attr.transform]="'translate(' + city.x + ',' + city.y + ')'"
+                  [class.is-dimmed]="isCityDimmed(city)"
+                  [class.is-selected]="selectedCityId() === city.id"
+                  [class.is-valid-target]="isValidTargetCity(city.id)"
+                  (click)="selectCity(city.id)"
+                >
+                  <!-- Click Hitbox -->
+                  <circle r="18" class="city-hitbox" />
+
+                  <!-- Valid Target Pulse Ring -->
+                  @if (isValidTargetCity(city.id)) {
+                    <circle r="14" class="target-pulse-ring" />
+                  }
+
+                  <!-- Selected Ring -->
+                  @if (selectedCityId() === city.id) {
+                    <circle r="12" class="selected-ring" />
+                  }
+
+                  <!-- Base City Node Circle -->
+                  <circle
+                    r="6.5"
+                    class="city-core"
+                    [ngClass]="'core-' + city.color"
+                  />
+
+                  <!-- Research Station Icon -->
+                  @if (hasStation(city.id)) {
+                    <polygon
+                      points="0,-12 10,-6 10,6 0,12 -10,6 -10,-6"
+                      class="station-polygon"
+                    />
+                    <text
+                      x="0"
+                      y="0"
+                      dominant-baseline="central"
+                      text-anchor="middle"
+                      class="station-icon-text"
+                    >🔬</text>
+                  }
+
+                  <!-- Disease Cube Indicators -->
+                  @if (getTotalCubesOnCity(city.id); as totalCubes) {
+                    @if (totalCubes > 0) {
+                      <g
+                        class="cubes-badge"
+                        [class.is-hotspot]="totalCubes >= 3"
+                        transform="translate(8, -8)"
+                      >
+                        <circle cx="0" cy="0" r="7" class="cubes-badge-bg" />
+                        <text
+                          x="0"
+                          y="0"
+                          dominant-baseline="central"
+                          text-anchor="middle"
+                          class="cubes-badge-text"
+                        >{{ totalCubes }}</text>
+                      </g>
+                    }
+                  }
+
+                  <!-- Specialist Pawns Present -->
+                  @if (getPlayersAtCity(city.id); as playersHere) {
+                    @if (playersHere.length > 0) {
+                      <g class="pawns-group" transform="translate(-10, -8)">
+                        @for (p of playersHere; track p.seat; let pIdx = $index) {
+                          <circle
+                            [attr.cx]="pIdx * 7"
+                            cy="0"
+                            r="4.5"
+                            class="pawn-circle"
+                            [style.fill]="getRoleColor(p.role)"
+                            [attr.title]="p.name + ' (' + p.role + ')'"
+                          />
+                        }
+                      </g>
+                    }
+                  }
+
+                  <!-- City Name Label -->
+                  <text y="16" class="city-name-text">
+                    {{ city.name }}
+                  </text>
+                </g>
+              }
+            </g>
+          </svg>
+
+            <div
+              class="map-zoom-controls"
+              (pointerdown)="$event.stopPropagation()"
+              (click)="$event.stopPropagation()"
+            >
+              <button
+                type="button"
+                class="zoom-btn focus-pawn-btn"
+                title="Focus Active Specialist"
+                aria-label="Focus Active Specialist"
+                (click)="focusActiveSpecialist()"
+              >
+                🎯
+              </button>
+              <button
+                type="button"
+                class="zoom-btn zoom-in-btn"
+                title="Zoom In"
+                aria-label="Zoom In"
+                [disabled]="mapZoom() >= 3.5"
+                (click)="zoomIn()"
+              >
+                ＋
+              </button>
+              <button
+                type="button"
+                class="zoom-btn zoom-reset-btn"
+                title="Reset Map Zoom"
+                aria-label="Reset Map Zoom"
+                [disabled]="mapZoom() <= 1"
+                (click)="resetZoom()"
+              >
+                {{ mapZoomPercent() }}%
+              </button>
+              <button
+                type="button"
+                class="zoom-btn zoom-out-btn"
+                title="Zoom Out"
+                aria-label="Zoom Out"
+                [disabled]="mapZoom() <= 1"
+                (click)="zoomOut()"
+              >
+                －
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="ops-sidebar">
+          <!-- 3. Action Drawer / Selected City Operations Tray -->
+          <section class="action-drawer">
+          @if (selectedCity(); as selCity) {
+            <div class="drawer-header">
+              <div class="selected-city-title">
+                <span class="city-color-dot" [ngClass]="'dot-' + selCity.color"></span>
+                <strong>{{ selCity.name }}</strong>
+                <span class="city-region-tag">
+                  {{ selCity.color | uppercase }}
+                </span>
+                @if (hasStation(selCity.id)) {
+                  <span class="station-tag">🔬 STATION</span>
+                }
+              </div>
+
+              <!-- Cubes on Selected City -->
+              <div class="selected-city-cubes">
+                @if (getCubesOnCity(selCity.id); as c) {
+                  @if (c.blue > 0) {
+                    <span class="cube-chip chip-blue">🔵 {{ c.blue }}</span>
+                  }
+                  @if (c.yellow > 0) {
+                    <span class="cube-chip chip-yellow">🟡 {{ c.yellow }}</span>
+                  }
+                  @if (c.black > 0) {
+                    <span class="cube-chip chip-black">⚫ {{ c.black }}</span>
+                  }
+                  @if (c.red > 0) {
+                    <span class="cube-chip chip-red">🔴 {{ c.red }}</span>
+                  }
+                  @if (getTotalCubesOnCity(selCity.id) === 0) {
+                    <span class="clean-city-tag">✨ {{ 'PANDEMIC.CITY_CLEAN' | translate }}</span>
+                  }
+                }
+              </div>
+            </div>
+
+            <!-- Legal Actions Grid -->
+            <div class="drawer-actions-grid">
+              @if (legalActions(); as la) {
+                <!-- Drive / Ferry -->
+                @if (la.canDriveOrFerryTo.includes(selCity.id)) {
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-emerald"
+                    (click)="driveOrFerry(selCity.id)"
+                  >
+                    🚗 {{ 'PANDEMIC.ACTION_DRIVE' | translate }}
+                  </button>
+                }
+
+                <!-- Direct Flight -->
+                @if (la.canDirectFlightTo.includes(selCity.id)) {
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-cyan"
+                    (click)="directFlight(selCity.id)"
+                  >
+                    ✈️ {{ 'PANDEMIC.ACTION_DIRECT_FLIGHT' | translate }}
+                  </button>
+                }
+
+                <!-- Charter Flight -->
+                @if (la.canCharterFlightTo.includes(selCity.id)) {
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-cyan"
+                    (click)="charterFlight(selCity.id)"
+                  >
+                    🛫 {{ 'PANDEMIC.ACTION_CHARTER_FLIGHT' | translate }}
+                  </button>
+                }
+
+                <!-- Shuttle Flight -->
+                @if (la.canShuttleFlightTo.includes(selCity.id)) {
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-emerald"
+                    (click)="shuttleFlight(selCity.id)"
+                  >
+                    🚊 {{ 'PANDEMIC.ACTION_SHUTTLE_FLIGHT' | translate }}
+                  </button>
+                }
+
+                <!-- Operations Expert Flight -->
+                @if (la.canOperationsExpertFlightTo.includes(selCity.id)) {
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-gold"
+                    (click)="operationsExpertFlight(selCity.id)"
+                  >
+                    🪂 {{ 'PANDEMIC.ACTION_OPERATIONS_FLIGHT' | translate }}
+                  </button>
+                }
+
+                <!-- Treat Disease -->
+                @if (effectiveActorPlayer()?.cityId === selCity.id && la.canTreatDiseases.length > 0) {
+                  @for (col of la.canTreatDiseases; track col) {
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-gold"
+                      (click)="treatDisease(col)"
+                    >
+                      💊 {{ 'PANDEMIC.ACTION_TREAT' | translate }}: {{ col | uppercase }}
+                    </button>
+                  }
+                }
+
+                <!-- Build Research Station -->
+                @if (effectiveActorPlayer()?.cityId === selCity.id && la.canBuildStation) {
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-cyan"
+                    (click)="buildStation()"
+                  >
+                    🔬 {{ 'PANDEMIC.ACTION_BUILD_STATION' | translate }}
+                  </button>
+                }
+
+                <!-- Share Knowledge -->
+                @for (sk of la.canShareKnowledge; track sk.targetSeat + '-' + sk.cardCityId) {
+                  @if (sk.cardCityId === selCity.id || effectiveActorPlayer()?.cityId === selCity.id) {
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline"
+                      (click)="shareKnowledge(sk.targetSeat, sk.cardCityId)"
+                    >
+                      🤝 {{ 'PANDEMIC.ACTION_SHARE_KNOWLEDGE' | translate }}: {{ getCityName(sk.cardCityId) }}
+                    </button>
+                  }
+                }
+
+                <!-- Discover Cure -->
+                @if (effectiveActorPlayer()?.cityId === selCity.id && la.canDiscoverCure.length > 0) {
+                  @for (col of la.canDiscoverCure; track col) {
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-emerald"
+                      (click)="discoverCure(col)"
+                    >
+                      🌟 {{ 'PANDEMIC.ACTION_DISCOVER_CURE' | translate }}: {{ col | uppercase }}
+                    </button>
+                  }
+                }
+              }
+            </div>
+          } @else {
+            <div class="empty-drawer-hint">
+              <span>👉 {{ 'PANDEMIC.SELECT_CITY_HINT' | translate }}</span>
+            </div>
+          }
+        </section>
+
+        <!-- 4. Open Co-op Hands & Anytime Event Dock -->
+        <section class="team-dock">
+          <h2 class="dock-title">👥 {{ 'PANDEMIC.TEAM_HANDS_TITLE' | translate }}</h2>
+          <div class="specialist-hands-grid">
+            @for (player of v.players; track player.seat) {
+              <div
+                class="hand-card"
+                [class.is-active-hand]="player.seat === v.activeSeat"
+                [class.is-my-hand]="player.seat === mySeat()"
+              >
+                <div class="hand-header">
+                  <span
+                    class="pawn-badge"
+                    [style.background-color]="getRoleColor(player.role)"
+                  >
+                    {{ player.seat + 1 }}
+                  </span>
+                  <div class="hand-meta">
+                    <strong>{{ player.name }}</strong>
+                    <span class="role-desc">
+                      {{ getRoleNameKey(player.role) | translate }} · 📍 {{ getCityName(player.cityId) }}
+                    </span>
+                  </div>
+                  <span class="cards-count-tag">{{ player.cards.length }} / 7</span>
+                </div>
+
+                <div class="hand-cards-row">
+                  @for (card of player.cards; track $index) {
+                    @if (card.type === 'city') {
+                      <div class="player-card city-card" [ngClass]="'card-' + card.color">
+                        <span class="card-color-pip"></span>
+                        <span class="card-city-name">{{ getCityName(card.cityId) }}</span>
+                      </div>
+                    } @else if (card.type === 'event') {
+                      <div class="player-card event-card">
+                        <span class="event-title">⭐ {{ getEventNameKey(card.eventId) | translate }}</span>
+                        <button
+                          type="button"
+                          class="btn btn-xs btn-cyan"
+                          (click)="playEvent(player.seat, card.eventId)"
+                        >
+                          ⚡ {{ 'PANDEMIC.PLAY_EVENT' | translate }}
+                        </button>
+                      </div>
+                    }
+                  }
+
+                  <!-- Contingency Planner Stored Event Card -->
+                  @if (player.role === 'contingency_planner' && player.storedEventCard) {
+                    <div class="player-card stored-event-card">
+                      <span class="event-title">📦 {{ getEventNameKey(player.storedEventCard) | translate }}</span>
+                      <button
+                        type="button"
+                        class="btn btn-xs btn-gold"
+                        (click)="playEvent(player.seat, player.storedEventCard)"
+                      >
+                        ⚡ {{ 'PANDEMIC.PLAY_STORED_EVENT' | translate }}
+                      </button>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+
+        <!-- 5. Mobile Modern App Cards (<= 768px) -->
+        <section class="mobile-cards">
+          <!-- Hotspots Card -->
+          <div class="mobile-app-card">
+            <h3 class="mobile-card-title">⚠️ {{ 'PANDEMIC.GLOBAL_HOTSPOTS' | translate }}</h3>
+            @for (item of hotspots().slice(0, 5); track item.city.id) {
+              <div
+                class="mobile-card-row"
+                [class.is-crit-hotspot]="item.total >= 3"
+                (click)="selectCity(item.city.id)"
+              >
+                <span>{{ item.city.name }}</span>
+                <span class="hotspot-cubes">
+                  @if (item.blue > 0) { 🔵 {{ item.blue }} }
+                  @if (item.yellow > 0) { 🟡 {{ item.yellow }} }
+                  @if (item.black > 0) { ⚫ {{ item.black }} }
+                  @if (item.red > 0) { 🔴 {{ item.red }} }
+                </span>
+              </div>
+            } @empty {
+              <p class="clean-text">✨ {{ 'PANDEMIC.NO_HOTSPOTS' | translate }}</p>
+            }
+          </div>
+
+          <!-- Team Roster Card -->
+          <div class="mobile-app-card">
+            <h3 class="mobile-card-title">🛡️ {{ 'PANDEMIC.SPECIALIST_ROSTER' | translate }}</h3>
+            @for (player of v.players; track player.seat) {
+              <div class="mobile-card-row">
+                <span [style.color]="getRoleColor(player.role)">
+                  #{{ player.seat + 1 }} {{ player.name }}
+                </span>
+                <span>{{ getCityName(player.cityId) }} ({{ player.cards.length }} cards)</span>
+              </div>
+            }
+          </div>
+        </section>
+        </aside>
+      </main>
+
+      <!-- ================================================================= -->
+      <!-- BOUNDED MODALS (Bottom actions only, NO top-right close X button) -->
+      <!-- ================================================================= -->
+
+      <!-- Modal 1: Forecast Modal (Reorder 6 Cards) -->
+      @if (showForecastModal()) {
+        <div class="modal-backdrop">
+          <div class="modal-card forecast-modal" role="dialog" aria-modal="true">
+            <div class="modal-header">
+              <h2 class="dialog-title">🔮 {{ 'PANDEMIC.EVENT_FORECAST_TITLE' | translate }}</h2>
+              <p class="modal-subtitle">{{ 'PANDEMIC.FORECAST_SUBTITLE' | translate }}</p>
+            </div>
+
+            <div class="modal-body">
+              <div class="forecast-list">
+                @for (c of forecastCardsList(); track c.cityId; let idx = $index) {
+                  <div class="forecast-card-item" [ngClass]="'card-' + c.color">
+                    <span class="forecast-rank">#{{ idx + 1 }} ({{ idx === 0 ? 'Next draw' : 'Later' }})</span>
+                    <strong class="forecast-city">{{ getCityName(c.cityId) }}</strong>
+                    <span class="forecast-color-tag">{{ c.color | uppercase }}</span>
+                    <div class="forecast-item-btns">
+                      <button
+                        type="button"
+                        class="btn btn-xs btn-outline"
+                        [disabled]="idx === 0"
+                        (click)="moveForecastCardUp(idx)"
+                      >
+                        ▲
+                      </button>
+                      <button
+                        type="button"
+                        class="btn btn-xs btn-outline"
+                        [disabled]="idx === forecastCardsList().length - 1"
+                        (click)="moveForecastCardDown(idx)"
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-emerald"
+                (click)="confirmForecast()"
+              >
+                ✅ {{ 'PANDEMIC.CONFIRM_FORECAST' | translate }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Modal 2: Hand-Limit Discard Modal -->
+      @if (showDiscardModal()) {
+        <div class="modal-backdrop">
+          <div class="modal-card discard-modal" role="dialog" aria-modal="true">
+            <div class="modal-header">
+              <h2 class="dialog-title">🗑️ {{ 'PANDEMIC.HAND_LIMIT_TITLE' | translate }}</h2>
+              <p class="modal-subtitle">{{ 'PANDEMIC.HAND_LIMIT_SUBTITLE' | translate }}</p>
+            </div>
+
+            <div class="modal-body">
+              @if (v.discardQueue.at(0); as queueSeat) {
+                @if (v.players.at(queueSeat); as discardPlayer) {
+                  <p class="discard-player-name">
+                    <strong>{{ discardPlayer.name }}</strong> ({{ discardPlayer.cards.length }} / 7 cards)
+                  </p>
+                  <div class="discard-cards-list">
+                    @for (card of discardPlayer.cards; track $index; let idx = $index) {
+                      <div
+                        class="discard-card-option"
+                        [class.is-selected]="selectedDiscardCardIndex() === idx"
+                        (click)="selectDiscardCard(idx)"
+                      >
+                        @if (card.type === 'city') {
+                          <span class="card-color-dot" [ngClass]="'dot-' + card.color"></span>
+                          <span class="card-name">{{ getCityName(card.cityId) }}</span>
+                          <span class="card-type-tag">{{ card.color | uppercase }}</span>
+                        } @else if (card.type === 'event') {
+                          <span class="card-color-dot dot-event"></span>
+                          <span class="card-name">{{ getEventNameKey(card.eventId) | translate }}</span>
+                          <span class="card-type-tag">EVENT</span>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              }
+            </div>
+
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-emerald"
+                [disabled]="selectedDiscardCardIndex() === null"
+                (click)="confirmDiscardCard()"
+              >
+                🗑️ {{ 'PANDEMIC.CONFIRM_DISCARD_CARD' | translate }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Modal 3: Infection Discard & Resilient Population Modal -->
+      @if (showInfectionDiscardModal()) {
+        <div class="modal-backdrop" (click)="closeInfectionDiscardModal()">
+          <div
+            class="modal-card infection-discard-modal"
+            role="dialog"
+            aria-modal="true"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="modal-header">
+              <h2 class="dialog-title">
+                @if (resilientPopActive()) {
+                  🛡️ {{ 'PANDEMIC.RESILIENT_POP_TITLE' | translate }}
+                } @else {
+                  ☣️ {{ 'PANDEMIC.INFECTION_DISCARD_TITLE' | translate }}
+                }
+              </h2>
+              <p class="modal-subtitle">
+                @if (resilientPopActive()) {
+                  {{ 'PANDEMIC.RESILIENT_POP_SUBTITLE' | translate }}
+                } @else {
+                  {{ 'PANDEMIC.INFECTION_DISCARD_SUBTITLE' | translate }}
+                }
+              </p>
+            </div>
+
+            <div class="modal-body">
+              <div class="discard-pile-grid">
+                @for (c of v.infectionDiscard; track c.cityId) {
+                  <div class="infection-discard-item" [ngClass]="'item-' + c.color">
+                    <span class="city-name">{{ getCityName(c.cityId) }}</span>
+                    <span class="color-tag">{{ c.color | uppercase }}</span>
+                    @if (resilientPopActive()) {
+                      <button
+                        type="button"
+                        class="btn btn-xs btn-gold"
+                        (click)="exileInfectionCard(c.cityId)"
+                      >
+                        ⚡ {{ 'PANDEMIC.EXILE_CARD' | translate }}
+                      </button>
+                    }
+                  </div>
+                } @empty {
+                  <p class="empty-discard-text">
+                    {{ 'PANDEMIC.INFECTION_DISCARD_EMPTY' | translate }}
+                  </p>
+                }
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-outline"
+                (click)="closeInfectionDiscardModal()"
+              >
+                {{ 'PANDEMIC.CLOSE_MODAL' | translate }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Modal 4: Airlift Event Modal -->
+      @if (showAirliftModal()) {
+        <div class="modal-backdrop">
+          <div class="modal-card airlift-modal" role="dialog" aria-modal="true">
+            <div class="modal-header">
+              <h2 class="dialog-title">🚁 {{ 'PANDEMIC.EVENT_AIRLIFT_NAME' | translate }}</h2>
+              <p class="modal-subtitle">{{ 'PANDEMIC.EVENT_AIRLIFT_DESC' | translate }}</p>
+            </div>
+
+            <div class="modal-body">
+              <div class="modal-form-row">
+                <label for="airlift-target-select" class="form-label">
+                  {{ 'PANDEMIC.SELECT_SPECIALIST' | translate }}:
+                </label>
+                <select
+                  id="airlift-target-select"
+                  class="portal-input"
+                  [ngModel]="airliftTargetSeat()"
+                  (ngModelChange)="airliftTargetSeat.set($event)"
+                >
+                  @for (p of v.players; track p.seat) {
+                    <option [ngValue]="p.seat">
+                      {{ p.name }} ({{ getCityName(p.cityId) }})
+                    </option>
+                  }
+                </select>
+              </div>
+
+              <div class="modal-form-row">
+                <label for="airlift-dest-select" class="form-label">
+                  {{ 'PANDEMIC.DESTINATION_CITY' | translate }}:
+                </label>
+                <select
+                  id="airlift-dest-select"
+                  class="portal-input"
+                  [ngModel]="airliftToCityId()"
+                  (ngModelChange)="airliftToCityId.set($event)"
+                >
+                  @for (c of cities; track c.id) {
+                    <option [value]="c.id">{{ c.name }} ({{ c.color | uppercase }})</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-outline"
+                (click)="closeAirliftModal()"
+              >
+                {{ 'PANDEMIC.CANCEL' | translate }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-emerald"
+                (click)="confirmAirlift()"
+              >
+                🚁 {{ 'PANDEMIC.EXECUTE_AIRLIFT' | translate }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Modal 5: Government Grant Modal -->
+      @if (showGovGrantModal()) {
+        <div class="modal-backdrop">
+          <div class="modal-card gov-grant-modal" role="dialog" aria-modal="true">
+            <div class="modal-header">
+              <h2 class="dialog-title">🏢 {{ 'PANDEMIC.EVENT_GOVERNMENT_GRANT_NAME' | translate }}</h2>
+              <p class="modal-subtitle">{{ 'PANDEMIC.EVENT_GOVERNMENT_GRANT_DESC' | translate }}</p>
+            </div>
+
+            <div class="modal-body">
+              <div class="modal-form-row">
+                <label for="govgrant-city-select" class="form-label">
+                  {{ 'PANDEMIC.BUILD_STATION_CITY' | translate }}:
+                </label>
+                <select
+                  id="govgrant-city-select"
+                  class="portal-input"
+                  [ngModel]="govGrantCityId()"
+                  (ngModelChange)="govGrantCityId.set($event)"
+                >
+                  @for (c of cities; track c.id) {
+                    @if (!hasStation(c.id)) {
+                      <option [value]="c.id">{{ c.name }} ({{ c.color | uppercase }})</option>
+                    }
+                  }
+                </select>
+              </div>
+
+              @if (v.researchStations.length >= maxStations) {
+                <div class="modal-form-row">
+                  <label for="govgrant-relocate-select" class="form-label">
+                    {{ 'PANDEMIC.RELOCATE_STATION_FROM' | translate }}:
+                  </label>
+                  <select
+                    id="govgrant-relocate-select"
+                    class="portal-input"
+                    [ngModel]="govGrantRelocateFrom()"
+                    (ngModelChange)="govGrantRelocateFrom.set($event)"
+                  >
+                    @for (st of v.researchStations; track st) {
+                      <option [value]="st">{{ getCityName(st) }}</option>
+                    }
+                  </select>
+                </div>
+              }
+            </div>
+
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-outline"
+                (click)="closeGovGrantModal()"
+              >
+                {{ 'PANDEMIC.CANCEL' | translate }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-emerald"
+                (click)="confirmGovernmentGrant()"
+              >
+                🏢 {{ 'PANDEMIC.BUILD_STATION_ACTION' | translate }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Modal 6: Victory / Defeat Modal -->
+      @if (showVictoryDefeatModal()) {
+        <div class="modal-backdrop">
+          <div
+            class="modal-card victory-defeat-modal"
+            role="dialog"
+            aria-modal="true"
+            [class.is-victory]="v.winner === 'players'"
+            [class.is-defeat]="v.winner === 'none'"
+          >
+            <div class="modal-header">
+              @if (v.winner === 'players') {
+                <h2 class="dialog-title victory-title">
+                  🎉 {{ 'PANDEMIC.VICTORY_TITLE' | translate }}
+                </h2>
+                <p class="modal-subtitle">
+                  {{ 'PANDEMIC.VICTORY_SUBTITLE' | translate }}
+                </p>
+              } @else {
+                <h2 class="dialog-title defeat-title">
+                  💀 {{ 'PANDEMIC.DEFEAT_TITLE' | translate }}
+                </h2>
+                <p class="modal-subtitle">
+                  @if (v.lossReason === 'TOO_MANY_OUTBREAKS') {
+                    {{ 'PANDEMIC.LOSS_OUTBREAKS' | translate }}
+                  } @else if (v.lossReason === 'OUT_OF_CUBES') {
+                    {{ 'PANDEMIC.LOSS_CUBES' | translate }}
+                  } @else {
+                    {{ 'PANDEMIC.LOSS_DECK' | translate }}
+                  }
+                </p>
+              }
+            </div>
+
+            <div class="modal-body">
+              <table class="desktop-table">
+                <thead>
+                  <tr>
+                    <th>{{ 'PANDEMIC.COL_METRIC' | translate }}</th>
+                    <th>{{ 'PANDEMIC.COL_VALUE' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{{ 'PANDEMIC.DIFFICULTY_LABEL' | translate }}</td>
+                    <td>{{ getDifficultyKey(v.difficulty) | translate }}</td>
+                  </tr>
+                  <tr>
+                    <td>{{ 'PANDEMIC.OUTBREAKS_OCCURRED' | translate }}</td>
+                    <td>{{ v.outbreakCount }} / {{ maxOutbreaks }}</td>
+                  </tr>
+                  <tr>
+                    <td>{{ 'PANDEMIC.RESEARCH_STATIONS' | translate }}</td>
+                    <td>{{ v.researchStations.length }} / {{ maxStations }}</td>
+                  </tr>
+                  <tr>
+                    <td>{{ 'PANDEMIC.CARDS_IN_PLAYER_DECK' | translate }}</td>
+                    <td>{{ v.playerDeckCount }}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div class="mobile-cards">
+                <div class="mobile-app-card">
+                  <div class="mobile-card-row">
+                    <span>{{ 'PANDEMIC.DIFFICULTY_LABEL' | translate }}</span>
+                    <strong>{{ getDifficultyKey(v.difficulty) | translate }}</strong>
+                  </div>
+                  <div class="mobile-card-row">
+                    <span>{{ 'PANDEMIC.OUTBREAKS_OCCURRED' | translate }}</span>
+                    <strong>{{ v.outbreakCount }} / {{ maxOutbreaks }}</strong>
+                  </div>
+                  <div class="mobile-card-row">
+                    <span>{{ 'PANDEMIC.RESEARCH_STATIONS' | translate }}</span>
+                    <strong>{{ v.researchStations.length }} / {{ maxStations }}</strong>
+                  </div>
+                  <div class="mobile-card-row">
+                    <span>{{ 'PANDEMIC.CARDS_IN_PLAYER_DECK' | translate }}</span>
+                    <strong>{{ v.playerDeckCount }}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button
+                type="button"
+                class="btn btn-emerald"
+                (click)="playAgain()"
+              >
+                🔄 {{ 'PANDEMIC.PLAY_AGAIN' | translate }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline"
+                (click)="goToHub()"
+              >
+                🏠 {{ 'PANDEMIC.BACK_TO_HUB' | translate }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

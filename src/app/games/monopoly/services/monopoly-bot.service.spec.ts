@@ -165,7 +165,10 @@ describe('MonopolyBotService & Tactical AI Heuristics', () => {
 
     const action = botService.evaluateMonopolyBotAction(view, 1);
     // Would give human a Melaka monopoly! Bot must reject
-    expect(action).toEqual({ type: 'rejectTrade' });
+    expect(action).toEqual({
+      type: 'rejectTrade',
+      reasonKey: 'MONOPOLY.TRADE_REASON_GRANTS_MONOPOLY',
+    });
   });
 
   it('uses Get Out of Jail Free card when in jail if available', () => {
@@ -260,6 +263,7 @@ describe('MonopolyBotService & Tactical AI Heuristics', () => {
     });
     expect(botService.evaluateMonopolyBotAction(viewMonopoly, 1)).toEqual({
       type: 'acceptTrade',
+      reasonKey: 'MONOPOLY.TRADE_REASON_ACCEPTED',
     });
 
     // 2. Trade has positive net value
@@ -275,6 +279,7 @@ describe('MonopolyBotService & Tactical AI Heuristics', () => {
     });
     expect(botService.evaluateMonopolyBotAction(viewPositiveValue, 1)).toEqual({
       type: 'acceptTrade',
+      reasonKey: 'MONOPOLY.TRADE_REASON_ACCEPTED',
     });
   });
 
@@ -369,6 +374,7 @@ describe('MonopolyBotService & Tactical AI Heuristics', () => {
     });
     expect(botService.evaluateMonopolyBotAction(extortionView, 1)).toEqual({
       type: 'rejectTrade',
+      reasonKey: 'MONOPOLY.TRADE_REASON_LOW_VALUE',
     });
   });
 
@@ -895,9 +901,10 @@ describe('MonopolyBotService & Tactical AI Heuristics', () => {
       });
       expect(botService.evaluateMonopolyBotAction(unaffordableTradeView, 1)).toEqual({
         type: 'rejectTrade',
+        reasonKey: 'MONOPOLY.TRADE_REASON_CASH_RESERVE',
       });
 
-      // 2. Accepts non-monopoly property swap with positive net value (>= +15) and healthy reserve
+      // 2. Accepts non-monopoly property swap with positive net value (>= +10) and healthy reserve
       const favorableSwapView = createTestView((state) => {
         state.players[1].cash = 500;
         state.properties.get(5)!.ownerSeat = 0; // KL Sentral (200)
@@ -915,6 +922,7 @@ describe('MonopolyBotService & Tactical AI Heuristics', () => {
       });
       expect(botService.evaluateMonopolyBotAction(favorableSwapView, 1)).toEqual({
         type: 'acceptTrade',
+        reasonKey: 'MONOPOLY.TRADE_REASON_ACCEPTED',
       });
 
       // 3. Rejects non-monopoly property swap with negative/low net value
@@ -933,6 +941,131 @@ describe('MonopolyBotService & Tactical AI Heuristics', () => {
       });
       expect(botService.evaluateMonopolyBotAction(unfavorableSwapView, 1)).toEqual({
         type: 'rejectTrade',
+        reasonKey: 'MONOPOLY.TRADE_REASON_LOW_VALUE',
+      });
+    });
+
+    it('evaluates mutual monopoly sets, premium buyouts, and cash reserves with localized reason keys', () => {
+      const botService = createBot();
+
+      // 1. Mutual Monopoly Swap: bot gets Melaka (3) and opponent gets Penang (13) with netDelta >= -60 -> accepted
+      const mutualSwapAcceptView = createTestView((state) => {
+        state.players[1].cash = 500;
+        state.properties.get(1)!.ownerSeat = 1;
+        state.properties.get(3)!.ownerSeat = 0; // cost 60
+        state.properties.get(11)!.ownerSeat = 0;
+        state.properties.get(14)!.ownerSeat = 0;
+        state.properties.get(13)!.ownerSeat = 1; // cost 140
+        state.pendingTrade = {
+          fromSeat: 0,
+          toSeat: 1,
+          offerCash: 30,
+          offerProperties: [3],
+          requestCash: 0,
+          requestProperties: [13],
+        };
+      });
+      expect(botService.evaluateMonopolyBotAction(mutualSwapAcceptView, 1)).toEqual({
+        type: 'acceptTrade',
+        reasonKey: 'MONOPOLY.TRADE_REASON_MUTUAL_SETS',
+      });
+
+      // 2. Mutual Monopoly Swap: netDelta < -60 -> rejected with LOW_VALUE
+      const mutualSwapRejectView = createTestView((state) => {
+        state.players[1].cash = 500;
+        state.properties.get(1)!.ownerSeat = 1;
+        state.properties.get(3)!.ownerSeat = 0; // cost 60
+        state.properties.get(11)!.ownerSeat = 0;
+        state.properties.get(14)!.ownerSeat = 0;
+        state.properties.get(13)!.ownerSeat = 1; // cost 140
+        state.pendingTrade = {
+          fromSeat: 0,
+          toSeat: 1,
+          offerCash: 0,
+          offerProperties: [3],
+          requestCash: 0,
+          requestProperties: [13],
+        };
+      });
+      expect(botService.evaluateMonopolyBotAction(mutualSwapRejectView, 1)).toEqual({
+        type: 'rejectTrade',
+        reasonKey: 'MONOPOLY.TRADE_REASON_LOW_VALUE',
+      });
+
+      // 3. High Premium Buyout: opponent gains monopoly (space 3, cost 60) and offers RM 300 cash -> buyoutThreshold = max(200, 60*1.8 + 120) = 228 -> 300 >= 228 accepted
+      const premiumBuyoutAcceptView = createTestView((state) => {
+        state.players[1].cash = 500;
+        state.properties.get(1)!.ownerSeat = 0;
+        state.properties.get(3)!.ownerSeat = 1;
+        state.pendingTrade = {
+          fromSeat: 0,
+          toSeat: 1,
+          offerCash: 300,
+          offerProperties: [],
+          requestCash: 0,
+          requestProperties: [3],
+        };
+      });
+      expect(botService.evaluateMonopolyBotAction(premiumBuyoutAcceptView, 1)).toEqual({
+        type: 'acceptTrade',
+        reasonKey: 'MONOPOLY.TRADE_REASON_PREMIUM_BUYOUT',
+      });
+
+      // 4. Low Premium Buyout: opponent gains monopoly (space 3, cost 60) and offers RM 150 cash -> 150 < 228 -> rejected with GRANTS_MONOPOLY
+      const premiumBuyoutRejectView = createTestView((state) => {
+        state.players[1].cash = 500;
+        state.properties.get(1)!.ownerSeat = 0;
+        state.properties.get(3)!.ownerSeat = 1;
+        state.pendingTrade = {
+          fromSeat: 0,
+          toSeat: 1,
+          offerCash: 150,
+          offerProperties: [],
+          requestCash: 0,
+          requestProperties: [3],
+        };
+      });
+      expect(botService.evaluateMonopolyBotAction(premiumBuyoutRejectView, 1)).toEqual({
+        type: 'rejectTrade',
+        reasonKey: 'MONOPOLY.TRADE_REASON_GRANTS_MONOPOLY',
+      });
+
+      // 5. Cash reserve check when gaining monopoly (minReserve = 50)
+      const tightReserveMonopolyView = createTestView((state) => {
+        state.players[1].cash = 60;
+        state.properties.get(1)!.ownerSeat = 1;
+        state.properties.get(3)!.ownerSeat = 0;
+        state.pendingTrade = {
+          fromSeat: 0,
+          toSeat: 1,
+          offerCash: 0,
+          offerProperties: [3],
+          requestCash: 30, // 60 - 30 = 30 < 50
+          requestProperties: [],
+        };
+      });
+      expect(botService.evaluateMonopolyBotAction(tightReserveMonopolyView, 1)).toEqual({
+        type: 'rejectTrade',
+        reasonKey: 'MONOPOLY.TRADE_REASON_CASH_RESERVE',
+      });
+
+      // 6. Bot gains monopoly but netDelta < -80 -> rejected with LOW_VALUE
+      const botMonopolyExtortionView = createTestView((state) => {
+        state.players[1].cash = 500;
+        state.properties.get(1)!.ownerSeat = 1;
+        state.properties.get(3)!.ownerSeat = 0; // cost 60
+        state.pendingTrade = {
+          fromSeat: 0,
+          toSeat: 1,
+          offerCash: 0,
+          offerProperties: [3],
+          requestCash: 200, // netDelta = -200 + 60 = -140 < -80
+          requestProperties: [],
+        };
+      });
+      expect(botService.evaluateMonopolyBotAction(botMonopolyExtortionView, 1)).toEqual({
+        type: 'rejectTrade',
+        reasonKey: 'MONOPOLY.TRADE_REASON_LOW_VALUE',
       });
     });
   });

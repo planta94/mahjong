@@ -5,6 +5,7 @@ import { routes } from '../../app.routes';
 import { AvalonSessionService } from '../../games/avalon/services/avalon-session.service';
 import { MonopolyBoardComponent } from '../../games/monopoly/components/monopoly-board/monopoly-board.component';
 import { MonopolySessionService } from '../../games/monopoly/services/monopoly-session.service';
+import { PandemicSessionService } from '../../games/pandemic/services/pandemic-session.service';
 import { HubComponent } from '../../pages/hub/hub.component';
 import { RealDiceComponent } from '../../shared/dice/real-dice.component';
 import { ExitConfirmDialogComponent } from '../../shared/exit-confirm-dialog/exit-confirm-dialog.component';
@@ -57,29 +58,53 @@ describe('GameSessionManagerService, ExitConfirmDialog, Multi-Game Rulebook & Re
       manager.requestGoHome();
       expect(manager.showExitConfirmModal()).toBe(false);
 
-      // Start online waiting lobby (has progress, but no started match yet -> 2 footer buttons)
+      // Start online waiting lobby (has progress, but no started match yet)
       mahjong.createOnlineRoom('LobbyHost', '3p', DEFAULT_RULES);
       expect(manager.hasActiveProgress()).toBe(true);
+      expect(manager.hasStartedMatch()).toBe(false);
+      expect(manager.hasActiveWaitingRoom()).toBe(true);
       expect(manager.canSaveCurrentProgress()).toBe(false);
 
+      // In an unstarted waiting room, requestGoHome goes directly home without opening modal
+      manager.requestGoHome();
+      expect(manager.showExitConfirmModal()).toBe(false);
+      expect(mahjong.snapshot()).toBeNull();
+
+      // In an unstarted waiting room, requestLeaveCurrentGame leaves cleanly to game lobby
+      mahjong.createOnlineRoom('LobbyHost', '3p', DEFAULT_RULES);
+      expect(manager.hasActiveWaitingRoom()).toBe(true);
+      manager.requestLeaveCurrentGame();
+      expect(manager.showExitConfirmModal()).toBe(false);
+      expect(mahjong.snapshot()).toBeNull();
+
+      // Now start an active match: hasStartedMatch is true
+      mahjong.startSolo('LobbyHost', '3p', DEFAULT_RULES);
+      expect(manager.hasStartedMatch()).toBe(true);
+      expect(manager.hasActiveWaitingRoom()).toBe(false);
+
+      // Started match requestGoHome opens ExitConfirmDialog targeting hub
       manager.requestGoHome();
       expect(manager.showExitConfirmModal()).toBe(true);
+      expect(manager.exitDestination()).toBe('hub');
 
       const modalFixture = TestBed.createComponent(ExitConfirmDialogComponent);
       modalFixture.detectChanges();
       const modalEl = modalFixture.nativeElement as HTMLElement;
       expect(modalEl.querySelectorAll('.modal-header button').length).toBe(0);
-      expect(modalEl.querySelectorAll('.modal-footer button').length).toBe(2);
+      expect(modalEl.querySelectorAll('.modal-footer button').length).toBe(4);
 
       // Click Stay button
       (modalEl.querySelector('.stay-btn') as HTMLButtonElement).click();
       expect(manager.showExitConfirmModal()).toBe(false);
       expect(mahjong.snapshot()?.role).toBe('host');
 
-      // Re-open and click Discard & Exit
-      manager.requestGoHome();
+      // Request leave current game targeting gameLobby
+      manager.requestLeaveCurrentGame();
       expect(manager.showExitConfirmModal()).toBe(true);
-      (modalEl.querySelector('.discard-exit-btn') as HTMLButtonElement).click();
+      expect(manager.exitDestination()).toBe('gameLobby');
+
+      // Click Back to Game Lobby button
+      (modalEl.querySelector('.game-lobby-btn') as HTMLButtonElement).click();
       expect(manager.showExitConfirmModal()).toBe(false);
       expect(mahjong.snapshot()).toBeNull();
     });
@@ -115,7 +140,7 @@ describe('GameSessionManagerService, ExitConfirmDialog, Multi-Game Rulebook & Re
       const dialogFixture = TestBed.createComponent(ExitConfirmDialogComponent);
       dialogFixture.detectChanges();
       const dialogEl = dialogFixture.nativeElement as HTMLElement;
-      expect(dialogEl.querySelectorAll('.modal-footer button').length).toBe(3);
+      expect(dialogEl.querySelectorAll('.modal-footer button').length).toBe(4);
 
       (dialogEl.querySelector('.save-exit-btn') as HTMLButtonElement).click();
       expect(manager.showExitConfirmModal()).toBe(false);
@@ -153,7 +178,7 @@ describe('GameSessionManagerService, ExitConfirmDialog, Multi-Game Rulebook & Re
       hubFixture.componentInstance.ngOnInit();
       expect(monopoly.snapshot()).toBeNull();
 
-      // C. Avalon 5P round-trip save, resume, and delete save
+      // C. Avalon 5P round-trip save, resume, and leave
       avalon.createSoloMatch(5);
       expect(shellUi.activeRoomCode()).toBeNull();
       expect(manager.canSaveCurrentProgress()).toBe(true);
@@ -168,6 +193,23 @@ describe('GameSessionManagerService, ExitConfirmDialog, Multi-Game Rulebook & Re
       expect(manager.resumeSavedGame()).toBe(true);
       expect(avalon.snapshot()?.view?.numPlayers).toBe(5);
       avalon.leaveRoom();
+
+      // D. Pandemic 4P round-trip save, resume, and delete save
+      const pandemic = TestBed.inject(PandemicSessionService);
+      pandemic.createSoloMatch(4);
+      expect(shellUi.activeRoomCode()).toBeNull();
+      expect(manager.canSaveCurrentProgress()).toBe(true);
+
+      manager.confirmSaveAndExit();
+      expect(pandemic.snapshot()).toBeNull();
+      expect(manager.savedGame()?.game).toBe('pandemic');
+
+      hubFixture.detectChanges();
+      expect(hubEl.querySelector('.saved-subtitle')?.textContent?.includes('4P')).toBe(true);
+
+      expect(manager.resumeSavedGame()).toBe(true);
+      expect(pandemic.snapshot()?.view?.players.length).toBe(4);
+      pandemic.leaveRoom();
 
       // Delete saved game from Hub banner
       hubFixture.detectChanges();
@@ -265,15 +307,18 @@ describe('GameSessionManagerService, ExitConfirmDialog, Multi-Game Rulebook & Re
       fixture.detectChanges();
       const el = fixture.nativeElement as HTMLElement;
 
-      // Bounded modal invariant: 0 buttons in header, 1 close button in footer
+      // Bounded modal invariant: 0 buttons in header, 1 close button in footer, 0 cross-game tabs inside active game
       expect(el.querySelectorAll('.modal-header button').length).toBe(0);
       expect(el.querySelectorAll('.modal-footer button').length).toBe(1);
-      expect(el.querySelectorAll('.rulebook-tab-btn').length).toBe(3);
+      expect(el.querySelectorAll('.rulebook-tab-btn').length).toBe(0);
       expect(el.textContent).toContain('GO');
       expect(el.querySelectorAll('.desktop-table tbody tr').length).toBe(3);
 
-      // Switch to Avalon tab
+      // On the Hub, multi-game rulebook tabs appear and switch between games
+      shellUi.setActiveGame('hub');
+      fixture.detectChanges();
       const tabs = el.querySelectorAll('.rulebook-tab-btn');
+      expect(tabs.length).toBe(4);
       (tabs.item(2) as HTMLButtonElement).click();
       fixture.detectChanges();
       expect(shellUi.rulebookGame()).toBe('avalon');
@@ -360,6 +405,60 @@ describe('GameSessionManagerService, ExitConfirmDialog, Multi-Game Rulebook & Re
       fixture.componentInstance.returnToHub();
       expect(manager.showExitConfirmModal()).toBe(true);
       manager.confirmDiscardAndExit();
+    });
+  });
+
+  describe('4. Session p2p:leave Cleanup and Route Recovery', () => {
+    it('cleans up and navigates Mahjong, Monopoly, and Avalon sessions to lobbies on p2p:leave', async () => {
+      await TestBed.configureTestingModule({
+        providers: [provideRouter(routes)],
+      }).compileComponents();
+
+      const router = TestBed.inject(Router);
+      const mahjong = TestBed.inject(MahjongSessionService);
+      const monopoly = TestBed.inject(MonopolySessionService);
+      const avalon = TestBed.inject(AvalonSessionService);
+      const pandemic = TestBed.inject(PandemicSessionService);
+
+      // A. Mahjong on /table
+      await router.navigateByUrl('/mahjong/table');
+      mahjong.startSolo('Player1', '3p', DEFAULT_RULES);
+      expect(mahjong.snapshot()?.role).toBe('host');
+
+      window.dispatchEvent(new CustomEvent('p2p:leave', { detail: { game: 'mahjong' } }));
+      expect(mahjong.snapshot()).toBe(null);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(router.url).toContain('/lobby');
+
+      // B. Monopoly on /monopoly/board
+      await router.navigateByUrl('/monopoly/board');
+      monopoly.createSoloMatch(3);
+      expect(monopoly.snapshot()?.role).toBe('host');
+
+      window.dispatchEvent(new CustomEvent('p2p:leave', { detail: { game: 'monopoly' } }));
+      expect(monopoly.snapshot()).toBe(null);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(router.url).toContain('/monopoly/lobby');
+
+      // C. Avalon on /avalon/table
+      await router.navigateByUrl('/avalon/table');
+      avalon.createSoloMatch(5);
+      expect(avalon.snapshot()?.role).toBe('host');
+
+      window.dispatchEvent(new CustomEvent('p2p:leave', { detail: { game: 'avalon' } }));
+      expect(avalon.snapshot()).toBe(null);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(router.url).toContain('/avalon/lobby');
+
+      // D. Pandemic on /pandemic/board
+      await router.navigateByUrl('/pandemic/board');
+      pandemic.createSoloMatch(4);
+      expect(pandemic.snapshot()?.role).toBe('host');
+
+      window.dispatchEvent(new CustomEvent('p2p:leave', { detail: { game: 'pandemic' } }));
+      expect(pandemic.snapshot()).toBe(null);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(router.url).toContain('/pandemic/lobby');
     });
   });
 });

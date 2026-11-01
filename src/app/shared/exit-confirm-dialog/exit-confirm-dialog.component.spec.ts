@@ -57,7 +57,7 @@ describe('ExitConfirmDialogComponent', () => {
     expect(mahjong.snapshot()?.view?.numSeats).toBe(3);
   });
 
-  it('renders bounded modal with zero header close buttons, stops inner card click propagation, and dismisses via backdrop or stay button', () => {
+  it('renders bounded modal with zero header close buttons, stops inner card click propagation, and dismisses via backdrop, stay, or game-lobby button', () => {
     const gameManager = TestBed.inject(GameSessionManagerService);
     const mahjong = TestBed.inject(MahjongSessionService);
     const shellUi = TestBed.inject(ShellUiService);
@@ -67,7 +67,8 @@ describe('ExitConfirmDialogComponent', () => {
 
     // Online waiting lobby: active progress, but not savable
     mahjong.createOnlineRoom('RoomHost', '3p', DEFAULT_RULES);
-    gameManager.requestGoHome();
+    gameManager.exitDestination.set('gameLobby');
+    gameManager.showExitConfirmModal.set(true);
     expect(gameManager.canSaveCurrentProgress()).toBe(false);
     expect(gameManager.showExitConfirmModal()).toBe(true);
 
@@ -79,10 +80,15 @@ describe('ExitConfirmDialogComponent', () => {
     expect(card.getAttribute('role')).toBe('dialog');
     expect(card.getAttribute('aria-modal')).toBe('true');
     expect(el.querySelectorAll('.modal-header button').length).toBe(0);
-    expect(el.querySelector('#exit-confirm-dialog-title')?.textContent).toContain('返回星冕桌游荟？');
+    expect(el.querySelector('#exit-confirm-dialog-title')?.textContent).toContain('退出当前对局？');
     expect(el.querySelector('.exit-desc')?.textContent).toContain('确定要离开吗');
-    expect(el.querySelectorAll('.modal-footer button').length).toBe(2);
+    expect(el.querySelectorAll('.modal-footer button').length).toBe(3);
     expect(el.querySelectorAll('.save-exit-btn').length).toBe(0);
+
+    // Contextual title when exitDestination is hub
+    gameManager.exitDestination.set('hub');
+    fixture.detectChanges();
+    expect(el.querySelector('#exit-confirm-dialog-title')?.textContent).toContain('离开当前游戏？');
 
     // Clicking inside modal-card stops propagation and keeps modal open
     card.click();
@@ -95,11 +101,19 @@ describe('ExitConfirmDialogComponent', () => {
     expect(mahjong.snapshot()?.role).toBe('host');
 
     // Re-open and click footer Stay button
-    gameManager.requestGoHome();
+    gameManager.showExitConfirmModal.set(true);
+    fixture.detectChanges();
     expect(gameManager.showExitConfirmModal()).toBe(true);
     (el.querySelector('.stay-btn') as HTMLButtonElement).click();
     expect(gameManager.showExitConfirmModal()).toBe(false);
     expect(mahjong.snapshot()?.role).toBe('host');
+
+    // Re-open and click Back to Game Lobby button
+    gameManager.showExitConfirmModal.set(true);
+    fixture.detectChanges();
+    (el.querySelector('.game-lobby-btn') as HTMLButtonElement).click();
+    expect(gameManager.showExitConfirmModal()).toBe(false);
+    expect(mahjong.snapshot()).toBeNull();
   });
 
   it('terminates active progress without saving when discard-and-exit footer button is clicked', () => {
@@ -115,7 +129,8 @@ describe('ExitConfirmDialogComponent', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
 
-    expect(el.querySelectorAll('.modal-footer button').length).toBe(3);
+    // 4 footer buttons: Stay, Game Lobby, Discard & Exit, Save & Exit
+    expect(el.querySelectorAll('.modal-footer button').length).toBe(4);
     (el.querySelector('.discard-exit-btn') as HTMLButtonElement).click();
 
     expect(sfxSpy).toHaveBeenCalledWith('click');
@@ -143,10 +158,10 @@ describe('ExitConfirmDialogComponent', () => {
     const el = fixture.nativeElement as HTMLElement;
 
     expect(el.querySelector('.exit-desc')?.textContent).toContain('save your progress before leaving');
-    expect(el.querySelectorAll('.modal-footer button').length).toBe(3);
+    expect(el.querySelectorAll('.modal-footer button').length).toBe(4);
 
     const saveBtn = el.querySelector('.save-exit-btn') as HTMLButtonElement;
-    expect(saveBtn.textContent).toContain('Save & Return Home');
+    expect(saveBtn.textContent).toContain('Save & Return to Hub');
     saveBtn.click();
 
     expect(sfxSpy).toHaveBeenCalledWith('deal');
@@ -154,5 +169,45 @@ describe('ExitConfirmDialogComponent', () => {
     expect(mahjong.snapshot()).toBeNull();
     expect(gameManager.savedGame()?.game).toBe('mahjong');
     expect(localStorage.getItem(SAVED_GAME_STORAGE_KEY)?.includes('"mahjong"')).toBe(true);
+  });
+
+  it('switches modal theme class, data-game-theme attribute, and header game pill dynamically across mahjong, monopoly, avalon, pandemic, and hub', () => {
+    const shellUi = TestBed.inject(ShellUiService);
+    const translate = TestBed.inject(TranslateService);
+    translate.use('en');
+
+    const fixture = TestBed.createComponent(ExitConfirmDialogComponent);
+    const el = fixture.nativeElement as HTMLElement;
+
+    shellUi.setActiveGame('pandemic');
+    fixture.detectChanges();
+    const card = el.querySelector('.exit-confirm-card') as HTMLElement;
+    expect(card.classList.contains('theme-pandemic')).toBe(true);
+    expect(card.getAttribute('data-game-theme')).toBe('pandemic');
+    expect(el.querySelector('.exit-theme-pill')?.textContent).toContain('Pandemic: Global Defenses');
+
+    shellUi.setActiveGame('monopoly');
+    fixture.detectChanges();
+    expect(card.classList.contains('theme-monopoly')).toBe(true);
+    expect(card.getAttribute('data-game-theme')).toBe('monopoly');
+    expect(el.querySelector('.exit-theme-pill')?.textContent).toContain('Malaysia Monopoly');
+
+    shellUi.setActiveGame('avalon');
+    fixture.detectChanges();
+    expect(card.classList.contains('theme-avalon')).toBe(true);
+    expect(card.getAttribute('data-game-theme')).toBe('avalon');
+    expect(el.querySelector('.exit-theme-pill')?.textContent).toContain('The Resistance: Avalon');
+
+    shellUi.setActiveGame('mahjong');
+    fixture.detectChanges();
+    expect(card.classList.contains('theme-mahjong')).toBe(true);
+    expect(card.getAttribute('data-game-theme')).toBe('mahjong');
+    expect(el.querySelector('.exit-theme-pill')?.textContent).toContain('HK & Fly Mahjong');
+
+    shellUi.setActiveGame('hub');
+    fixture.detectChanges();
+    expect(card.classList.contains('theme-hub')).toBe(true);
+    expect(card.getAttribute('data-game-theme')).toBe('hub');
+    expect(el.querySelector('.exit-theme-pill')?.textContent).toContain('Tabletop Royale');
   });
 });

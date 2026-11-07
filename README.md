@@ -71,7 +71,11 @@ npm run build           # Production Angular bundle check
 
 ## Publishing to GitHub Pages
 
-Automated deployment is configured in [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) alongside continuous QA verification in [`.github/workflows/veriscribe-qa.yml`](.github/workflows/veriscribe-qa.yml). Pushing to `main` builds the production SPA with `--base-href /mahjong/`, generates `404.html` + `.nojekyll` for deep-link routing, and publishes to GitHub Pages.
+Automated deployment is configured in [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) alongside continuous QA verification in [`.github/workflows/veriscribe-qa.yml`](.github/workflows/veriscribe-qa.yml).
+
+1. In your GitHub repository, go to **Settings → Pages → Build and deployment**.
+2. Change **Source** from *Deploy from a branch* to **GitHub Actions** (if left on *Deploy from a branch*, GitHub's Jekyll builder serves `README.md` instead of the compiled Angular app).
+3. Pushing to `main` (or clicking **Run workflow** on *Deploy to GitHub Pages* under the **Actions** tab) builds the production SPA with `--base-href /mahjong/`, generates `404.html` + `.nojekyll` for deep-link routing, and publishes `dist/hk-mahjong/browser` to GitHub Pages.
 
 To build the GitHub Pages production bundle locally:
 

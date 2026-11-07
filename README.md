@@ -2,7 +2,7 @@
   <img src="public/favicon.svg" alt="Tabletop Royale Sovereign Crest" width="84" height="84" />
   <h1>星冕桌游荟 · Tabletop Royale</h1>
   <p>
-    <strong>Zero-Backend WebRTC P2P &amp; Offline AI Tabletop Pavilion — HK 4P &amp; MY 3P Fly Mahjong · Monopoly · The Resistance: Avalon · Pandemic: Global Defenses</strong><br />
+    <strong>Zero-Backend WebRTC P2P &amp; Offline AI Tabletop Pavilion — HK 4P &amp; MY 3P Fly Mahjong · Monopoly · The Resistance: Avalon · Pandemic: Global Defenses · Balik Kampung: The Federal Route Gauntlet</strong><br />
     <em>Host-Authoritative Anti-Cheat Sync · Tactical AI Bots · Cross-Game Save/Resume · Bilingual (<code>简中</code> / <code>EN</code>)</em>
   </p>
   <p>
@@ -11,7 +11,7 @@
     </a>
     <img src="https://img.shields.io/badge/Angular-22-dd0031?style=for-the-badge&logo=angular" alt="Angular 22" />
     <img src="https://img.shields.io/badge/Backend-Zero_(WebRTC_P2P)-00d285?style=for-the-badge" alt="Zero Backend" />
-    <img src="https://img.shields.io/badge/Coverage-95.6%25_Lines-2563eb?style=for-the-badge" alt="95.6% Line Coverage" />
+    <img src="https://img.shields.io/badge/Coverage-93.9%25_Lines-2563eb?style=for-the-badge" alt="93.9% Line Coverage" />
   </p>
 </div>
 
@@ -19,16 +19,17 @@
 
 ## Highlights
 
-- **Four Complete Party & Tabletop Games in One Pavilion**:
+- **Five Complete Party & Tabletop Games in One Pavilion**:
   - **HK 4P & Authentic Malaysian 3P Fly Mahjong (`港马麻将馆`)**:
     - **3P · MY (84-Tile)**: Authentic 3 seats (`東/南/西`), `1–9` Dots (`筒`), Winds, Dragons, **16 Bonus Tiles** (Flowers, Seasons, Animals `貓/鼠/雞/蜈`, Faces `男女頭`), and **4 Flying Jokers (`飛`)** with joker substitution, `打飛`, and `換飛`.
     - **4P · HK (144-Tile)**: 4 seats (`東/南/西/北`), Characters (`萬`), Dots (`筒`), Bamboo (`索`), Winds, Dragons, and 8 Botanical SVG Flowers/Seasons with **5-Fan Minimum (`五番起糊`)**, **10-Fan Cap (`十番封頂`)**, **Discarder-Pays-All (`全銃制・半辣上`)**, and live Tenpai Hints (`聽牌提示`).
   - **Malaysia Landmarks Monopoly (`大马地标大富翁`)**: 40-space `11×11` perimeter board + mobile asset cards, auctions, houses/hotels, mortgages, player & tactical AI cash/deed trading (mutual-monopoly swaps, high-premium buyouts, and localized Trade Outcome feedback), Free Parking jackpot vault, `Nasib` / `Dana` event decks, and round/net-worth win modes.
   - **The Resistance: Avalon (`阿瓦隆：圣杯传奇`)**: 5–10 player Arthurian social deduction with secret Night Vision privacy shield, configurable special roles (`Merlin`, `Percival`, `Morgana`, `Assassin`, `Mordred`, `Oberon`), Quest & Hammer Vote tracks, Lady of the Lake, and end-game Merlin Assassination.
   - **Pandemic: Global Defenses (`瘟疫危机：全球防线`)**: 2–4 player cooperative bio-defense across **48 authentic world cities** and 4 regional disease networks, featuring all **7 Specialist roles** (`Medic`, `Scientist`, `Researcher`, `Dispatcher`, `Operations Expert`, `Quarantine Specialist`, `Contingency Planner`), all **5 Special Event cards**, `4 / 5 / 6` Epidemic difficulties, interactive CDC Bio-Command SVG world map with region filters + mobile cards, **Solo w/ Tactical BFS AI Bots**, **Solo Commander** mode (1 player commands 2–4 seats), and P2P online co-op.
+  - **Balik Kampung: The Federal Route Gauntlet (`返乡大作战：南北大道冲刺` · v3.5 Deceleration Edition)**: 2–5 player Malaysian festive road-trip gauntlet across a procedural **45-card PLUS E1 & Federal Trunk FT1 deck** (`Simpang Tiga` 3-way fork + `Tok Wan's Kampung` finish), featuring simultaneous 5-card secret planning with confirm/change lock, ceremonial 4-stage round stepper & front-to-back convoy reveal strip, v3.5 `Susur Masuk` Deceleration Zone, `AWAS` speed cameras & Scout tokens, `ICE` vs `EV` drivetrains, Bladder/Stress physiology, named Malaysian AI drivers (`Uncle Muthu`, `Kakak Aishah`, `Ah Chong`, `Abang Rizal`), zero-scroll mobile/landscape highway window anchored on your car, and `Net Family Happiness` scoring.
 - **Zero-Backend P2P Multiplayer + Offline Solo AI + Save/Resume**:
-  - **Universal Room Codes**: Join any table from the Hub or direct URL (`?game=pandemic&room=D12345`) using game-prefixed codes (`M*` Mahjong, `P*` Monopoly, `A*` Avalon, `D*` Pandemic) over WebRTC (`PeerJS`) or same-browser `BroadcastChannel`.
-  - **Anti-Cheat Per-Seat Sanitization**: Only the Host holds hidden state (Mahjong walls/hands, Monopoly decks, Avalon roles/night vision, Pandemic unrevealed player & infection draw decks); guests receive strictly sanitized per-seat views with authentication tokens stripped.
+  - **Universal Room Codes**: Join any table from the Hub or direct URL (`?game=balik-kampung&room=B12345`) using game-prefixed codes (`M*` Mahjong, `P*` Monopoly, `A*` Avalon, `D*` Pandemic, `B*` Balik Kampung) over WebRTC (`PeerJS`) or same-browser `BroadcastChannel`.
+  - **Anti-Cheat Per-Seat Sanitization**: Only the Host holds hidden state (Mahjong walls/hands, Monopoly decks, Avalon roles/night vision, Pandemic unrevealed player & infection draw decks, Balik Kampung unrevealed road/traffic decks & opponents' face-down planned cards); guests receive strictly sanitized per-seat views with authentication tokens stripped.
   - **Contextual Game Shell & Local Save/Resume**: Top navigation dynamically adopts each active game's lobby emblem, title, theme, `"All Games"` hub launcher, and context-aware `"Leave Room"` / `"Exit Match"` controls with single-slot local save & resume from the Hub banner.
 - **Mobile-Friendly & Battery-Conscious UX**:
   - Zoneless Angular Signals + inline SVG tiles (`mj-tile`), world map, and dice (`app-real-dice`) with zero 60 FPS canvas loops, `#0d1117` OLED dark theme, bounded CSS turn pulses + `prefers-reduced-motion` support, and auto-suspending Web Audio / `visibilitychange` BGM pause on backgrounded tabs.
@@ -58,9 +59,9 @@ Open `http://localhost:4200/` in your browser. Open a second browser tab with an
 npm run qa:agent-docs   # Verify AGENTS.md, reference links & spec hygiene
 npx tsc --noEmit        # Strict TypeScript 6 type check
 npm run lint            # ESLint 10 + eslint-plugin-security (0 warnings, 0 eslint-disable)
-npm run test:ci         # Vitest unit/DOM suites + V8 coverage + JSON report (593 tests)
+npm run test:ci         # Vitest unit/DOM suites + V8 coverage + JSON report (624 tests)
 npm run qa:scan         # VeriScribe AST manifest & meaningful-assertion audit
-npm run qa:gate         # VeriScribe CI gate (16/16 components & 16/16 services TRIAGED)
+npm run qa:gate         # VeriScribe CI gate (18/18 components & 19/19 services TRIAGED)
 npm run build           # Production Angular bundle check
 ```
 
@@ -101,12 +102,13 @@ mahjong/
         ├── core/                 # Mahjong module (engine, scorer, AI bot, session) + P2P transport, shell & save manager
         ├── games/                # Expansion game modules (Mahjong UI lives in pages/lobby & pages/table)
         │   ├── avalon/           # Avalon engine, deduction AI bot, P2P session, lobby & table
+        │   ├── balik-kampung/    # Balik Kampung v3.5 highway engine, AI bot, B* P2P session, lobby & board
         │   ├── monopoly/         # Monopoly engine, trade AI bot, P2P session, lobby & 11x11 board
         │   └── pandemic/         # Pandemic 48-city co-op engine, BFS AI bot, Solo Commander, lobby & SVG map
         ├── layout/header/        # Contextual game emblem header, All Games nav, invite copy & audio toggles
         ├── pages/
-        │   ├── hub/              # Tabletop Royale Hub, 4 game launchers, room join & saved-game banner
+        │   ├── hub/              # Tabletop Royale Hub, 5 game launchers, room join & saved-game banner
         │   ├── lobby/            # Mahjong (/mahjong/lobby) 3P/4P setup & P2P waiting room
         │   └── table/            # Mahjong (/mahjong/table) 3P/4P tabletop, Tenpai helper & settlement modal
-        └── shared/               # SVG Mahjong tiles, SVG dice, 4-game rulebook, exit modal & i18n pipe
+        └── shared/               # SVG Mahjong tiles, SVG dice, 5-game rulebook, exit modal & i18n pipe
 ```

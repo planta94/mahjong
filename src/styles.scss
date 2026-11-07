@@ -93,6 +93,19 @@ body[data-theme='pandemic'] {
   --modal-title-color: #7dd3fc;
 }
 
+body[data-theme='balik-kampung'] {
+  --felt-center: #065a38;
+  --felt-edge: #031d12;
+  --accent-color: #ffd100;
+  --topbar-bg: linear-gradient(180deg, rgba(0, 74, 45, 0.98), rgba(4, 28, 18, 0.96));
+  --topbar-border: rgba(255, 209, 0, 0.55);
+  --brand-title-color: #fef08a;
+  --brand-kicker-color: rgba(254, 240, 138, 0.85);
+  --modal-bg: linear-gradient(180deg, #06442d, #041d13);
+  --modal-border: rgba(255, 209, 0, 0.72);
+  --modal-title-color: #ffd100;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;

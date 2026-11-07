@@ -8,13 +8,13 @@
 
 ## 2. Bounded Modals & Bottom-Only Close Actions
 
-- Modals (`RulebookDialogComponent`, `ExitConfirmDialogComponent`, Mahjong Settlement, Monopoly Deed/Trade/Trade-Outcome/Auction dialogs, and Pandemic Forecast/Discard/Infection/Airlift/Defeat dialogs) enforce `max-width: min(720px, 95vw); max-height: 90vh;` with fixed `.modal-header` / `.modal-footer` (`flex-shrink: 0`) and a middle `.modal-body` (`max-height: 55vh; overflow-y: auto;`).
+- Modals (`RulebookDialogComponent`, `ExitConfirmDialogComponent`, Mahjong Settlement, Monopoly Deed/Trade/Trade-Outcome/Auction dialogs, Pandemic Forecast/Discard/Infection/Airlift/Defeat dialogs, and Balik Kampung EV Charger/Simpang Tiga/Settlement dialogs) enforce `max-width: min(720px, 95vw); max-height: 90vh;` with fixed `.modal-header` / `.modal-footer` (`flex-shrink: 0`) and a middle `.modal-body` (`max-height: 55vh; overflow-y: auto;`).
 - **Never** place a top-right `X` close button inside modal headers; all dismiss/action buttons belong exclusively in `.modal-footer`.
 - Keep active-game header emblems (`AppHeaderComponent` `.brand-emblem`) visually and structurally identical (`viewBox="0 0 64 64"` SVG + radial-gradient `.emblem-*` badges) to the game launcher emblems in `HubComponent` (`.tile-emblem`).
 
 ## 3. Desktop Table vs. Mobile Modern App Cards
 
-- Scoreboards, payout schedules, Avalon quest matrices, and Pandemic specialist roles/difficulty tables render `<table class="desktop-table">` above `768px` and `<div class="mobile-cards">` (`mobile-app-card`) at `<= 768px`.
+- Scoreboards, payout schedules, Avalon quest matrices, Pandemic specialist roles/difficulty tables, and Balik Kampung convoy standings/settlement tables render `<table class="desktop-table">` above `768px` and `<div class="mobile-cards">` (`mobile-app-card`) at `<= 768px`. Balik Kampung's highway viewport renders a zero-horizontal-scroll `<= 5`-column window anchored on the local player's car (single-row in desktop & mobile landscape, 2-column grid + landscape orientation hint on narrow `<= 600px` portrait).
 
 ## 4. Bilingual i18n Parity (`en`, `zh` Simplified Chinese)
 

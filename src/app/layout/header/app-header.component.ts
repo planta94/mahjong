@@ -36,6 +36,8 @@ export class AppHeaderComponent {
           document.title = this.translate.instant('HEADER.GAME_TITLE_AVALON');
         } else if (game === 'pandemic') {
           document.title = this.translate.instant('HEADER.GAME_TITLE_PANDEMIC');
+        } else if (game === 'balik-kampung') {
+          document.title = this.translate.instant('HEADER.GAME_TITLE_BALIK_KAMPUNG');
         } else {
           document.title = this.translate.instant('HEADER.BRAND');
         }

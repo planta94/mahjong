@@ -259,8 +259,8 @@ describe('E2E: Hub & Shell Architecture Suite', () => {
       const comp = fixture.componentInstance;
       const el = fixture.nativeElement as HTMLElement;
 
-      // 1. Check hero title and 4 game cards rendered
-      expect(el.querySelectorAll('.game-card').length).toBe(4);
+      // 1. Check hero title and 5 game cards rendered
+      expect(el.querySelectorAll('.game-card').length).toBe(5);
       const mjText = el.querySelector('.mahjong-card')?.textContent ?? '';
       expect(mjText.includes('HUB.MAHJONG_TITLE') || mjText.includes('港马麻将馆')).toBe(true);
       const monoText = el.querySelector('.monopoly-card')?.textContent ?? '';
@@ -269,6 +269,8 @@ describe('E2E: Hub & Shell Architecture Suite', () => {
       expect(avaText.includes('HUB.AVALON_TITLE') || avaText.includes('阿瓦隆')).toBe(true);
       const panText = el.querySelector('.pandemic-card')?.textContent ?? '';
       expect(panText.includes('HUB.PANDEMIC_TITLE') || panText.includes('瘟疫危机')).toBe(true);
+      const bkText = el.querySelector('.balik-kampung-card')?.textContent ?? '';
+      expect(bkText.includes('HUB.BK_TITLE') || bkText.includes('回乡大作战')).toBe(true);
 
       // 2. Room code join input with invalid/empty code
       comp.onRoomCodeChange('');

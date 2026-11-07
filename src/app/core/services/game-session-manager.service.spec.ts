@@ -3,6 +3,7 @@ import { ActivatedRoute, Router, provideRouter } from '@angular/router';
 import { beforeEach, afterEach, describe, expect, it } from 'vitest';
 import { routes } from '../../app.routes';
 import { AvalonSessionService } from '../../games/avalon/services/avalon-session.service';
+import { BalikKampungSessionService } from '../../games/balik-kampung/services/balik-kampung-session.service';
 import { MonopolyBoardComponent } from '../../games/monopoly/components/monopoly-board/monopoly-board.component';
 import { MonopolySessionService } from '../../games/monopoly/services/monopoly-session.service';
 import { PandemicSessionService } from '../../games/pandemic/services/pandemic-session.service';
@@ -211,6 +212,23 @@ describe('GameSessionManagerService, ExitConfirmDialog, Multi-Game Rulebook & Re
       expect(pandemic.snapshot()?.view?.players.length).toBe(4);
       pandemic.leaveRoom();
 
+      // E. Balik Kampung 3P round-trip save & resume
+      const balikKampung = TestBed.inject(BalikKampungSessionService);
+      balikKampung.createSoloMatch(3);
+      expect(shellUi.activeRoomCode()).toBeNull();
+      expect(manager.canSaveCurrentProgress()).toBe(true);
+
+      manager.confirmSaveAndExit();
+      expect(balikKampung.snapshot()).toBeNull();
+      expect(manager.savedGame()?.game).toBe('balik-kampung');
+
+      hubFixture.detectChanges();
+      expect(hubEl.querySelector('.saved-subtitle')?.textContent?.includes('3P')).toBe(true);
+
+      expect(manager.resumeSavedGame()).toBe(true);
+      expect(balikKampung.snapshot()?.view?.players.length).toBe(3);
+      balikKampung.leaveRoom();
+
       // Delete saved game from Hub banner
       hubFixture.detectChanges();
       (hubEl.querySelector('.delete-saved-btn') as HTMLButtonElement).click();
@@ -318,7 +336,7 @@ describe('GameSessionManagerService, ExitConfirmDialog, Multi-Game Rulebook & Re
       shellUi.setActiveGame('hub');
       fixture.detectChanges();
       const tabs = el.querySelectorAll('.rulebook-tab-btn');
-      expect(tabs.length).toBe(4);
+      expect(tabs.length).toBe(5);
       (tabs.item(2) as HTMLButtonElement).click();
       fixture.detectChanges();
       expect(shellUi.rulebookGame()).toBe('avalon');
@@ -459,6 +477,19 @@ describe('GameSessionManagerService, ExitConfirmDialog, Multi-Game Rulebook & Re
       expect(pandemic.snapshot()).toBe(null);
       await new Promise((resolve) => setTimeout(resolve, 10));
       expect(router.url).toContain('/pandemic/lobby');
+
+      // E. Balik Kampung on /balik-kampung/board
+      const balikKampung = TestBed.inject(BalikKampungSessionService);
+      await router.navigateByUrl('/balik-kampung/board');
+      balikKampung.createSoloMatch(3);
+      expect(balikKampung.snapshot()?.role).toBe('host');
+
+      window.dispatchEvent(
+        new CustomEvent('p2p:leave', { detail: { game: 'balik-kampung' } })
+      );
+      expect(balikKampung.snapshot()).toBe(null);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(router.url).toContain('/balik-kampung/lobby');
     });
   });
 });

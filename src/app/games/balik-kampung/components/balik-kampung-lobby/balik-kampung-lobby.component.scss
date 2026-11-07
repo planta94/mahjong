@@ -1,0 +1,527 @@
+.bk-lobby-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1100px;
+}
+
+.bk-signboard {
+  background: linear-gradient(180deg, #00663d 0%, #005030 68%, #043620 100%);
+  border: 2.5px solid #ffd100;
+  box-shadow:
+    inset 0 0 0 3px rgba(255, 255, 255, 0.92),
+    0 14px 34px rgba(0, 0, 0, 0.48);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 22px;
+}
+
+.signboard-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.jkr-hex-svg {
+  height: 26px;
+  width: auto;
+  display: block;
+}
+
+.gantry-dir-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  background: rgba(0, 32, 18, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 0 10px;
+  border-radius: 6px;
+}
+
+.edition-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #fef08a;
+  background: rgba(0, 0, 0, 0.34);
+  border: 1px solid rgba(255, 209, 0, 0.5);
+  padding: 0 10px;
+  border-radius: 999px;
+}
+
+.signboard-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.ketupat-ornament {
+  width: 24px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.signboard-title {
+  font-size: 1.95rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.4px;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.5);
+}
+
+.signboard-subtitle {
+  font-size: 0.92rem;
+  color: #f1f5f9;
+  max-width: 720px;
+}
+
+.festive-greeting-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #d9f99d;
+  background: rgba(20, 83, 45, 0.65);
+  border: 1px solid rgba(163, 230, 53, 0.5);
+  padding: 0 14px;
+  border-radius: 999px;
+}
+
+.signboard-actions {
+  margin-top: 4px;
+}
+
+.bk-rules-btn {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 0.8rem;
+  background: rgba(0, 0, 0, 0.28);
+  border-color: #ffd100;
+  color: #fef08a;
+  font-weight: 800;
+}
+
+.invite-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-color: #ffd100;
+  background: linear-gradient(135deg, rgba(0, 90, 54, 0.62), rgba(15, 23, 42, 0.92));
+}
+
+.invite-sub {
+  font-size: 0.84rem;
+  color: #cbd5e1;
+  margin-top: 2px;
+}
+
+.lobby-columns {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.setup-card,
+.bk-room-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-color: rgba(255, 209, 0, 0.35);
+}
+
+.side-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.card-heading {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fef08a;
+}
+
+.count-selector-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: rgba(0, 0, 0, 0.28);
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.count-label {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #e2e8f0;
+}
+
+.count-pills {
+  display: flex;
+  gap: 8px;
+}
+
+.count-pill {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.active-pill {
+  background: #ffd100;
+  color: #0f172a;
+  border-color: #ffd100;
+}
+
+.seats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.seat-card {
+  background: rgba(6, 28, 20, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.my-seat-card {
+  border-color: #ffd100;
+  box-shadow: inset 0 0 0 1px rgba(255, 209, 0, 0.3);
+}
+
+.seat-top-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lobby-car-svg {
+  width: 28px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.seat-car-name {
+  font-size: 0.9rem;
+  color: #ffffff;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pole-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #0f172a;
+  background: #ffd100;
+  padding: 0 8px;
+  border-radius: 6px;
+}
+
+.seat-driver-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: #cbd5e1;
+}
+
+.driver-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seat-kind-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+}
+
+.car-picker-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.car-swatch-btn {
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(15, 23, 42, 0.65);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.car-swatch-btn:hover:not(:disabled) {
+  border-color: rgba(255, 209, 0, 0.75);
+  transform: translateY(-1px);
+}
+
+.car-swatch-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.car-swatch-active {
+  border-color: #ffd100;
+  background: rgba(255, 209, 0, 0.2);
+  box-shadow: inset 0 0 0 1px #ffd100;
+}
+
+.swatch-car-svg {
+  width: 24px;
+  height: 13px;
+  display: block;
+}
+
+.drivetrain-toggle-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.dt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(15, 23, 42, 0.65);
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.dt-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.dt-active-ice {
+  background: linear-gradient(135deg, #d97706, #b45309);
+  border-color: #fbbf24;
+  color: #ffffff;
+}
+
+.dt-active-ev {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+.seat-bot-btn {
+  width: 100%;
+  height: 32px;
+  font-size: 0.78rem;
+  justify-content: center;
+}
+
+.launch-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn-highway {
+  background: linear-gradient(135deg, #007a49, #005a36);
+  border-color: #ffd100;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.btn-highway:hover {
+  background: linear-gradient(135deg, #009158, #006b40);
+}
+
+.primary-launch-btn {
+  flex: 1;
+  min-width: 200px;
+  justify-content: center;
+}
+
+.join-room-card,
+.spec-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-color: rgba(255, 209, 0, 0.35);
+}
+
+.join-desc {
+  font-size: 0.84rem;
+  color: #cbd5e1;
+}
+
+.join-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.spec-block {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ice-spec {
+  background: rgba(180, 83, 9, 0.24);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+.ev-spec {
+  background: rgba(3, 105, 161, 0.24);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.formula-banner {
+  background: rgba(0, 90, 54, 0.5);
+  border: 1px dashed rgba(255, 209, 0, 0.65);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #fef08a;
+  text-align: center;
+}
+
+.room-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.room-kicker {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #ffd100;
+  letter-spacing: 0.5px;
+}
+
+.room-code-heading {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 1.5px;
+}
+
+.room-status-text {
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+.room-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.start-convoy-btn {
+  padding: 0 22px;
+}
+
+.guest-waiting-note {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #fef08a;
+}
+
+@media (max-width: 768px) {
+  .signboard-title {
+    font-size: 1.38rem;
+  }
+
+  .ketupat-ornament {
+    display: none;
+  }
+
+  .invite-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lobby-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .seats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .join-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .launch-buttons {
+    flex-direction: column;
+  }
+
+  .room-footer-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .car-swatch-btn {
+    transition: none;
+  }
+}

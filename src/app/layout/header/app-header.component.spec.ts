@@ -49,7 +49,9 @@ describe('AppHeaderComponent', () => {
     const normalizeSvgMarkup = (markup: string | undefined): string =>
       (markup ?? '').replace(/\s*_ngcontent-[^=\s>]+=""/g, '').replace(/\s+/g, ' ').trim();
 
-    const assertMatchesLobbyEmblem = (gameId: 'mahjong' | 'monopoly' | 'avalon' | 'pandemic'): void => {
+    const assertMatchesLobbyEmblem = (
+      gameId: 'mahjong' | 'monopoly' | 'avalon' | 'pandemic' | 'balik-kampung'
+    ): void => {
       const headerSvg = host.querySelector(`.brand-emblem.emblem-${gameId} svg`);
       const lobbySvg = hubEl.querySelector(`.tile-emblem.emblem-${gameId} svg`);
       expect(headerSvg?.getAttribute('viewBox')).toBe('0 0 64 64');
@@ -111,6 +113,20 @@ describe('AppHeaderComponent', () => {
     expect(host.querySelector('.brand-badge')?.textContent?.trim()).toBe('2–4人 · 瘟疫危机');
     expect(host.querySelector('.brand-badge')?.classList.contains('badge-pandemic')).toBe(true);
     expect(document.title).toBe('瘟疫危机：全球防线');
+
+    // Balik Kampung active game
+    shellUi.setActiveGame('balik-kampung');
+    fixture.detectChanges();
+    expect(host.querySelector('.brand-logo')?.classList.contains('emblem-balik-kampung')).toBe(true);
+    assertMatchesLobbyEmblem('balik-kampung');
+    expect(host.querySelector('.brand-title')?.textContent?.trim()).toBe('回乡大作战：南北大道');
+    expect(host.querySelector('.brand-badge')?.textContent?.trim()).toBe('2–5人 · 回乡大作战');
+    expect(host.querySelector('.brand-badge')?.classList.contains('badge-balik-kampung')).toBe(true);
+    expect(document.title).toBe('回乡大作战：南北大道');
+
+    // Switch back to Pandemic for English assertion
+    shellUi.setActiveGame('pandemic');
+    fixture.detectChanges();
 
     translate.use('en');
     fixture.detectChanges();

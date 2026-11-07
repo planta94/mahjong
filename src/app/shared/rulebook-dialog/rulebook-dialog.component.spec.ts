@@ -67,7 +67,7 @@ describe('RulebookDialogComponent', () => {
     const el = fixture.nativeElement as HTMLElement;
 
     const tabs = el.querySelectorAll('.rulebook-tab-btn');
-    expect(tabs.length).toBe(4);
+    expect(tabs.length).toBe(5);
 
     // 1. Mahjong tab (default)
     expect(tabs.item(0).classList.contains('active')).toBe(true);
@@ -113,6 +113,15 @@ describe('RulebookDialogComponent', () => {
     // 7 roles + 3 difficulties = 10 rows
     expect(el.querySelectorAll('.desktop-table tbody tr').length).toBe(10);
     expect(el.querySelectorAll('.mobile-cards .mobile-app-card').length).toBe(10);
+
+    // 5. Switch to Balik Kampung tab
+    (tabs.item(4) as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(shellUi.rulebookGame()).toBe('balik-kampung');
+    expect(tabs.item(4).classList.contains('active')).toBe(true);
+    expect(el.querySelector('#rulebook-dialog-title')?.textContent).toContain('回乡大作战');
+    expect(el.querySelectorAll('.desktop-table tbody tr').length).toBe(5);
+    expect(el.querySelectorAll('.mobile-cards .mobile-app-card').length).toBe(5);
   });
 
   it('uses defensive fallback defaults for payoutRows and avalonMatrixRows when table lookups return undefined', () => {

@@ -6,9 +6,8 @@ import { TableComponent } from './pages/table/table.component';
 import { MonopolyLobbyComponent } from './games/monopoly/components/monopoly-lobby/monopoly-lobby.component';
 import { MonopolyBoardComponent } from './games/monopoly/components/monopoly-board/monopoly-board.component';
 import { AvalonLobbyComponent } from './games/avalon/components/avalon-lobby/avalon-lobby.component';
-import { AvalonTableComponent } from './games/avalon/components/avalon-table/avalon-table.component';
-import { PandemicBoardComponent } from './games/pandemic/components/pandemic-board/pandemic-board.component';
 import { PandemicLobbyComponent } from './games/pandemic/components/pandemic-lobby/pandemic-lobby.component';
+import { BalikKampungLobbyComponent } from './games/balik-kampung/components/balik-kampung-lobby/balik-kampung-lobby.component';
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', component: HubComponent },
@@ -35,7 +34,13 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'lobby' },
       { path: 'lobby', component: AvalonLobbyComponent },
-      { path: 'table', component: AvalonTableComponent },
+      {
+        path: 'table',
+        loadComponent: () =>
+          import('./games/avalon/components/avalon-table/avalon-table.component').then(
+            (m) => m.AvalonTableComponent
+          ),
+      },
     ],
   },
   {
@@ -43,7 +48,27 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'lobby' },
       { path: 'lobby', component: PandemicLobbyComponent },
-      { path: 'board', component: PandemicBoardComponent },
+      {
+        path: 'board',
+        loadComponent: () =>
+          import('./games/pandemic/components/pandemic-board/pandemic-board.component').then(
+            (m) => m.PandemicBoardComponent
+          ),
+      },
+    ],
+  },
+  {
+    path: 'balik-kampung',
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'lobby' },
+      { path: 'lobby', component: BalikKampungLobbyComponent },
+      {
+        path: 'board',
+        loadComponent: () =>
+          import(
+            './games/balik-kampung/components/balik-kampung-board/balik-kampung-board.component'
+          ).then((m) => m.BalikKampungBoardComponent),
+      },
     ],
   },
   { path: '**', redirectTo: '' },

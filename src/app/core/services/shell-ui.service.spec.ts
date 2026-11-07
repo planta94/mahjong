@@ -144,6 +144,11 @@ describe('ShellUiService', () => {
     expect(service.showRulebookModal()).toBe(true);
     expect(service.rulebookGame()).toBe('pandemic');
 
+    service.setActiveGame('balik-kampung');
+    service.openRulebook();
+    expect(service.showRulebookModal()).toBe(true);
+    expect(service.rulebookGame()).toBe('balik-kampung');
+
     service.setActiveGame('hub');
     service.openRulebook();
     expect(service.rulebookGame()).toBe('mahjong');

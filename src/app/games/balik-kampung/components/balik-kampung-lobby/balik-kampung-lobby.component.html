@@ -1,0 +1,332 @@
+<main class="page-container bk-lobby-page">
+  <!-- Authentic Malaysian PLUS / LLM Overhead Highway Signboard Hero -->
+  <section class="bk-signboard portal-card">
+    <div class="signboard-top">
+      <!-- JKR Hexagonal Yellow Route Shield E1 -->
+      <svg class="jkr-hex-svg" viewBox="0 0 54 28" aria-hidden="true">
+        <polygon points="8,2 46,2 52,14 46,26 8,26 2,14" fill="#ffd100" stroke="#111827" stroke-width="2.5" />
+        <text x="27" y="19" text-anchor="middle" fill="#111827" font-size="13" font-weight="900">E1</text>
+      </svg>
+      <!-- JKR Hexagonal Yellow Route Shield FT1 -->
+      <svg class="jkr-hex-svg" viewBox="0 0 60 28" aria-hidden="true">
+        <polygon points="8,2 52,2 58,14 52,26 8,26 2,14" fill="#ffd100" stroke="#111827" stroke-width="2.5" />
+        <text x="30" y="19" text-anchor="middle" fill="#111827" font-size="12" font-weight="900">FT1</text>
+      </svg>
+      <span class="gantry-dir-pill">↑ {{ 'BK.GANTRY_DIRECTION' | translate }}</span>
+      <span class="edition-pill">{{ 'BK.EDITION_TAG' | translate }}</span>
+    </div>
+
+    <div class="signboard-title-row">
+      <svg class="ketupat-ornament" viewBox="0 0 24 28" aria-hidden="true">
+        <polygon points="12,2 22,12 12,22 2,12" fill="#a3e635" stroke="#fef08a" stroke-width="1.6" />
+        <line x1="7" y1="7" x2="17" y2="17" stroke="#166534" stroke-width="1.4" />
+        <line x1="17" y1="7" x2="7" y2="17" stroke="#166534" stroke-width="1.4" />
+        <path d="M9,22 L8,27 M15,22 L16,27" stroke="#fef08a" stroke-width="1.6" />
+      </svg>
+      <h1 class="signboard-title">{{ 'BK.GAME_TITLE' | translate }}</h1>
+      <svg class="ketupat-ornament" viewBox="0 0 24 28" aria-hidden="true">
+        <polygon points="12,2 22,12 12,22 2,12" fill="#a3e635" stroke="#fef08a" stroke-width="1.6" />
+        <line x1="7" y1="7" x2="17" y2="17" stroke="#166534" stroke-width="1.4" />
+        <line x1="17" y1="7" x2="7" y2="17" stroke="#166534" stroke-width="1.4" />
+        <path d="M9,22 L8,27 M15,22 L16,27" stroke="#fef08a" stroke-width="1.6" />
+      </svg>
+    </div>
+
+    <p class="signboard-subtitle">{{ 'BK.LOBBY_SUBTITLE' | translate }}</p>
+    <span class="festive-greeting-pill">❖ {{ 'BK.FESTIVE_RIBBON' | translate }} ❖</span>
+
+    <div class="signboard-actions">
+      <button type="button" class="btn btn-sm bk-rules-btn" (click)="openRules()">
+        📖 {{ 'BK.VIEW_RULEBOOK' | translate }}
+      </button>
+    </div>
+  </section>
+
+  @if (session.snapshot(); as snap) {
+    <!-- Active P2P Waiting Room -->
+    <section class="portal-card bk-room-card">
+      <div class="room-header-row">
+        <div>
+          <span class="room-kicker">{{ 'BK.ONLINE_CONVOY_ROOM' | translate }}</span>
+          <h2 class="room-code-heading">{{ snap.roomCode }}</h2>
+          <p class="room-status-text">{{ snap.status }}</p>
+        </div>
+        <div class="room-invite-actions">
+          <button type="button" class="btn btn-gold" (click)="shellUi.copyInviteLink()">
+            🔗 {{ (shellUi.copiedToast() ? 'HEADER.COPIED' : 'HEADER.COPY_LINK') | translate }}
+          </button>
+        </div>
+      </div>
+
+      @if (snap.error) {
+        <div class="banner-alert" role="alert">{{ snap.error }}</div>
+      }
+
+      @if (session.isHost()) {
+        <div class="count-selector-bar">
+          <span class="count-label">{{ 'BK.VEHICLE_COUNT' | translate }}:</span>
+          <div class="count-pills">
+            @for (cnt of playerCounts; track cnt) {
+              <button
+                type="button"
+                class="btn count-pill"
+                [class.active-pill]="(snap.lobby?.seats?.length ?? 4) === cnt"
+                (click)="setRoomSeatCount(cnt)"
+              >
+                {{ cnt }}P
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      @if (snap.lobby; as lobby) {
+        <div class="seats-grid">
+          @for (s of lobby.seats; track s.seat) {
+            <div
+              class="seat-card"
+              [class.my-seat-card]="s.seat === session.mySeat()"
+            >
+              <div class="seat-top-row">
+                <svg class="lobby-car-svg" viewBox="0 0 30 16" aria-hidden="true">
+                  <rect x="2" y="2" width="24" height="12" rx="4" [attr.fill]="getPersonaMeta(s.persona).hexColor" stroke="#ffffff" stroke-width="1.2" />
+                  <rect x="8" y="4" width="11" height="8" rx="2" fill="#0f172a" />
+                  <circle cx="27" cy="5" r="1.6" fill="#fef08a" />
+                  <circle cx="27" cy="11" r="1.6" fill="#fef08a" />
+                </svg>
+                <strong class="seat-car-name">{{ getPersonaMeta(s.persona).labelKey | translate }}</strong>
+                <span class="pole-tag">#{{ s.seat + 1 }}</span>
+              </div>
+
+              <div class="seat-driver-row">
+                <span class="driver-name">{{ s.name }}</span>
+                <span class="seat-kind-badge" [attr.data-kind]="s.kind">
+                  @switch (s.kind) {
+                    @case ('human') {
+                      {{ 'BK.SEAT_HUMAN' | translate }}
+                    }
+                    @case ('bot') {
+                      {{ 'BK.SEAT_BOT' | translate }}
+                    }
+                    @default {
+                      {{ 'BK.SEAT_OPEN' | translate }}
+                    }
+                  }
+                </span>
+              </div>
+
+              <div class="car-picker-row" role="group" [attr.aria-label]="'BK.CHOOSE_CAR_LABEL' | translate">
+                @for (carOpt of personas; track carOpt.id) {
+                  <button
+                    type="button"
+                    class="car-swatch-btn"
+                    [class.car-swatch-active]="s.persona === carOpt.id"
+                    [disabled]="!canEditRoomSeatDrivetrain(s.seat)"
+                    [attr.title]="carOpt.labelKey | translate"
+                    [attr.aria-label]="carOpt.labelKey | translate"
+                    (click)="setRoomSeatPersona(s.seat, carOpt.id)"
+                  >
+                    <svg class="swatch-car-svg" viewBox="0 0 30 16" aria-hidden="true">
+                      <rect x="2" y="2" width="24" height="12" rx="4" [attr.fill]="carOpt.hexColor" stroke="#ffffff" stroke-width="1.2" />
+                      <rect x="8" y="4" width="11" height="8" rx="2" fill="#0f172a" />
+                      <circle cx="27" cy="5" r="1.6" fill="#fef08a" />
+                      <circle cx="27" cy="11" r="1.6" fill="#fef08a" />
+                    </svg>
+                  </button>
+                }
+              </div>
+
+              <div class="drivetrain-toggle-row">
+                <button
+                  type="button"
+                  class="dt-btn"
+                  [class.dt-active-ice]="s.drivetrain === 'ICE'"
+                  [disabled]="!canEditRoomSeatDrivetrain(s.seat)"
+                  (click)="setRoomSeatDrivetrain(s.seat, 'ICE')"
+                >
+                  ⛽ ICE
+                </button>
+                <button
+                  type="button"
+                  class="dt-btn"
+                  [class.dt-active-ev]="s.drivetrain === 'EV'"
+                  [disabled]="!canEditRoomSeatDrivetrain(s.seat)"
+                  (click)="setRoomSeatDrivetrain(s.seat, 'EV')"
+                >
+                  ⚡ EV
+                </button>
+              </div>
+
+              @if (session.isHost() && s.seat > 0 && s.kind !== 'human') {
+                <button
+                  type="button"
+                  class="btn btn-sm seat-bot-btn"
+                  (click)="toggleRoomSeatKind(s.seat)"
+                >
+                  {{ (s.kind === 'open' ? 'BK.FILL_WITH_BOT' : 'BK.OPEN_FOR_FRIEND') | translate }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      <div class="room-footer-row">
+        <button type="button" class="btn" (click)="leaveWaitingRoom()">
+          {{ 'BK.LEAVE_ROOM' | translate }}
+        </button>
+        @if (session.isHost()) {
+          <button type="button" class="btn btn-highway start-convoy-btn" (click)="startOnlineMatch()">
+            🚦 {{ 'BK.FLAG_OFF_CONVOY' | translate }}
+          </button>
+        } @else {
+          <span class="guest-waiting-note">{{ 'BK.WAITING_FOR_HOST' | translate }}</span>
+        }
+      </div>
+    </section>
+  } @else {
+    <!-- URL Invite Quick-Join Banner -->
+    @if (hasUrlInvite()) {
+      <section class="portal-card invite-banner">
+        <div>
+          <strong>{{ 'BK.INVITE_DETECTED' | translate }}: {{ joinCode }}</strong>
+          <p class="invite-sub">{{ 'BK.INVITE_PROMPT' | translate }}</p>
+        </div>
+        <button type="button" class="btn btn-highway" (click)="joinRoom()">
+          {{ 'BK.JOIN_CONVOY_NOW' | translate }}
+        </button>
+      </section>
+    }
+
+    <div class="lobby-columns">
+      <!-- Left Column: Solo & Host Convoy Setup -->
+      <section class="portal-card setup-card">
+        <h2 class="card-heading">🚗 {{ 'BK.SETUP_HEADING' | translate }}</h2>
+
+        <div class="count-selector-bar">
+          <span class="count-label">{{ 'BK.VEHICLE_COUNT' | translate }}:</span>
+          <div class="count-pills">
+            @for (cnt of playerCounts; track cnt) {
+              <button
+                type="button"
+                class="btn count-pill"
+                [class.active-pill]="playerCount === cnt"
+                (click)="setPlayerCount(cnt)"
+              >
+                {{ cnt }}P
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="seats-grid">
+          @for (persona of visibleSoloPersonas; track idx; let idx = $index) {
+            <div class="seat-card" [class.my-seat-card]="idx === 0">
+              <div class="seat-top-row">
+                <svg class="lobby-car-svg" viewBox="0 0 30 16" aria-hidden="true">
+                  <rect x="2" y="2" width="24" height="12" rx="4" [attr.fill]="persona.hexColor" stroke="#ffffff" stroke-width="1.2" />
+                  <rect x="8" y="4" width="11" height="8" rx="2" fill="#0f172a" />
+                  <circle cx="27" cy="5" r="1.6" fill="#fef08a" />
+                  <circle cx="27" cy="11" r="1.6" fill="#fef08a" />
+                </svg>
+                <strong class="seat-car-name">{{ persona.labelKey | translate }}</strong>
+                <span class="pole-tag">#{{ idx + 1 }}</span>
+              </div>
+              <div class="seat-driver-row">
+                <span class="driver-name">
+                  {{ idx === 0 ? shellUi.playerNickname() : (getSoloBotKey(idx) | translate) }}
+                </span>
+                <span class="seat-kind-badge" [attr.data-kind]="idx === 0 ? 'human' : 'bot'">
+                  {{ (idx === 0 ? 'BK.SEAT_HUMAN' : 'BK.SEAT_BOT') | translate }}
+                </span>
+              </div>
+              <div class="car-picker-row" role="group" [attr.aria-label]="'BK.CHOOSE_CAR_LABEL' | translate">
+                @for (carOpt of personas; track carOpt.id) {
+                  <button
+                    type="button"
+                    class="car-swatch-btn"
+                    [class.car-swatch-active]="persona.id === carOpt.id"
+                    [attr.title]="carOpt.labelKey | translate"
+                    [attr.aria-label]="carOpt.labelKey | translate"
+                    (click)="setSoloPersona(idx, carOpt.id)"
+                  >
+                    <svg class="swatch-car-svg" viewBox="0 0 30 16" aria-hidden="true">
+                      <rect x="2" y="2" width="24" height="12" rx="4" [attr.fill]="carOpt.hexColor" stroke="#ffffff" stroke-width="1.2" />
+                      <rect x="8" y="4" width="11" height="8" rx="2" fill="#0f172a" />
+                      <circle cx="27" cy="5" r="1.6" fill="#fef08a" />
+                      <circle cx="27" cy="11" r="1.6" fill="#fef08a" />
+                    </svg>
+                  </button>
+                }
+              </div>
+
+              <div class="drivetrain-toggle-row">
+                <button
+                  type="button"
+                  class="dt-btn"
+                  [class.dt-active-ice]="getSoloDrivetrain(idx) === 'ICE'"
+                  (click)="setSoloDrivetrain(idx, 'ICE')"
+                >
+                  ⛽ ICE
+                </button>
+                <button
+                  type="button"
+                  class="dt-btn"
+                  [class.dt-active-ev]="getSoloDrivetrain(idx) === 'EV'"
+                  (click)="setSoloDrivetrain(idx, 'EV')"
+                >
+                  ⚡ EV
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="launch-buttons">
+          <button type="button" class="btn btn-highway primary-launch-btn" (click)="startSolo()">
+            🏁 {{ 'BK.START_SOLO_BTN' | translate }}
+          </button>
+          <button type="button" class="btn btn-gold" (click)="createRoom()">
+            🌐 {{ 'BK.CREATE_ROOM_BTN' | translate }}
+          </button>
+        </div>
+      </section>
+
+      <!-- Right Column: Join P2P Room + Drivetrain Spec Sheet -->
+      <div class="side-stack">
+        <section class="portal-card join-room-card">
+          <h2 class="card-heading">📡 {{ 'BK.JOIN_ROOM_HEADING' | translate }}</h2>
+          <p class="join-desc">{{ 'BK.JOIN_ROOM_DESC' | translate }}</p>
+          <div class="join-row">
+            <input
+              type="text"
+              class="portal-input"
+              [(ngModel)]="joinCode"
+              maxlength="8"
+              [placeholder]="'BK.JOIN_PLACEHOLDER' | translate"
+              (keyup.enter)="joinRoom()"
+            />
+            <button type="button" class="btn btn-emerald" (click)="joinRoom()">
+              {{ 'HUB.JOIN_BUTTON' | translate }}
+            </button>
+          </div>
+        </section>
+
+        <section class="portal-card spec-card">
+          <h2 class="card-heading">🔧 {{ 'BK.DRIVETRAIN_SPECS_TITLE' | translate }}</h2>
+          <div class="spec-block ice-spec">
+            <strong>⛽ {{ 'BK.ICE_TITLE' | translate }}</strong>
+            <p>{{ 'BK.ICE_DESC' | translate }}</p>
+          </div>
+          <div class="spec-block ev-spec">
+            <strong>⚡ {{ 'BK.EV_TITLE' | translate }}</strong>
+            <p>{{ 'BK.EV_DESC' | translate }}</p>
+          </div>
+          <div class="formula-banner">
+            <span>🏆 {{ 'BK.FORMULA_LABEL' | translate }}</span>
+          </div>
+        </section>
+      </div>
+    </div>
+  }
+</main>

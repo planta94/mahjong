@@ -140,7 +140,7 @@ describe('Empirical Challenge Suite — Milestone 1: Universal Hub & Route Resol
 
       const host = fixture.nativeElement as HTMLElement;
       const gameCards = host.querySelectorAll('.game-card');
-      expect(gameCards.length).toBe(4);
+      expect(gameCards.length).toBe(5);
 
       // Verify clicking Mahjong tile opens detail dialog first, then Enter CTA navigates to /mahjong/lobby
       expect(host.querySelector('.game-detail-modal')).toBe(null);

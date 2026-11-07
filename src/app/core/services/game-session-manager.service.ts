@@ -1,6 +1,10 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AvalonSessionService, SerializedAvalonSave } from '../../games/avalon/services/avalon-session.service';
+import {
+  BalikKampungSessionService,
+  SerializedBalikKampungSave,
+} from '../../games/balik-kampung/services/balik-kampung-session.service';
 import { MonopolySessionService, SerializedMonopolySave } from '../../games/monopoly/services/monopoly-session.service';
 import { PandemicSessionService, SerializedPandemicSave } from '../../games/pandemic/services/pandemic-session.service';
 import { GameId } from '../models/party.model';
@@ -21,7 +25,8 @@ export interface SavedGameRecord {
     | SerializedMahjongSave
     | SerializedMonopolySave
     | SerializedAvalonSave
-    | SerializedPandemicSave;
+    | SerializedPandemicSave
+    | SerializedBalikKampungSave;
 }
 
 function isSavedGameRecord(val: unknown): val is SavedGameRecord {
@@ -30,7 +35,11 @@ function isSavedGameRecord(val: unknown): val is SavedGameRecord {
   const game = rec['game'];
   return (
     rec['version'] === 1 &&
-    (game === 'mahjong' || game === 'monopoly' || game === 'avalon' || game === 'pandemic') &&
+    (game === 'mahjong' ||
+      game === 'monopoly' ||
+      game === 'avalon' ||
+      game === 'pandemic' ||
+      game === 'balik-kampung') &&
     typeof rec['savedAt'] === 'number' &&
     typeof rec['summary'] === 'string' &&
     typeof rec['payload'] === 'object' &&
@@ -48,6 +57,7 @@ export class GameSessionManagerService {
   private readonly monopoly = inject(MonopolySessionService);
   private readonly avalon = inject(AvalonSessionService);
   private readonly pandemic = inject(PandemicSessionService);
+  private readonly balikKampung = inject(BalikKampungSessionService);
 
   readonly savedGame = signal<SavedGameRecord | null>(this.readSavedGame());
   readonly showExitConfirmModal = signal<boolean>(false);
@@ -58,7 +68,8 @@ export class GameSessionManagerService {
       this.mahjong.snapshot() !== null ||
       this.monopoly.snapshot() !== null ||
       this.avalon.snapshot() !== null ||
-      this.pandemic.snapshot() !== null
+      this.pandemic.snapshot() !== null ||
+      this.balikKampung.snapshot() !== null
   );
 
   readonly hasStartedMatch = computed(
@@ -66,7 +77,10 @@ export class GameSessionManagerService {
       (this.mahjong.snapshot() !== null && this.mahjong.snapshot()?.view !== null) ||
       (this.monopoly.snapshot() !== null && this.monopoly.snapshot()?.view !== null) ||
       (this.avalon.snapshot() !== null && this.avalon.snapshot()?.view !== null) ||
-      (this.pandemic.snapshot() !== null && this.pandemic.snapshot()?.view !== null)
+      (this.pandemic.snapshot() !== null && this.pandemic.snapshot()?.view !== null) ||
+      (this.balikKampung.snapshot() !== null &&
+        Boolean(this.balikKampung.snapshot()?.lobby?.started) &&
+        this.balikKampung.snapshot()?.view !== null)
   );
 
   readonly hasActiveWaitingRoom = computed(
@@ -75,6 +89,8 @@ export class GameSessionManagerService {
       (this.monopoly.snapshot() !== null && this.monopoly.snapshot()?.view === null) ||
       (this.avalon.snapshot() !== null && this.avalon.snapshot()?.view === null) ||
       (this.pandemic.snapshot() !== null && this.pandemic.snapshot()?.view === null) ||
+      (this.balikKampung.snapshot() !== null &&
+        !this.balikKampung.snapshot()?.lobby?.started) ||
       Boolean(this.shellUi.activeRoomCode() && !this.hasStartedMatch())
   );
 
@@ -83,17 +99,20 @@ export class GameSessionManagerService {
     const mono = this.monopoly.snapshot();
     const av = this.avalon.snapshot();
     const pan = this.pandemic.snapshot();
+    const bk = this.balikKampung.snapshot();
     return (
       (mj !== null && this.mahjong.canExportSave()) ||
       (mono !== null && this.monopoly.canExportSave()) ||
       (av !== null && this.avalon.canExportSave()) ||
-      (pan !== null && this.pandemic.canExportSave())
+      (pan !== null && this.pandemic.canExportSave()) ||
+      (bk !== null && this.balikKampung.canExportSave())
     );
   });
 
   readonly activeSessionGame = computed<GameId | 'hub'>(() => {
     const current = this.shellUi.activeGame();
     if (current !== 'hub') return current;
+    if (this.balikKampung.snapshot() !== null) return 'balik-kampung';
     if (this.pandemic.snapshot() !== null) return 'pandemic';
     if (this.monopoly.snapshot() !== null) return 'monopoly';
     if (this.avalon.snapshot() !== null) return 'avalon';
@@ -110,6 +129,8 @@ export class GameSessionManagerService {
         return '/avalon/lobby';
       case 'pandemic':
         return '/pandemic/lobby';
+      case 'balik-kampung':
+        return '/balik-kampung/lobby';
       case 'mahjong':
       default:
         return '/mahjong/lobby';
@@ -143,7 +164,7 @@ export class GameSessionManagerService {
 
   saveCurrentProgress(): boolean {
     const active = this.shellUi.activeGame();
-    const allGames: GameId[] = ['mahjong', 'monopoly', 'avalon', 'pandemic'];
+    const allGames: GameId[] = ['mahjong', 'monopoly', 'avalon', 'pandemic', 'balik-kampung'];
     const order: GameId[] = [
       active !== 'hub' ? active : 'mahjong',
       ...allGames.filter((g) => g !== active),
@@ -198,6 +219,18 @@ export class GameSessionManagerService {
           });
         }
       }
+      if (game === 'balik-kampung' && this.balikKampung.canExportSave()) {
+        const payload = this.balikKampung.exportSaveData();
+        if (payload) {
+          return this.persistRecord({
+            version: 1,
+            game: 'balik-kampung',
+            savedAt: Date.now(),
+            summary: `R${payload.state.roundNumber} · ${payload.state.players.length}P`,
+            payload,
+          });
+        }
+      }
     }
     return false;
   }
@@ -236,6 +269,9 @@ export class GameSessionManagerService {
     if (this.pandemic.snapshot() !== null) {
       this.pandemic.leaveRoom();
     }
+    if (this.balikKampung.snapshot() !== null) {
+      this.balikKampung.leaveRoom();
+    }
     this.shellUi.leaveActiveRoom();
     clearBrowserUrlRoom();
   }
@@ -253,6 +289,8 @@ export class GameSessionManagerService {
         return this.avalon.restoreSaveData(record.payload as SerializedAvalonSave);
       case 'pandemic':
         return this.pandemic.restoreSaveData(record.payload as SerializedPandemicSave);
+      case 'balik-kampung':
+        return this.balikKampung.restoreSaveData(record.payload as SerializedBalikKampungSave);
       default:
         return false;
     }

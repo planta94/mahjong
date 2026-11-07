@@ -71,6 +71,18 @@ const GAME_TILES: readonly GameTileMeta[] = [
     featureKeys: ['HUB.PANDEMIC_FEAT_1', 'HUB.PANDEMIC_FEAT_2', 'HUB.PANDEMIC_FEAT_3'],
     enterKey: 'HUB.ENTER_PANDEMIC',
   },
+  {
+    id: 'balik-kampung',
+    cardClass: 'balik-kampung-card',
+    badgeClass: 'badge-highway',
+    btnClass: 'btn-highway',
+    badgeKey: 'HUB.BK_BADGE',
+    titleKey: 'HUB.BK_TITLE',
+    playersKey: 'HUB.BK_PLAYERS',
+    descKey: 'HUB.BK_DESC',
+    featureKeys: ['HUB.BK_FEAT_1', 'HUB.BK_FEAT_2', 'HUB.BK_FEAT_3'],
+    enterKey: 'HUB.ENTER_BK',
+  },
 ];
 
 const GAME_TILE_MAP: ReadonlyMap<GameId, GameTileMeta> = new Map(
@@ -212,7 +224,9 @@ export class HubComponent implements OnInit {
           ? 'HUB.AVALON_TITLE'
           : game === 'pandemic'
             ? 'HUB.PANDEMIC_TITLE'
-            : 'HUB.MAHJONG_TITLE';
+            : game === 'balik-kampung'
+              ? 'HUB.BK_TITLE'
+              : 'HUB.MAHJONG_TITLE';
     const gameTitle = this.translate.instant(gameKey);
     const d = new Date(savedAt);
     const hh = String(d.getHours()).padStart(2, '0');

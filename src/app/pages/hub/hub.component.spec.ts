@@ -46,11 +46,12 @@ describe('HubComponent', () => {
     expect(component.selectedGame()).toBe(null);
 
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.querySelectorAll('.game-card.game-tile').length).toBe(4);
+    expect(el.querySelectorAll('.game-card.game-tile').length).toBe(5);
     expect(el.querySelector('.mahjong-card') !== null).toBe(true);
     expect(el.querySelector('.monopoly-card') !== null).toBe(true);
     expect(el.querySelector('.avalon-card') !== null).toBe(true);
     expect(el.querySelector('.pandemic-card') !== null).toBe(true);
+    expect(el.querySelector('.balik-kampung-card') !== null).toBe(true);
     expect(el.querySelector('.game-detail-modal')).toBe(null);
     expect(el.querySelectorAll('.card-features').length).toBe(0);
   });

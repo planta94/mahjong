@@ -1,12 +1,13 @@
-export type GameId = 'mahjong' | 'monopoly' | 'avalon' | 'pandemic';
-export type ShellGameId = 'hub' | 'mahjong' | 'monopoly' | 'avalon' | 'pandemic';
-export type GamePrefix = 'M' | 'P' | 'A' | 'D';
+export type GameId = 'mahjong' | 'monopoly' | 'avalon' | 'pandemic' | 'balik-kampung';
+export type ShellGameId = 'hub' | 'mahjong' | 'monopoly' | 'avalon' | 'pandemic' | 'balik-kampung';
+export type GamePrefix = 'M' | 'P' | 'A' | 'D' | 'B';
 
 export const PREFIX_TO_GAME_MAP: ReadonlyMap<GamePrefix, GameId> = new Map<GamePrefix, GameId>([
   ['M', 'mahjong'],
   ['P', 'monopoly'],
   ['A', 'avalon'],
   ['D', 'pandemic'],
+  ['B', 'balik-kampung'],
 ]);
 
 export const GAME_TO_PREFIX_MAP: ReadonlyMap<GameId, GamePrefix> = new Map<GameId, GamePrefix>([
@@ -14,6 +15,7 @@ export const GAME_TO_PREFIX_MAP: ReadonlyMap<GameId, GamePrefix> = new Map<GameI
   ['monopoly', 'P'],
   ['avalon', 'A'],
   ['pandemic', 'D'],
+  ['balik-kampung', 'B'],
 ]);
 
 export interface UniversalRoomInfo {

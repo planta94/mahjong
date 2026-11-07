@@ -19,6 +19,9 @@
           @case ('pandemic') {
             {{ 'RULEBOOK.PANDEMIC_TITLE' | translate }}
           }
+          @case ('balik-kampung') {
+            {{ 'RULEBOOK.BK_TITLE' | translate }}
+          }
           @default {
             {{ 'RULEBOOK.TITLE' | translate }}
           }
@@ -218,6 +221,51 @@
                 </div>
                 <div class="mobile-card-row">
                   <span>{{ row.descKey | translate }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        @case ('balik-kampung') {
+          <div class="fan-tier-list">
+            <p>🛣️ {{ 'RULEBOOK.BK_RULE_1' | translate }}</p>
+            <p>⛽ {{ 'RULEBOOK.BK_RULE_2' | translate }}</p>
+            <p>📸 {{ 'RULEBOOK.BK_RULE_3' | translate }}</p>
+            <p>💧 {{ 'RULEBOOK.BK_RULE_4' | translate }}</p>
+            <p>🏡 {{ 'RULEBOOK.BK_RULE_5' | translate }}</p>
+          </div>
+
+          <h3 class="schedule-title">🃏 {{ 'RULEBOOK.BK_CARDS_TITLE' | translate }}</h3>
+
+          <table class="desktop-table">
+            <thead>
+              <tr>
+                <th>{{ 'RULEBOOK.BK_COL_CARD' | translate }}</th>
+                <th>{{ 'RULEBOOK.BK_COL_SPEED' | translate }}</th>
+                <th>{{ 'RULEBOOK.BK_COL_EFFECT' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of balikKampungCardRows; track row.id) {
+                <tr>
+                  <td><strong>{{ row.nameKey | translate }}</strong></td>
+                  <td><strong>{{ row.speed }}</strong></td>
+                  <td>{{ row.ruleKey | translate }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <div class="mobile-cards">
+            @for (row of balikKampungCardRows; track row.id) {
+              <div class="mobile-app-card">
+                <div class="mobile-card-row">
+                  <strong>{{ row.nameKey | translate }}</strong>
+                  <span>{{ 'RULEBOOK.BK_COL_SPEED' | translate }}: {{ row.speed }}</span>
+                </div>
+                <div class="mobile-card-row">
+                  <span>{{ row.ruleKey | translate }}</span>
                 </div>
               </div>
             }

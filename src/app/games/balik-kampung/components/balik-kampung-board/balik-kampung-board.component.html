@@ -1,0 +1,1411 @@
+@if (session.currentView(); as view) {
+  <main class="page-container bk-board-page">
+    <!-- Compact Malaysian PLUS Highway Gantry + 1-Line Traffic Ticker -->
+    <section class="gantry-bar portal-card">
+      <div class="gantry-main">
+        <div class="gantry-left">
+          <span class="jkr-shield" aria-hidden="true">
+            <svg class="jkr-shield-svg" viewBox="0 0 52 28">
+              <polygon
+                points="8,2 44,2 50,14 44,26 8,26 2,14"
+                fill="#ffd100"
+                stroke="#111827"
+                stroke-width="2.5"
+              />
+              <text
+                x="26"
+                y="19"
+                text-anchor="middle"
+                fill="#111827"
+                font-size="13"
+                font-weight="900"
+              >
+                E1
+              </text>
+            </svg>
+          </span>
+
+          <span class="round-pill">R{{ view.roundNumber }}</span>
+
+          <span class="phase-pill" [attr.data-phase]="view.phase">
+            @switch (view.phase) {
+              @case ('PLANNING') {
+                🃏 {{ 'BK.PHASE_PLANNING' | translate }}
+              }
+              @case ('RESOLVING') {
+                🚗 {{ 'BK.PHASE_RESOLVING' | translate }}
+              }
+              @case ('EV_CHARGE_PROMPT') {
+                ⚡ {{ 'BK.PHASE_EV_CHARGE' | translate }}
+              }
+              @case ('SIMPANG_SCOUT_PROMPT') {
+                🔀 {{ 'BK.PHASE_SIMPANG_CHOICE' | translate }}
+              }
+              @case ('GAMEOVER') {
+                🏆 {{ 'BK.PHASE_GAMEOVER' | translate }}
+              }
+            }
+          </span>
+
+          @if (view.phase !== 'PLANNING' && view.phase !== 'GAMEOVER' && session.activePlayer(); as act) {
+            <span class="active-driver-chip">
+              <span
+                class="mini-dot"
+                [style.background]="getPersona(act.persona).hexColor"
+              ></span>
+              {{ act.name }}
+            </span>
+          }
+        </div>
+
+        <div class="gantry-right">
+          <span class="deck-pill" [class.danger-deck-pill]="view.inDangerZone">
+            🛣️ <strong>{{ view.roadDeckCount }}</strong>
+            @if (view.inDangerZone) {
+              ⚠️
+            }
+          </span>
+
+          @if (view.rnrBanned) {
+            <span class="rnr-banned-pill">🚫 {{ 'BK.RNR_BANNED_BADGE' | translate }}</span>
+          }
+
+          <button
+            type="button"
+            class="btn gantry-btn hud-standings-btn"
+            [class.gantry-btn-active]="activeHudWidget() === 'STANDINGS'"
+            [attr.aria-expanded]="activeHudWidget() === 'STANDINGS'"
+            (click)="toggleHudWidget('STANDINGS')"
+          >
+            📊 {{ 'BK.STANDINGS_BTN' | translate }}
+          </button>
+
+          <button
+            type="button"
+            class="btn gantry-btn hud-radio-btn"
+            [class.gantry-btn-active]="activeHudWidget() === 'RADIO'"
+            [attr.aria-expanded]="activeHudWidget() === 'RADIO'"
+            (click)="toggleHudWidget('RADIO')"
+          >
+            📻 {{ 'BK.RADIO_BTN' | translate }}
+          </button>
+
+          <button type="button" class="btn gantry-btn focus-car-btn" (click)="focusMyCar()">
+            📍 {{ 'BK.FOCUS_MY_CAR' | translate }}
+          </button>
+
+          @if (view.phase === 'GAMEOVER') {
+            <button type="button" class="btn gantry-btn btn-gold" (click)="session.openGameOverModal()">
+              🏆 {{ 'BK.VIEW_RESULTS' | translate }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="phase-stepper-bar" role="list" aria-label="Round Phases">
+        <span
+          class="round-step-pill"
+          role="listitem"
+          [class.step-done]="activeRoundStep() > 1"
+          [class.step-active]="activeRoundStep() === 1"
+        >
+          🚨 {{ 'BK.STEP_TRAFFIC' | translate }}
+        </span>
+        <span class="step-arrow" aria-hidden="true">›</span>
+        <span
+          class="round-step-pill"
+          role="listitem"
+          [class.step-done]="activeRoundStep() > 2"
+          [class.step-active]="activeRoundStep() === 2"
+        >
+          🃏 {{ 'BK.STEP_PLANNING' | translate }}
+        </span>
+        <span class="step-arrow" aria-hidden="true">›</span>
+        <span
+          class="round-step-pill"
+          role="listitem"
+          [class.step-done]="activeRoundStep() > 3"
+          [class.step-active]="activeRoundStep() === 3"
+        >
+          🚗 {{ 'BK.STEP_RESOLVING' | translate }}
+        </span>
+        <span class="step-arrow" aria-hidden="true">›</span>
+        <span
+          class="round-step-pill"
+          role="listitem"
+          [class.step-active]="activeRoundStep() === 4"
+        >
+          💧 {{ 'BK.STEP_CLEANUP' | translate }}
+        </span>
+      </div>
+
+      <div class="gantry-ticker" [attr.data-event]="view.activeTrafficEvent">
+        <span class="event-badge">
+          🚨 {{ ('BK.EVENT_' + view.activeTrafficEvent + '_NAME') | translate }}
+        </span>
+        <span class="event-desc-text">
+          {{ ('BK.EVENT_' + view.activeTrafficEvent + '_DESC') | translate }}
+        </span>
+      </div>
+    </section>
+
+    <!-- Collapsible HUD Widget Drawer: Convoy Standings or PLUS Highway Radio -->
+    @if (activeHudWidget() === 'STANDINGS') {
+      <section class="portal-card hud-widget-drawer convoy-panel">
+        <h2 class="panel-title">📊 {{ 'BK.CONVOY_TELEMETRY_TITLE' | translate }}</h2>
+
+        <table class="desktop-table">
+          <thead>
+            <tr>
+              <th>{{ 'BK.COL_DRIVER' | translate }}</th>
+              <th>{{ 'BK.COL_LANE' | translate }}</th>
+              <th>💧 {{ 'BK.BLADDER_LABEL' | translate }}</th>
+              <th>💢 {{ 'BK.STRESS_LABEL' | translate }}</th>
+              <th>🔭</th>
+              <th>{{ 'BK.COL_PLAN' | translate }}</th>
+              <th>{{ 'BK.COL_NET_HAPPY' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of view.players; track p.seat) {
+              <tr [class.active-row]="view.activeSeat === p.seat && view.phase !== 'PLANNING'">
+                <td>
+                  <div class="driver-cell">
+                    <span
+                      class="mini-dot"
+                      [style.background]="getPersona(p.persona).hexColor"
+                    ></span>
+                    <strong>{{ p.name }}</strong>
+                    <span class="dt-mini">{{ p.drivetrain }}</span>
+                  </div>
+                </td>
+                <td>
+                  @if (p.finishedRank !== null) {
+                    <strong>🏁 #{{ p.finishedRank }}</strong>
+                  } @else {
+                    {{ getLaneLabelKey(p.pos.lane) | translate }} #{{ p.pos.trackOrder }}.{{ p.pos.slot + 1 }}
+                  }
+                </td>
+                <td>{{ p.bladder }}/4</td>
+                <td>{{ p.stress }}/6</td>
+                <td>{{ p.scoutTokens }}</td>
+                <td>
+                  @if (p.skippedThisRound) {
+                    🛑 {{ 'BK.SKIP_SHORT' | translate }}
+                  } @else if (view.phase === 'PLANNING') {
+                    {{ (p.hasLockedPlan ? 'BK.PLAN_LOCKED' : 'BK.PLAN_THINKING') | translate }}
+                  } @else if (p.revealedCard !== null) {
+                    <strong>[{{ p.revealedCard }}]</strong> {{ getCardMeta(p.revealedCard).nameKey | translate }}
+                  } @else {
+                    —
+                  }
+                </td>
+                <td><strong>{{ getProjectedHappiness(p) }}</strong></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <div class="mobile-cards">
+          @for (p of view.players; track p.seat) {
+            <div class="mobile-app-card">
+              <div class="mobile-card-row">
+                <div class="driver-cell">
+                  <span
+                    class="mini-dot"
+                    [style.background]="getPersona(p.persona).hexColor"
+                  ></span>
+                  <strong>{{ p.name }} ({{ p.drivetrain }})</strong>
+                </div>
+                <strong>{{ 'BK.COL_NET_HAPPY' | translate }}: {{ getProjectedHappiness(p) }}</strong>
+              </div>
+              <div class="mobile-card-row">
+                <span>
+                  @if (p.finishedRank !== null) {
+                    🏁 #{{ p.finishedRank }}
+                  } @else {
+                    {{ getLaneLabelKey(p.pos.lane) | translate }} #{{ p.pos.trackOrder }}.{{ p.pos.slot + 1 }}
+                  }
+                </span>
+                <span>💧 {{ p.bladder }}/4 · 💢 {{ p.stress }}/6 · 🔭 {{ p.scoutTokens }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="hud-widget-footer">
+          <button type="button" class="btn hud-widget-close-btn" (click)="closeHudWidget()">
+            {{ 'COMMON.CLOSE' | translate }}
+          </button>
+        </div>
+      </section>
+    } @else if (activeHudWidget() === 'RADIO') {
+      <section class="portal-card hud-widget-drawer log-panel">
+        <h2 class="panel-title">📻 {{ 'BK.HIGHWAY_RADIO_TITLE' | translate }}</h2>
+        <div class="radio-feed-list">
+          @for (entry of view.logs; track $index) {
+            <div class="radio-item" [attr.data-tone]="entry.tone">
+              <span class="radio-round">R{{ entry.round }}</span>
+              <span class="radio-msg">{{ formatLogEntry(entry) }}</span>
+            </div>
+          }
+        </div>
+        <div class="hud-widget-footer">
+          <button type="button" class="btn hud-widget-close-btn" (click)="closeHudWidget()">
+            {{ 'COMMON.CLOSE' | translate }}
+          </button>
+        </div>
+      </section>
+    }
+
+    <!-- Ceremonial Round & Phase Demarcation Banner -->
+    @if (view.phase !== 'GAMEOVER') {
+      <section
+        class="ceremony-stage-banner portal-card"
+        [attr.data-ceremony]="view.phase === 'PLANNING' ? 'PLANNING' : 'RESOLVING'"
+      >
+        @if (view.phase === 'PLANNING') {
+          <div class="ceremony-header-row">
+            <div class="ceremony-title-group">
+              <strong class="ceremony-title">
+                🚦 {{ 'BK.CEREMONY_PLANNING_TITLE' | translate: { round: view.roundNumber } }}
+              </strong>
+              <span class="ceremony-sub">
+                {{ 'BK.CEREMONY_PLANNING_SUB' | translate: planningReadiness() }}
+              </span>
+            </div>
+
+            <div class="convoy-plan-chips">
+              @for (p of view.players; track p.seat) {
+                <span
+                  class="plan-driver-chip"
+                  [class.plan-chip-ready]="p.hasLockedPlan"
+                  [class.plan-chip-skip]="p.skippedThisRound"
+                >
+                  <span
+                    class="mini-dot"
+                    [style.background]="getPersona(p.persona).hexColor"
+                  ></span>
+                  <span class="chip-driver-name">{{ p.name }}</span>
+                  <span class="chip-state-icon">
+                    @if (p.finishedRank !== null) {
+                      🏁#{{ p.finishedRank }}
+                    } @else if (p.skippedThisRound) {
+                      🛑
+                    } @else if (p.hasLockedPlan) {
+                      🔒
+                    } @else {
+                      ⏳
+                    }
+                  </span>
+                </span>
+              }
+            </div>
+          </div>
+
+          @if (lastRoundCleanupLogs().length > 0) {
+            <div class="cleanup-recap-row">
+              <span class="cleanup-tag">💧 {{ 'BK.CEREMONY_CLEANUP_TAG' | translate }}</span>
+              @for (alert of lastRoundCleanupLogs(); track $index) {
+                <span class="cleanup-alert-item">{{ formatLogEntry(alert) }}</span>
+              }
+            </div>
+          }
+        } @else {
+          <div class="ceremony-header-row">
+            <strong class="ceremony-title">
+              🃏 {{ 'BK.CEREMONY_REVEAL_TITLE' | translate: { round: view.roundNumber } }}
+            </strong>
+
+            <div class="convoy-order-strip">
+              @for (item of convoyResolutionItems(); track item.seat) {
+                <span
+                  class="convoy-order-chip"
+                  [class.convoy-chip-driving]="item.status === 'DRIVING'"
+                  [class.convoy-chip-done]="item.status === 'DONE'"
+                >
+                  <span class="convoy-pole-num">#{{ item.orderNum }}</span>
+                  <span
+                    class="mini-dot"
+                    [style.background]="getPersona(item.persona).hexColor"
+                  ></span>
+                  <strong class="chip-driver-name">{{ item.name }}</strong>
+                  @if (item.skippedThisRound) {
+                    <span class="revealed-card-tag">🛑 {{ 'BK.SKIP_SHORT' | translate }}</span>
+                  } @else if (item.revealedCard !== null) {
+                    <span class="revealed-card-tag">
+                      [{{ item.revealedCard }}] {{ ('BK.CARD_SHORT_' + item.revealedCard) | translate }}{{ item.revealedFuelDump ? '+2⛽' : '' }}
+                    </span>
+                  }
+                  <span class="convoy-status-tag">
+                    @switch (item.status) {
+                      @case ('DRIVING') {
+                        🚗 {{ 'BK.CONVOY_NOW_MOVING' | translate }}
+                      }
+                      @case ('DONE') {
+                        ✓ {{ 'BK.CONVOY_DONE' | translate }}
+                      }
+                      @default {
+                        {{ 'BK.CONVOY_NEXT' | translate }}
+                      }
+                    }
+                  </span>
+                </span>
+              }
+            </div>
+          </div>
+        }
+      </section>
+    }
+
+    <!-- Procedural Zero-Scroll Malaysian Highway Window (Anchored on Local Player's Car) -->
+    <section class="highway-panel portal-card">
+      <div class="landscape-tip-bar">
+        📱 {{ 'BK.LANDSCAPE_TIP' | translate }}
+      </div>
+
+      <!-- Top-to-Bottom Lane Key Matching Driver's Perspective Facing -> -->
+      <div class="corridor-legend">
+        <div class="corridor-legend-chips">
+          <span class="legend-chip legend-trunk">{{ 'BK.LANE_BAR_TRUNK' | translate }}</span>
+          <span class="legend-chip legend-left">{{ 'BK.LANE_BAR_LEFT' | translate }}</span>
+          <span class="legend-chip legend-right">{{ 'BK.LANE_BAR_RIGHT' | translate }}</span>
+        </div>
+
+        @if (canPanTrackLeft() || canPanTrackRight()) {
+          <div class="track-pan-controls">
+            <button
+              type="button"
+              class="btn track-pan-btn"
+              [disabled]="!canPanTrackLeft()"
+              [attr.aria-label]="'BK.PAN_ROAD_BACK' | translate"
+              (click)="panTrack(-1)"
+            >
+              ◀ {{ 'BK.PAN_ROAD_BACK' | translate }}
+            </button>
+            <button
+              type="button"
+              class="btn track-pan-btn"
+              [disabled]="!canPanTrackRight()"
+              [attr.aria-label]="'BK.PAN_ROAD_AHEAD' | translate"
+              (click)="panTrack(1)"
+            >
+              {{ 'BK.PAN_ROAD_AHEAD' | translate }} ▶
+            </button>
+          </div>
+        }
+      </div>
+
+      <div class="highway-scroll-viewport" #trackScroller>
+        @for (seg of displayedTrack(); track seg.trackOrder; let isFirstCard = $first) {
+          <div
+            class="road-segment-card"
+            [attr.data-track-order]="seg.trackOrder"
+            [attr.data-kind]="seg.card.kind"
+          >
+            <div class="seg-header">
+              <span class="seg-km">
+                @if (seg.card.kind === 'FINISH') {
+                  KM 0
+                } @else {
+                  KM {{ seg.card.km }}
+                }
+              </span>
+              <strong class="seg-title">{{ seg.card.titleKey | translate }}</strong>
+              <div class="seg-badges">
+                @if (seg.card.hasInterchange && seg.card.kind === 'STANDARD') {
+                  <span class="interchange-tag" [attr.title]="'BK.SUSUR_KELUAR' | translate">⇄</span>
+                }
+                @if (seg.card.isDownhill) {
+                  <span class="downhill-tag" [attr.title]="'BK.DOWNHILL_REGEN' | translate">⛰️+1</span>
+                }
+              </div>
+            </div>
+
+            @switch (seg.card.kind) {
+              @case ('SIMPANG_TIGA') {
+                <div class="simpang-lanes">
+                  <!-- Jalan Utama (4 spaces, Speed Bump on Space 2) -->
+                  <div class="simpang-corridor corridor-utama">
+                    <div class="branch-banner">
+                      <strong>{{ 'BK.BRANCH_UTAMA' | translate }}</strong>
+                      <span>{{ 'BK.BRANCH_UTAMA_NOTE' | translate }}</span>
+                    </div>
+                    <div class="simpang-slots slots-4">
+                      @for (sl of utamaSlots; track sl) {
+                        <div
+                          class="road-slot"
+                          [class.bump-slot]="sl === 1"
+                          [class.my-current-slot]="isMyCarAt(seg.trackOrder, 'UTAMA', sl)"
+                          [class.trail-step-slot]="getTrailStepAt(seg.trackOrder, 'UTAMA', sl) !== null"
+                          [class.preview-dest-slot]="getPreviewLandingAt(seg.trackOrder, 'UTAMA', sl).length > 0"
+                        >
+                          @if (getTrailStepAt(seg.trackOrder, 'UTAMA', sl); as stepNum) {
+                            <span class="step-dot">{{ stepNum }}</span>
+                          }
+                          @if (sl === 1) {
+                            <span class="slot-hazard-label">〰️-2</span>
+                          }
+                          <div class="slot-occupants">
+                            @for (car of getPlayersAt(view.players, seg.trackOrder, 'UTAMA', sl); track car.seat) {
+                              <span
+                                class="car-pawn"
+                                [class.my-car-pawn]="car.seat === session.mySeat()"
+                                [class.car-moving]="movingSeat() === car.seat"
+                                [style.borderColor]="getPersona(car.persona).hexColor"
+                              >
+                                <svg class="car-svg" viewBox="0 0 30 16" aria-hidden="true">
+                                  <rect x="2" y="2" width="24" height="12" rx="4" [attr.fill]="getPersona(car.persona).hexColor" stroke="#ffffff" stroke-width="1.2" />
+                                  <rect x="8" y="4" width="11" height="8" rx="2" fill="#0f172a" />
+                                  <circle cx="27" cy="5" r="1.6" fill="#fef08a" />
+                                  <circle cx="27" cy="11" r="1.6" fill="#fef08a" />
+                                </svg>
+                                <span class="pawn-label">
+                                  {{ getPawnLabel(car) }}
+                                </span>
+                              </span>
+                            }
+                          </div>
+                          @for (gOpt of getPreviewLandingAt(seg.trackOrder, 'UTAMA', sl); track gOpt.optionId) {
+                            <div
+                              class="ghost-landing-pill"
+                              (mouseenter)="setHoveredOption(gOpt.optionId)"
+                              (mouseleave)="setHoveredOption(null)"
+                            >
+                              👻 {{ formatGhostBadge(gOpt) }}
+                            </div>
+                          }
+                          @for (opt of getOptionsForCell(seg.trackOrder, 'UTAMA', sl); track opt.optionId) {
+                            <button
+                              type="button"
+                              class="cell-move-target"
+                              (mouseenter)="setHoveredOption(opt.optionId)"
+                              (mouseleave)="setHoveredOption(null)"
+                              (focus)="setHoveredOption(opt.optionId)"
+                              (click)="onCellTargetClick(opt)"
+                            >
+                              🎯
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Jalan Bendang (3 spaces, 1d6 Mud Roll) -->
+                  <div class="simpang-corridor corridor-bendang">
+                    <div class="branch-banner">
+                      <strong>{{ 'BK.BRANCH_BENDANG' | translate }}</strong>
+                      <span>{{ 'BK.BRANCH_BENDANG_NOTE' | translate }}</span>
+                    </div>
+                    <div class="simpang-slots slots-3">
+                      @for (sl of bendangSlots; track sl) {
+                        <div
+                          class="road-slot mud-slot"
+                          [class.my-current-slot]="isMyCarAt(seg.trackOrder, 'BENDANG', sl)"
+                          [class.trail-step-slot]="getTrailStepAt(seg.trackOrder, 'BENDANG', sl) !== null"
+                          [class.preview-dest-slot]="getPreviewLandingAt(seg.trackOrder, 'BENDANG', sl).length > 0"
+                        >
+                          @if (getTrailStepAt(seg.trackOrder, 'BENDANG', sl); as stepNum) {
+                            <span class="step-dot">{{ stepNum }}</span>
+                          }
+                          @if (sl === 0) {
+                            <span class="slot-hazard-label">🎲1d6</span>
+                          }
+                          <div class="slot-occupants">
+                            @for (car of getPlayersAt(view.players, seg.trackOrder, 'BENDANG', sl); track car.seat) {
+                              <span
+                                class="car-pawn"
+                                [class.my-car-pawn]="car.seat === session.mySeat()"
+                                [class.car-moving]="movingSeat() === car.seat"
+                                [style.borderColor]="getPersona(car.persona).hexColor"
+                              >
+                                <svg class="car-svg" viewBox="0 0 30 16" aria-hidden="true">
+                                  <rect x="2" y="2" width="24" height="12" rx="4" [attr.fill]="getPersona(car.persona).hexColor" stroke="#ffffff" stroke-width="1.2" />
+                                  <rect x="8" y="4" width="11" height="8" rx="2" fill="#0f172a" />
+                                  <circle cx="27" cy="5" r="1.6" fill="#fef08a" />
+                                  <circle cx="27" cy="11" r="1.6" fill="#fef08a" />
+                                </svg>
+                                <span class="pawn-label">
+                                  {{ getPawnLabel(car) }}{{ car.mudTrapped ? '·泥' : '' }}
+                                </span>
+                              </span>
+                            }
+                          </div>
+                          @for (gOpt of getPreviewLandingAt(seg.trackOrder, 'BENDANG', sl); track gOpt.optionId) {
+                            <div
+                              class="ghost-landing-pill"
+                              (mouseenter)="setHoveredOption(gOpt.optionId)"
+                              (mouseleave)="setHoveredOption(null)"
+                            >
+                              👻 {{ formatGhostBadge(gOpt) }}
+                            </div>
+                          }
+                          @for (opt of getOptionsForCell(seg.trackOrder, 'BENDANG', sl); track opt.optionId) {
+                            <button
+                              type="button"
+                              class="cell-move-target"
+                              (mouseenter)="setHoveredOption(opt.optionId)"
+                              (mouseleave)="setHoveredOption(null)"
+                              (focus)="setHoveredOption(opt.optionId)"
+                              (click)="onCellTargetClick(opt)"
+                            >
+                              🎯
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+
+                  <!-- Jalan Kubur (2 spaces, Single-File Scrape) -->
+                  <div class="simpang-corridor corridor-kubur">
+                    <div class="branch-banner">
+                      <strong>{{ 'BK.BRANCH_KUBUR' | translate }}</strong>
+                      <span>{{ 'BK.BRANCH_KUBUR_NOTE' | translate }}</span>
+                    </div>
+                    <div class="simpang-slots slots-2">
+                      @for (sl of kuburSlots; track sl) {
+                        <div
+                          class="road-slot scrape-slot"
+                          [class.my-current-slot]="isMyCarAt(seg.trackOrder, 'KUBUR', sl)"
+                          [class.trail-step-slot]="getTrailStepAt(seg.trackOrder, 'KUBUR', sl) !== null"
+                          [class.preview-dest-slot]="getPreviewLandingAt(seg.trackOrder, 'KUBUR', sl).length > 0"
+                        >
+                          @if (getTrailStepAt(seg.trackOrder, 'KUBUR', sl); as stepNum) {
+                            <span class="step-dot">{{ stepNum }}</span>
+                          }
+                          @if (sl === 0) {
+                            <span class="slot-hazard-label">⚠️≥3:+2💢</span>
+                          }
+                          <div class="slot-occupants">
+                            @for (car of getPlayersAt(view.players, seg.trackOrder, 'KUBUR', sl); track car.seat) {
+                              <span
+                                class="car-pawn"
+                                [class.my-car-pawn]="car.seat === session.mySeat()"
+                                [class.car-moving]="movingSeat() === car.seat"
+                                [style.borderColor]="getPersona(car.persona).hexColor"
+                              >
+                                <svg class="car-svg" viewBox="0 0 30 16" aria-hidden="true">
+                                  <rect x="2" y="2" width="24" height="12" rx="4" [attr.fill]="getPersona(car.persona).hexColor" stroke="#ffffff" stroke-width="1.2" />
+                                  <rect x="8" y="4" width="11" height="8" rx="2" fill="#0f172a" />
+                                  <circle cx="27" cy="5" r="1.6" fill="#fef08a" />
+                                  <circle cx="27" cy="11" r="1.6" fill="#fef08a" />
+                                </svg>
+                                <span class="pawn-label">
+                                  {{ getPawnLabel(car) }}
+                                </span>
+                              </span>
+                            }
+                          </div>
+                          @for (gOpt of getPreviewLandingAt(seg.trackOrder, 'KUBUR', sl); track gOpt.optionId) {
+                            <div
+                              class="ghost-landing-pill"
+                              (mouseenter)="setHoveredOption(gOpt.optionId)"
+                              (mouseleave)="setHoveredOption(null)"
+                            >
+                              👻 {{ formatGhostBadge(gOpt) }}
+                            </div>
+                          }
+                          @for (opt of getOptionsForCell(seg.trackOrder, 'KUBUR', sl); track opt.optionId) {
+                            <button
+                              type="button"
+                              class="cell-move-target"
+                              (mouseenter)="setHoveredOption(opt.optionId)"
+                              (mouseleave)="setHoveredOption(null)"
+                              (focus)="setHoveredOption(opt.optionId)"
+                              (click)="onCellTargetClick(opt)"
+                            >
+                              🎯
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+
+              @case ('FINISH') {
+                <div
+                  class="finish-compound"
+                  [class.preview-dest-slot]="getPreviewLandingAt(seg.trackOrder, 'FINISH', 0).length > 0"
+                >
+                  <div class="kampung-arch">
+                    <svg class="rumah-kampung-svg" viewBox="0 0 120 44" aria-hidden="true">
+                      <circle cx="14" cy="30" r="3" fill="#fde047" />
+                      <line x1="14" y1="33" x2="14" y2="42" stroke="#a16207" stroke-width="2" />
+                      <circle cx="106" cy="30" r="3" fill="#fde047" />
+                      <line x1="106" y1="33" x2="106" y2="42" stroke="#a16207" stroke-width="2" />
+                      <polygon points="26,20 60,4 94,20" fill="#92400e" stroke="#fde68a" stroke-width="1.5" />
+                      <rect x="34" y="20" width="52" height="14" fill="#b45309" stroke="#fde68a" stroke-width="1.2" />
+                      <rect x="44" y="23" width="9" height="7" fill="#fef08a" />
+                      <rect x="67" y="23" width="9" height="7" fill="#fef08a" />
+                      <line x1="38" y1="34" x2="38" y2="42" stroke="#78350f" stroke-width="2.5" />
+                      <line x1="60" y1="34" x2="60" y2="42" stroke="#78350f" stroke-width="2.5" />
+                      <line x1="82" y1="34" x2="82" y2="42" stroke="#78350f" stroke-width="2.5" />
+                    </svg>
+                    <span>{{ 'BK.ROAD_FINISH' | translate }}</span>
+                  </div>
+                  <div class="finish-parking">
+                    @for (car of getPlayersAt(view.players, seg.trackOrder, 'FINISH', 0); track car.seat) {
+                      <div class="finished-car-badge">
+                        <span
+                          class="mini-dot"
+                          [style.background]="getPersona(car.persona).hexColor"
+                        ></span>
+                        <strong>#{{ car.finishedRank }}</strong>
+                        <span>{{ car.name }}</span>
+                      </div>
+                    }
+                  </div>
+                  @for (gOpt of getPreviewLandingAt(seg.trackOrder, 'FINISH', 0); track gOpt.optionId) {
+                    <div
+                      class="ghost-landing-pill"
+                      (mouseenter)="setHoveredOption(gOpt.optionId)"
+                      (mouseleave)="setHoveredOption(null)"
+                    >
+                      🏁 {{ formatGhostBadge(gOpt) }}
+                    </div>
+                  }
+                  @for (opt of getOptionsForCell(seg.trackOrder, 'FINISH', 0); track opt.optionId) {
+                    <button
+                      type="button"
+                      class="cell-move-target finish-move-target"
+                      (mouseenter)="setHoveredOption(opt.optionId)"
+                      (mouseleave)="setHoveredOption(null)"
+                      (focus)="setHoveredOption(opt.optionId)"
+                      (click)="onCellTargetClick(opt)"
+                    >
+                      🏁 {{ formatOptionLabel(opt) }}
+                    </button>
+                  }
+                </div>
+              }
+
+              @default {
+                <!-- START & STANDARD 3-Corridor Malaysian Road (Driving -> : Trunk on Far Left/Top, Hwy Left Middle, Hwy Right Bottom) -->
+                <div class="standard-lanes">
+                  <!-- 1. Federal Trunk Road (FT1 Old Bypass — Driver's Far Left, Toll-Free) -->
+                  <div class="lane-row lane-trunk">
+                    @for (sl of standardSlots; track sl) {
+                      <div
+                        class="road-slot"
+                        [class.warung-bay-slot]="getSpaceFeature(seg, 'TRUNK', sl) === 'WARUNG'"
+                        [class.obstacle-slot]="getSpaceFeature(seg, 'TRUNK', sl) === 'OBSTACLE'"
+                        [class.my-current-slot]="isMyCarAt(seg.trackOrder, 'TRUNK', sl)"
+                        [class.trail-step-slot]="getTrailStepAt(seg.trackOrder, 'TRUNK', sl) !== null"
+                        [class.preview-dest-slot]="getPreviewLandingAt(seg.trackOrder, 'TRUNK', sl).length > 0"
+                      >
+                        <div class="slot-top-row">
+                          @if (isFirstCard && sl === 0) {
+                            <span class="lane-edge-mark">🌴 FT1</span>
+                          }
+                          @if (getSpaceFeature(seg, 'TRUNK', sl) === 'WARUNG') {
+                            <span class="slot-feature-tag warung-tag">☕ Warung</span>
+                          }
+                          @if (getSpaceFeature(seg, 'TRUNK', sl) === 'OBSTACLE') {
+                            <span class="slot-feature-tag obstacle-tag">🐄 -2</span>
+                          }
+                          @if (getTrailStepAt(seg.trackOrder, 'TRUNK', sl); as stepNum) {
+                            <span class="step-dot">{{ stepNum }}</span>
+                          }
+                        </div>
+
+                        <div class="slot-occupants">
+                          @for (car of getPlayersAt(view.players, seg.trackOrder, 'TRUNK', sl); track car.seat) {
+                            <span
+                              class="car-pawn"
+                              [class.my-car-pawn]="car.seat === session.mySeat()"
+                              [class.car-moving]="movingSeat() === car.seat"
+                              [style.borderColor]="getPersona(car.persona).hexColor"
+                            >
+                              <svg class="car-svg" viewBox="0 0 30 16" aria-hidden="true">
+                                <rect x="2" y="2" width="24" height="12" rx="4" [attr.fill]="getPersona(car.persona).hexColor" stroke="#ffffff" stroke-width="1.2" />
+                                <rect x="8" y="4" width="11" height="8" rx="2" fill="#0f172a" />
+                                <circle cx="27" cy="5" r="1.6" fill="#fef08a" />
+                                <circle cx="27" cy="11" r="1.6" fill="#fef08a" />
+                              </svg>
+                              <span class="pawn-label">
+                                {{ getPawnLabel(car) }}
+                              </span>
+                            </span>
+                          }
+                        </div>
+
+                        @for (gOpt of getPreviewLandingAt(seg.trackOrder, 'TRUNK', sl); track gOpt.optionId) {
+                          <div
+                            class="ghost-landing-pill"
+                            [class.ghost-pit]="gOpt.pitStopKind === 'WARUNG'"
+                            [class.ghost-shoulder]="gOpt.pitStopKind === 'SHOULDER'"
+                            (mouseenter)="setHoveredOption(gOpt.optionId)"
+                            (mouseleave)="setHoveredOption(null)"
+                          >
+                            👻 {{ formatGhostBadge(gOpt) }}
+                          </div>
+                        }
+
+                        @for (opt of getOptionsForCell(seg.trackOrder, 'TRUNK', sl); track opt.optionId) {
+                          <button
+                            type="button"
+                            class="cell-move-target"
+                            [class.pit-target]="opt.pitStopKind === 'WARUNG'"
+                            (mouseenter)="setHoveredOption(opt.optionId)"
+                            (mouseleave)="setHoveredOption(null)"
+                            (focus)="setHoveredOption(opt.optionId)"
+                            (click)="onCellTargetClick(opt)"
+                          >
+                            @if (opt.pitStopKind === 'WARUNG') {
+                              ☕
+                            } @else if (opt.pitStopKind === 'SHOULDER') {
+                              🛑
+                            } @else {
+                              🎯
+                            }
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
+
+                  <!-- Slip-Road / Steel Guardrail Between Trunk & Highway Left -->
+                  <div
+                    class="guardrail-divider"
+                    [class.interchange-open]="seg.card.hasInterchange"
+                  >
+                    <span>{{ seg.card.hasInterchange ? '⇄ SUSUR KELUAR' : '════════════' }}</span>
+                  </div>
+
+                  <!-- 2. Highway Left (E1 Lorong Kiri — Driver's Left Cruising Lane + PLUS R&R) -->
+                  <div class="lane-row lane-left">
+                    @for (sl of standardSlots; track sl) {
+                      <div
+                        class="road-slot"
+                        [class.rnr-bay-slot]="getSpaceFeature(seg, 'LEFT', sl) === 'RNR'"
+                        [class.my-current-slot]="isMyCarAt(seg.trackOrder, 'LEFT', sl)"
+                        [class.trail-step-slot]="getTrailStepAt(seg.trackOrder, 'LEFT', sl) !== null"
+                        [class.preview-dest-slot]="getPreviewLandingAt(seg.trackOrder, 'LEFT', sl).length > 0"
+                      >
+                        <div class="slot-top-row">
+                          @if (isFirstCard && sl === 0) {
+                            <span class="lane-edge-mark">🛣️ L</span>
+                          }
+                          @if (seg.card.kind === 'START' && sl === 1) {
+                            <span class="slot-feature-tag toll-tag">🟦 TnG</span>
+                          }
+                          @if (getSpaceFeature(seg, 'LEFT', sl) === 'RNR') {
+                            <span class="slot-feature-tag rnr-tag">⛽ R&amp;R</span>
+                          }
+                          @if (getTrailStepAt(seg.trackOrder, 'LEFT', sl); as stepNum) {
+                            <span class="step-dot">{{ stepNum }}</span>
+                          }
+                        </div>
+
+                        <div class="slot-occupants">
+                          @if (isRempitAt(seg.trackOrder, 'LEFT', sl)) {
+                            <span class="rempit-token">🏍️ Rempit</span>
+                          }
+                          @for (car of getPlayersAt(view.players, seg.trackOrder, 'LEFT', sl); track car.seat) {
+                            <span
+                              class="car-pawn"
+                              [class.my-car-pawn]="car.seat === session.mySeat()"
+                              [class.car-moving]="movingSeat() === car.seat"
+                              [style.borderColor]="getPersona(car.persona).hexColor"
+                            >
+                              <svg class="car-svg" viewBox="0 0 30 16" aria-hidden="true">
+                                <rect x="2" y="2" width="24" height="12" rx="4" [attr.fill]="getPersona(car.persona).hexColor" stroke="#ffffff" stroke-width="1.2" />
+                                <rect x="8" y="4" width="11" height="8" rx="2" fill="#0f172a" />
+                                <circle cx="27" cy="5" r="1.6" fill="#fef08a" />
+                                <circle cx="27" cy="11" r="1.6" fill="#fef08a" />
+                              </svg>
+                              <span class="pawn-label">
+                                {{ getPawnLabel(car) }}
+                              </span>
+                            </span>
+                          }
+                        </div>
+
+                        @for (gOpt of getPreviewLandingAt(seg.trackOrder, 'LEFT', sl); track gOpt.optionId) {
+                          <div
+                            class="ghost-landing-pill"
+                            [class.ghost-pit]="gOpt.pitStopKind === 'RNR'"
+                            [class.ghost-shoulder]="gOpt.pitStopKind === 'SHOULDER'"
+                            (mouseenter)="setHoveredOption(gOpt.optionId)"
+                            (mouseleave)="setHoveredOption(null)"
+                          >
+                            👻 {{ formatGhostBadge(gOpt) }}
+                          </div>
+                        }
+
+                        @for (opt of getOptionsForCell(seg.trackOrder, 'LEFT', sl); track opt.optionId) {
+                          <button
+                            type="button"
+                            class="cell-move-target"
+                            [class.slipstream-target]="opt.slipstreamApplied"
+                            [class.pit-target]="opt.pitStopKind === 'RNR'"
+                            (mouseenter)="setHoveredOption(opt.optionId)"
+                            (mouseleave)="setHoveredOption(null)"
+                            (focus)="setHoveredOption(opt.optionId)"
+                            (click)="onCellTargetClick(opt)"
+                          >
+                            @if (opt.pitStopKind === 'RNR') {
+                              ⛽ R&amp;R
+                            } @else if (opt.pitStopKind === 'SHOULDER') {
+                              🛑
+                            } @else if (opt.slipstreamApplied) {
+                              💨+1
+                            } @else {
+                              🎯
+                            }
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
+
+                  <!-- 3. Highway Right (E1 Lorong Kanan — Driver's Right Fast Overtaking Lane + AWAS) -->
+                  <div class="lane-row lane-right">
+                    @for (sl of standardSlots; track sl) {
+                      <div
+                        class="road-slot"
+                        [class.cone-blocked-slot]="sl === 0 && seg.hasHazardCone"
+                        [class.awas-armed-slot]="sl === 1 && getSpaceFeature(seg, 'RIGHT', sl) === 'AWAS' && !seg.awasDisarmed"
+                        [class.my-current-slot]="isMyCarAt(seg.trackOrder, 'RIGHT', sl)"
+                        [class.trail-step-slot]="getTrailStepAt(seg.trackOrder, 'RIGHT', sl) !== null"
+                        [class.preview-dest-slot]="getPreviewLandingAt(seg.trackOrder, 'RIGHT', sl).length > 0"
+                      >
+                        <div class="slot-top-row">
+                          @if (isFirstCard && sl === 0) {
+                            <span class="lane-edge-mark">⚡ R</span>
+                          }
+                          @if (seg.card.kind === 'START' && sl === 1) {
+                            <span class="slot-feature-tag toll-rfid-tag">🟣 RFID</span>
+                          }
+                          @if (sl === 0 && seg.hasHazardCone) {
+                            <span class="slot-feature-tag cone-tag">🚧 CONE</span>
+                          }
+                          @if (getSpaceFeature(seg, 'RIGHT', sl) === 'AWAS') {
+                            <span
+                              class="slot-feature-tag"
+                              [class.awas-tag]="!seg.awasDisarmed"
+                              [class.awas-cold-tag]="seg.awasDisarmed"
+                            >
+                              {{ seg.awasDisarmed ? '💤 AWAS' : '📸 AWAS' }}
+                            </span>
+                          }
+                          @if (getTrailStepAt(seg.trackOrder, 'RIGHT', sl); as stepNum) {
+                            <span class="step-dot">{{ stepNum }}</span>
+                          }
+                        </div>
+
+                        <div class="slot-occupants">
+                          @if (isRempitAt(seg.trackOrder, 'RIGHT', sl)) {
+                            <span class="rempit-token">🏍️ Rempit</span>
+                          }
+                          @for (car of getPlayersAt(view.players, seg.trackOrder, 'RIGHT', sl); track car.seat) {
+                            <span
+                              class="car-pawn"
+                              [class.my-car-pawn]="car.seat === session.mySeat()"
+                              [class.car-moving]="movingSeat() === car.seat"
+                              [style.borderColor]="getPersona(car.persona).hexColor"
+                            >
+                              <svg class="car-svg" viewBox="0 0 30 16" aria-hidden="true">
+                                <rect x="2" y="2" width="24" height="12" rx="4" [attr.fill]="getPersona(car.persona).hexColor" stroke="#ffffff" stroke-width="1.2" />
+                                <rect x="8" y="4" width="11" height="8" rx="2" fill="#0f172a" />
+                                <circle cx="27" cy="5" r="1.6" fill="#fef08a" />
+                                <circle cx="27" cy="11" r="1.6" fill="#fef08a" />
+                              </svg>
+                              <span class="pawn-label">
+                                {{ getPawnLabel(car) }}
+                              </span>
+                            </span>
+                          }
+                        </div>
+
+                        @for (gOpt of getPreviewLandingAt(seg.trackOrder, 'RIGHT', sl); track gOpt.optionId) {
+                          <div
+                            class="ghost-landing-pill"
+                            [class.ghost-awas]="gOpt.crossedAwasOrders.length > 0"
+                            [class.ghost-shoulder]="gOpt.pitStopKind === 'SHOULDER'"
+                            (mouseenter)="setHoveredOption(gOpt.optionId)"
+                            (mouseleave)="setHoveredOption(null)"
+                          >
+                            👻 {{ formatGhostBadge(gOpt) }}
+                          </div>
+                        }
+
+                        @for (opt of getOptionsForCell(seg.trackOrder, 'RIGHT', sl); track opt.optionId) {
+                          <button
+                            type="button"
+                            class="cell-move-target"
+                            [class.slipstream-target]="opt.slipstreamApplied"
+                            (mouseenter)="setHoveredOption(opt.optionId)"
+                            (mouseleave)="setHoveredOption(null)"
+                            (focus)="setHoveredOption(opt.optionId)"
+                            (click)="onCellTargetClick(opt)"
+                          >
+                            {{ opt.slipstreamApplied ? '💨+1' : '🎯' }}
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        }
+
+        <!-- Ghost Scout Horizon Preview Card (Top-to-Bottom: Trunk, Left, Right) -->
+        @if (hasPreviewScoutColumn()) {
+          <div class="scout-preview-card">
+            <div class="seg-header">
+              <span class="seg-km">???</span>
+              <strong class="seg-title">🔭 {{ 'BK.SCOUT_HORIZON_TITLE' | translate }}</strong>
+            </div>
+            <div class="scout-lanes">
+              @if (getPreviewScoutForLane('TRUNK'); as pTrunk) {
+                <div
+                  class="ghost-scout-slot"
+                  (mouseenter)="setHoveredOption(pTrunk.optionId)"
+                  (mouseleave)="setHoveredOption(null)"
+                >
+                  👻 {{ 'BK.PREVIEW_SCOUT_TAG' | translate: { card: effectivePreviewCardId() ?? 0 } }}
+                </div>
+              } @else {
+                <div class="scout-lane-empty">—</div>
+              }
+
+              @if (getPreviewScoutForLane('LEFT'); as pLeft) {
+                <div
+                  class="ghost-scout-slot"
+                  (mouseenter)="setHoveredOption(pLeft.optionId)"
+                  (mouseleave)="setHoveredOption(null)"
+                >
+                  👻 {{ 'BK.PREVIEW_SCOUT_TAG' | translate: { card: effectivePreviewCardId() ?? 0 } }}
+                </div>
+              } @else {
+                <div class="scout-lane-empty">—</div>
+              }
+
+              @if (getPreviewScoutForLane('RIGHT'); as pRight) {
+                <div
+                  class="ghost-scout-slot"
+                  (mouseenter)="setHoveredOption(pRight.optionId)"
+                  (mouseleave)="setHoveredOption(null)"
+                >
+                  👻 {{ 'BK.PREVIEW_SCOUT_TAG' | translate: { card: effectivePreviewCardId() ?? 0 } }}
+                </div>
+              } @else {
+                <div class="scout-lane-empty">—</div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Scout Horizon Frontier Column (Top-to-Bottom: Trunk, Left, Right) -->
+        @if (hasScoutFrontierColumn()) {
+          <div class="road-segment-card scout-frontier-card">
+            <div class="seg-header">
+              <span class="seg-km">???</span>
+              <strong class="seg-title">🔭 {{ 'BK.SCOUT_HORIZON_TITLE' | translate }}</strong>
+            </div>
+            <div class="scout-lanes">
+              @if (getScoutOptionForLane('TRUNK'); as sTrunk) {
+                <button
+                  type="button"
+                  class="scout-lane-btn"
+                  (mouseenter)="setHoveredOption(sTrunk.optionId)"
+                  (mouseleave)="setHoveredOption(null)"
+                  (focus)="setHoveredOption(sTrunk.optionId)"
+                  (click)="onCellTargetClick(sTrunk)"
+                >
+                  🔭 {{ 'BK.LANE_TRUNK_SHORT' | translate }} (+1)
+                </button>
+              } @else {
+                <div class="scout-lane-empty">—</div>
+              }
+
+              @if (getScoutOptionForLane('LEFT'); as sLeft) {
+                <button
+                  type="button"
+                  class="scout-lane-btn"
+                  (mouseenter)="setHoveredOption(sLeft.optionId)"
+                  (mouseleave)="setHoveredOption(null)"
+                  (focus)="setHoveredOption(sLeft.optionId)"
+                  (click)="onCellTargetClick(sLeft)"
+                >
+                  🔭 {{ 'BK.LANE_LEFT_SHORT' | translate }} (+1)
+                </button>
+              } @else {
+                <div class="scout-lane-empty">—</div>
+              }
+
+              @if (getScoutOptionForLane('RIGHT'); as sRight) {
+                <button
+                  type="button"
+                  class="scout-lane-btn"
+                  (mouseenter)="setHoveredOption(sRight.optionId)"
+                  (mouseleave)="setHoveredOption(null)"
+                  (focus)="setHoveredOption(sRight.optionId)"
+                  (click)="onCellTargetClick(sRight)"
+                >
+                  🔭 {{ 'BK.LANE_RIGHT_SHORT' | translate }} (+1)
+                </button>
+              } @else {
+                <div class="scout-lane-empty">—</div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Compact Destination Picker When Resolving Local Player's Move -->
+      @if (session.isMyResolutionTurn() && view.phase === 'RESOLVING') {
+        <div class="move-picker-bar">
+          <div class="move-picker-top">
+            <strong>🎯 {{ 'BK.TAP_ROAD_PROMPT' | translate }}</strong>
+            @if ((session.myPlayer()?.scoutTokens ?? 0) > 0) {
+              <label class="scout-toggle-label">
+                <input
+                  type="checkbox"
+                  [checked]="session.spendScoutOnAwas()"
+                  (change)="session.toggleSpendScoutOnAwas()"
+                />
+                <span>🔭 {{ 'BK.AUTO_SPEND_SCOUT' | translate }}</span>
+              </label>
+            }
+          </div>
+          <div class="move-option-pills">
+            @for (opt of view.reachableOptions; track opt.optionId) {
+              <button
+                type="button"
+                class="btn btn-highway move-opt-btn"
+                (mouseenter)="setHoveredOption(opt.optionId)"
+                (mouseleave)="setHoveredOption(null)"
+                (focus)="setHoveredOption(opt.optionId)"
+                (click)="onCellTargetClick(opt)"
+              >
+                {{ formatOptionLabel(opt) }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </section>
+
+    <!-- Compact Mobile-First Driver Console & 5 Horizontal Mini Action Cards -->
+    @if (session.myPlayer(); as me) {
+      <section class="driver-console portal-card">
+        <div class="telemetry-row">
+          <div class="driver-id-box">
+            <span class="driver-car-emblem" [style.borderColor]="getPersona(me.persona).hexColor">
+              <svg class="car-svg-lg" viewBox="0 0 30 16" aria-hidden="true">
+                <rect x="2" y="2" width="24" height="12" rx="4" [attr.fill]="getPersona(me.persona).hexColor" stroke="#ffffff" stroke-width="1.2" />
+                <rect x="8" y="4" width="11" height="8" rx="2" fill="#0f172a" />
+                <circle cx="27" cy="5" r="1.8" fill="#fef08a" />
+                <circle cx="27" cy="11" r="1.8" fill="#fef08a" />
+              </svg>
+            </span>
+
+            <div class="driver-meta">
+              <strong class="my-driver-name">{{ me.name }} · {{ me.drivetrain }}</strong>
+              <div class="my-perks-row">
+                <span class="perk-chip">🔭 {{ me.scoutTokens }}/2</span>
+                @if (me.drivetrain === 'ICE') {
+                  <button
+                    type="button"
+                    class="btn fuel-dump-btn"
+                    [class.fuel-armed]="session.pendingFuelDump()"
+                    [disabled]="me.fuelDumpUsed || view.phase !== 'PLANNING' || me.hasLockedPlan"
+                    (click)="session.togglePendingFuelDump()"
+                  >
+                    ⛽ {{ (me.fuelDumpUsed ? 'BK.FUEL_DUMP_USED' : 'BK.FUEL_DUMP_BTN') | translate }}
+                  </button>
+                } @else {
+                  @if (me.evInstantTorqueActiveThisRound || me.evInstantTorqueReady) {
+                    <span class="perk-chip ev-active-chip">⚡ +1</span>
+                  }
+                  @if (me.evFastChargeBonusActiveThisRound > 0 || me.evFastChargeBonusReady > 0) {
+                    <span class="perk-chip ev-active-chip">🔋 +2</span>
+                  }
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="gauges-wrap">
+            <div class="gauge-box">
+              <div class="gauge-label-row">
+                <span>💧 {{ 'BK.BLADDER_LABEL' | translate }}</span>
+                <strong>{{ me.bladder }}/4</strong>
+              </div>
+              <div class="gauge-segments">
+                @for (b of bladderSegments; track b) {
+                  <span
+                    class="gauge-seg"
+                    [class.bladder-filled]="me.bladder >= b"
+                    [class.bladder-danger]="me.bladder >= 3 && me.bladder >= b"
+                  ></span>
+                }
+              </div>
+            </div>
+
+            <div class="gauge-box">
+              <div class="gauge-label-row">
+                <span>💢 {{ 'BK.STRESS_LABEL' | translate }}</span>
+                <strong>{{ me.stress }}/6</strong>
+              </div>
+              <div class="gauge-segments">
+                @for (s of stressSegments; track s) {
+                  <span
+                    class="gauge-seg"
+                    [class.stress-filled]="me.stress >= s"
+                    [class.stress-danger]="me.stress >= 5 && me.stress >= s"
+                  ></span>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+
+        @if (me.skippedThisRound) {
+          <div class="banner-alert" role="alert">
+            🛑 {{ 'BK.YOU_ARE_SKIPPING' | translate }}
+          </div>
+        } @else if (view.phase === 'PLANNING' && me.hasLockedPlan) {
+          <div class="locked-plan-banner">
+            <div class="locked-plan-text">
+              ✅ {{ 'BK.CARD_LOCKED_WAITING' | translate }}
+              @if (me.myPlannedCard !== null) {
+                <strong>· [{{ me.myPlannedCard }}] {{ getCardMeta(me.myPlannedCard).nameKey | translate }}</strong>
+              }
+            </div>
+            <button
+              type="button"
+              class="btn change-card-btn"
+              (click)="changeLockedCard()"
+            >
+              ✏️ {{ 'BK.CHANGE_CARD_BTN' | translate }}
+            </button>
+          </div>
+        }
+
+        <!-- 5 Compact Mini Action Cards in a Single Row (Tap to Preview, Confirm Below) -->
+        <div class="action-hand-grid">
+          @for (card of allCardMeta; track card.id) {
+            <button
+              type="button"
+              class="action-card-btn"
+              [class.card-in-discard]="!isCardInHand(card.id)"
+              [class.card-playable]="isCardPlayableNow(card.id)"
+              [class.card-previewing]="effectivePreviewCardId() === card.id && view.phase === 'PLANNING'"
+              [class.card-selected]="me.myPlannedCard === card.id"
+              [disabled]="!isCardPlayableNow(card.id)"
+              (click)="onCardTap(card.id)"
+            >
+              <span class="speed-circle" [ngClass]="card.badgeClass">
+                @if (card.id !== 0 && isCardPlayableNow(card.id) && getCardEffectiveSpeed(card.id) !== card.speed) {
+                  {{ card.speed }}→{{ getCardEffectiveSpeed(card.id) }}
+                } @else {
+                  {{ card.speed }}
+                }
+              </span>
+              <strong class="action-card-name">{{ ('BK.CARD_SHORT_' + card.id) | translate }}</strong>
+              <span class="card-micro-tag">
+                @if (!isCardInHand(card.id)) {
+                  ♻️
+                } @else if (card.id === 0 && view.rnrBanned) {
+                  🚫
+                } @else if (card.id === 2 && me.bladder >= 2) {
+                  🔒
+                } @else {
+                  {{ ('BK.CARD_MICRO_' + card.id) | translate }}
+                }
+              </span>
+            </button>
+          }
+        </div>
+
+        <!-- 1-Line Selected Card Rule + Explicit Confirm Button -->
+        @if (view.phase === 'PLANNING' && !me.hasLockedPlan && !me.skippedThisRound && effectivePreviewCardId() !== null) {
+          @let selId = effectivePreviewCardId()!;
+          <div class="selected-card-bar">
+            <div class="selected-card-info">
+              <span class="selected-rule-text">{{ getCardMeta(selId).ruleKey | translate }}</span>
+              <span class="selected-forecast-chip">{{ getCardLandingSummary(selId) }}</span>
+            </div>
+            <button
+              type="button"
+              class="btn btn-emerald confirm-card-btn"
+              (click)="confirmSelectedCard()"
+            >
+              ✅ {{ 'BK.CONFIRM_CARD_BTN' | translate: { speed: selId, name: (('BK.CARD_SHORT_' + selId) | translate) } }}
+            </button>
+          </div>
+        }
+      </section>
+    }
+
+    <!-- Bounded Modal 1: EV DC Fast Charge Gamble (Bottom-Only Footer Actions) -->
+    @if (view.phase === 'EV_CHARGE_PROMPT' && session.isMyResolutionTurn()) {
+      <div class="modal-backdrop">
+        <div class="modal-card bk-modal" role="dialog" aria-modal="true">
+          <div class="modal-header">
+            <h2 class="modal-title">⚡ {{ 'BK.EV_MODAL_TITLE' | translate }}</h2>
+          </div>
+          <div class="modal-body">
+            <p class="modal-lead">{{ 'BK.EV_MODAL_DESC' | translate }}</p>
+            <div class="charge-choices-info">
+              <div class="spec-choice-box">
+                <strong>🔌 {{ 'BK.EV_AC_BTN' | translate }}</strong>
+                <p>{{ 'BK.EV_AC_EXPLAIN' | translate }}</p>
+              </div>
+              <div class="spec-choice-box gamble-box">
+                <strong>⚡ {{ 'BK.EV_DC_BTN' | translate }}</strong>
+                <p>{{ 'BK.EV_DC_EXPLAIN' | translate }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bk-modal-footer">
+            <button type="button" class="btn btn-emerald" (click)="chooseEvCharge('AC_SLOW')">
+              🔌 {{ 'BK.EV_AC_BTN' | translate }}
+            </button>
+            <button type="button" class="btn btn-gold" (click)="chooseEvCharge('DC_FAST')">
+              🪙 {{ 'BK.EV_DC_BTN' | translate }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Bounded Modal 2: Scouted Simpang Tiga Branch Choice (Bottom-Only Footer Actions) -->
+    @if (view.phase === 'SIMPANG_SCOUT_PROMPT' && session.isMyResolutionTurn()) {
+      <div class="modal-backdrop">
+        <div class="modal-card bk-modal" role="dialog" aria-modal="true">
+          <div class="modal-header">
+            <h2 class="modal-title">🔀 {{ 'BK.SIMPANG_MODAL_TITLE' | translate }}</h2>
+          </div>
+          <div class="modal-body">
+            <p class="modal-lead">{{ 'BK.SIMPANG_MODAL_DESC' | translate }}</p>
+            <div class="charge-choices-info">
+              <div class="spec-choice-box">
+                <strong>{{ 'BK.BRANCH_KUBUR' | translate }}</strong>
+                <p>{{ 'BK.BRANCH_KUBUR_NOTE' | translate }}</p>
+              </div>
+              <div class="spec-choice-box">
+                <strong>{{ 'BK.BRANCH_BENDANG' | translate }}</strong>
+                <p>{{ 'BK.BRANCH_BENDANG_NOTE' | translate }}</p>
+              </div>
+              <div class="spec-choice-box">
+                <strong>{{ 'BK.BRANCH_UTAMA' | translate }}</strong>
+                <p>{{ 'BK.BRANCH_UTAMA_NOTE' | translate }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bk-modal-footer">
+            <button type="button" class="btn" (click)="chooseSimpangBranch('KUBUR')">
+              {{ 'BK.BRANCH_KUBUR' | translate }}
+            </button>
+            <button type="button" class="btn btn-gold" (click)="chooseSimpangBranch('BENDANG')">
+              {{ 'BK.BRANCH_BENDANG' | translate }}
+            </button>
+            <button type="button" class="btn btn-highway" (click)="chooseSimpangBranch('UTAMA')">
+              {{ 'BK.BRANCH_UTAMA' | translate }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Bounded Modal 3: Tok Wan's Kampung Settlement & Net Family Happiness (Bottom-Only Actions) -->
+    @if (session.showGameOverModal() && view.phase === 'GAMEOVER') {
+      <div class="modal-backdrop" (click)="session.closeGameOverModal()">
+        <div
+          class="modal-card bk-modal settlement-modal"
+          role="dialog"
+          aria-modal="true"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="modal-header">
+            <h2 class="modal-title">🏡 {{ 'BK.GAMEOVER_TITLE' | translate }}</h2>
+          </div>
+
+          <div class="modal-body">
+            @if (view.standings.at(0); as champ) {
+              <div class="champion-banner">
+                <span class="champ-crown">👑</span>
+                <div>
+                  <strong>{{ champ.name }}</strong>
+                  <p>
+                    {{ 'BK.CHAMPION_SUB' | translate }}: <strong>{{ champ.netHappiness }} pts</strong>
+                  </p>
+                </div>
+              </div>
+            }
+
+            <table class="desktop-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>{{ 'BK.COL_DRIVER' | translate }}</th>
+                  <th>{{ 'BK.COL_ARRIVAL' | translate }}</th>
+                  <th>💢 {{ 'BK.STRESS_LABEL' | translate }}</th>
+                  <th>💧 {{ 'BK.BLADDER_LABEL' | translate }}</th>
+                  <th>{{ 'BK.COL_NET_HAPPY' | translate }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of view.standings; track row.seat) {
+                  <tr>
+                    <td><strong>#{{ row.standingPlace }}</strong></td>
+                    <td>{{ row.name }} ({{ row.drivetrain }})</td>
+                    <td>
+                      @if (row.finishedRank !== null) {
+                        +{{ row.arrivalBonus }} (#{{ row.finishedRank }})
+                      } @else {
+                        +0 (DNF)
+                      }
+                    </td>
+                    <td>-{{ row.stressPenalty }}</td>
+                    <td>-{{ row.bladderPenalty }}</td>
+                    <td><strong>{{ row.netHappiness }}</strong></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+
+            <div class="mobile-cards">
+              @for (row of view.standings; track row.seat) {
+                <div class="mobile-app-card">
+                  <div class="mobile-card-row">
+                    <strong>#{{ row.standingPlace }} · {{ row.name }} ({{ row.drivetrain }})</strong>
+                    <strong>{{ row.netHappiness }} pts</strong>
+                  </div>
+                  <div class="mobile-card-row">
+                    <span>{{ 'BK.COL_ARRIVAL' | translate }}: +{{ row.arrivalBonus }}</span>
+                    <span>💢 -{{ row.stressPenalty }} · 💧 -{{ row.bladderPenalty }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="modal-footer bk-modal-footer">
+            <button type="button" class="btn" (click)="session.closeGameOverModal()">
+              {{ 'COMMON.CLOSE' | translate }}
+            </button>
+            <button type="button" class="btn" (click)="backToLobby()">
+              {{ 'BK.BACK_TO_LOBBY' | translate }}
+            </button>
+            @if (session.isHost()) {
+              <button type="button" class="btn btn-highway" (click)="playAgain()">
+                🔄 {{ 'BK.PLAY_AGAIN' | translate }}
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </main>
+}

@@ -34,6 +34,8 @@ export default defineConfig({
       { item: 'slice:avalon-table', reason: 'Living user manual generation intentionally skipped' },
       { item: 'slice:pandemic-lobby', reason: 'Living user manual generation intentionally skipped' },
       { item: 'slice:pandemic-board', reason: 'Living user manual generation intentionally skipped' },
+      { item: 'slice:balik-kampung-lobby', reason: 'Living user manual generation intentionally skipped' },
+      { item: 'slice:balik-kampung-board', reason: 'Living user manual generation intentionally skipped' },
     ],
   },
 });

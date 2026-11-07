@@ -1,7 +1,7 @@
 # Incremental QA & User Manual Impact Plan
 
 - **Compared Against**: `df1b32d01b1010c8dccc52fb8a13543529192948`
-- **Changed Files Detected**: 131
+- **Changed Files Detected**: 147
 - **OpenAPI Contract Changed**: No
 - **i18n Translations Changed**: YES (re-run locale manual snapshots)
 
@@ -13,6 +13,9 @@
 - [Service] `src/app/core/services/translate.service.spec.ts` (Status: **TRIAGED**)
 - [Service] `src/app/games/avalon/services/avalon-bot.service.spec.ts` (Status: **TRIAGED**)
 - [Service] `src/app/games/avalon/services/avalon-session.service.spec.ts` (Status: **TRIAGED**)
+- [Service] `src/app/games/balik-kampung/services/balik-kampung-bot.service.spec.ts` (Status: **TRIAGED**)
+- [Service] `src/app/games/balik-kampung/services/balik-kampung-engine.service.spec.ts` (Status: **TRIAGED**)
+- [Service] `src/app/games/balik-kampung/services/balik-kampung-session.service.spec.ts` (Status: **TRIAGED**)
 - [Service] `src/app/games/monopoly/services/monopoly-bot.service.spec.ts` (Status: **TRIAGED**)
 - [Service] `src/app/games/monopoly/services/monopoly-engine.service.spec.ts` (Status: **TRIAGED**)
 - [Service] `src/app/games/monopoly/services/monopoly-session.service.spec.ts` (Status: **TRIAGED**)
@@ -28,6 +31,8 @@
 - [Component] `src/app/pages/table/table.component.spec.ts` (Status: **TRIAGED**)
 - [Component] `src/app/games/avalon/components/avalon-lobby/avalon-lobby.component.spec.ts` (Status: **TRIAGED**)
 - [Component] `src/app/games/avalon/components/avalon-table/avalon-table.component.spec.ts` (Status: **TRIAGED**)
+- [Component] `src/app/games/balik-kampung/components/balik-kampung-board/balik-kampung-board.component.spec.ts` (Status: **TRIAGED**)
+- [Component] `src/app/games/balik-kampung/components/balik-kampung-lobby/balik-kampung-lobby.component.spec.ts` (Status: **TRIAGED**)
 - [Component] `src/app/games/monopoly/components/monopoly-lobby/monopoly-lobby.component.spec.ts` (Status: **TRIAGED**)
 - [Component] `src/app/games/pandemic/components/pandemic-board/pandemic-board.component.spec.ts` (Status: **TRIAGED**)
 - [Component] `src/app/games/pandemic/components/pandemic-lobby/pandemic-lobby.component.spec.ts` (Status: **TRIAGED**)
@@ -46,6 +51,8 @@
 - [Route `/avalon/table`] E2E: `e2e/journeys/avalon-table.e2e.spec.ts` -> Manual Chapter: `manual-avalon-table`
 - [Route `/pandemic/lobby`] E2E: `e2e/journeys/pandemic-lobby.e2e.spec.ts` -> Manual Chapter: `manual-pandemic-lobby`
 - [Route `/pandemic/board`] E2E: `e2e/journeys/pandemic-board.e2e.spec.ts` -> Manual Chapter: `manual-pandemic-board`
+- [Route `/balik-kampung/lobby`] E2E: `e2e/journeys/balik-kampung-lobby.e2e.spec.ts` -> Manual Chapter: `manual-balik-kampung-lobby`
+- [Route `/balik-kampung/board`] E2E: `e2e/journeys/balik-kampung-board.e2e.spec.ts` -> Manual Chapter: `manual-balik-kampung-board`
 
 ## 3. Evidence
 | Slice | Route | Manual Evidence | Playwright |
@@ -59,11 +66,15 @@
 | `avalon-table` | `/avalon/table` | **missing** | n/a |
 | `pandemic-lobby` | `/pandemic/lobby` | **missing** | n/a |
 | `pandemic-board` | `/pandemic/board` | **missing** | n/a |
+| `balik-kampung-lobby` | `/balik-kampung/lobby` | **missing** | n/a |
+| `balik-kampung-board` | `/balik-kampung/board` | **missing** | n/a |
 
 ## 4. Ready-to-Ship Gate Violations (0)
 All in-scope components, services, and manual slices have evidence.
 
-### Waived (9)
+### Waived (11)
+- Feature slice `balik-kampung-board` (/balik-kampung/board) manual evidence is missing: no manual-steps.json with chapterId "manual-balik-kampung-board" or "balik-kampung-board" (run its Playwright journey) — _waived: Living user manual generation intentionally skipped_
+- Feature slice `balik-kampung-lobby` (/balik-kampung/lobby) manual evidence is missing: no manual-steps.json with chapterId "manual-balik-kampung-lobby" or "balik-kampung-lobby" (run its Playwright journey) — _waived: Living user manual generation intentionally skipped_
 - Feature slice `pandemic-board` (/pandemic/board) manual evidence is missing: no manual-steps.json with chapterId "manual-pandemic-board" or "pandemic-board" (run its Playwright journey) — _waived: Living user manual generation intentionally skipped_
 - Feature slice `pandemic-lobby` (/pandemic/lobby) manual evidence is missing: no manual-steps.json with chapterId "manual-pandemic-lobby" or "pandemic-lobby" (run its Playwright journey) — _waived: Living user manual generation intentionally skipped_
 - Feature slice `avalon-table` (/avalon/table) manual evidence is missing: no manual-steps.json with chapterId "manual-avalon-table" or "avalon-table" (run its Playwright journey) — _waived: Living user manual generation intentionally skipped_

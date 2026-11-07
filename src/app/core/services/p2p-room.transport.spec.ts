@@ -75,6 +75,10 @@ describe('P2PRoomTransport & Universal Transport Protocol', () => {
       expect(pandemicCode.length).toBe(6);
       expect(pandemicCode.startsWith('D')).toBe(true);
 
+      const balikKampungCode = generatePrefixedRoomCode('B', 5);
+      expect(balikKampungCode.length).toBe(6);
+      expect(balikKampungCode.startsWith('B')).toBe(true);
+
       for (let i = 1; i < mahjongCode.length; i++) {
         expect(CODE_ALPHABET.includes(mahjongCode.charAt(i))).toBe(true);
       }
@@ -85,6 +89,10 @@ describe('P2PRoomTransport & Universal Transport Protocol', () => {
       expect(parseUniversalRoomCode('A88888')).toEqual({ game: 'avalon', roomCode: 'A88888' });
       expect(parseUniversalRoomCode('M99999')).toEqual({ game: 'mahjong', roomCode: 'M99999' });
       expect(parseUniversalRoomCode('D77777')).toEqual({ game: 'pandemic', roomCode: 'D77777' });
+      expect(parseUniversalRoomCode('B66666')).toEqual({
+        game: 'balik-kampung',
+        roomCode: 'B66666',
+      });
     });
 
     it('resolves universal room codes from query parameters and full URLs', () => {
@@ -93,6 +101,10 @@ describe('P2PRoomTransport & Universal Transport Protocol', () => {
       expect(parseUniversalRoomCode('?game=pandemic&room=D1234')).toEqual({
         game: 'pandemic',
         roomCode: 'D1234',
+      });
+      expect(parseUniversalRoomCode('?game=balik-kampung&room=B1234')).toEqual({
+        game: 'balik-kampung',
+        roomCode: 'B1234',
       });
       expect(parseUniversalRoomCode('https://domain.com/table?game=monopoly&room=P333')).toEqual({
         game: 'monopoly',

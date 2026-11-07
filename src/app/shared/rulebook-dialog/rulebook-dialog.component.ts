@@ -3,6 +3,7 @@ import { GameId } from '../../core/models/party.model';
 import { HALF_SPICY_BASE } from '../../core/services/scorer.service';
 import { ShellUiService } from '../../core/services/shell-ui.service';
 import { PLAYER_COUNT_RATIOS, QUEST_TEAM_SIZES } from '../../games/avalon/data/avalon-config.data';
+import { ACTION_CARD_META_LIST } from '../../games/balik-kampung/data/balik-kampung-cards.data';
 import { TranslatePipe } from '../pipes/translate.pipe';
 
 @Component({
@@ -23,7 +24,10 @@ export class RulebookDialogComponent {
     { id: 'monopoly', icon: '🎲', labelKey: 'RULEBOOK.TAB_MONOPOLY' },
     { id: 'avalon', icon: '🛡️', labelKey: 'RULEBOOK.TAB_AVALON' },
     { id: 'pandemic', icon: '☣️', labelKey: 'RULEBOOK.TAB_PANDEMIC' },
+    { id: 'balik-kampung', icon: '🚗', labelKey: 'RULEBOOK.TAB_BALIK_KAMPUNG' },
   ];
+
+  readonly balikKampungCardRows = ACTION_CARD_META_LIST;
 
   readonly payoutRows = [5, 6, 7, 8, 9, 10].map((fan) => ({
     fan,

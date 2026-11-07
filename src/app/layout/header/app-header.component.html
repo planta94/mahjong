@@ -52,6 +52,18 @@
           </svg>
         </span>
       }
+      @case ('balik-kampung') {
+        <span class="brand-logo brand-emblem emblem-balik-kampung" aria-hidden="true">
+          <svg viewBox="0 0 64 64" class="emblem-svg">
+            <path d="M18 54 L26 12 H38 L46 54 Z" fill="#1e293b" stroke="#ffd100" stroke-width="2" />
+            <line x1="32" y1="16" x2="32" y2="50" stroke="#ffffff" stroke-width="2.2" stroke-dasharray="4 4" />
+            <rect x="12" y="10" width="40" height="12" rx="3" fill="#005a36" stroke="#ffd100" stroke-width="1.8" />
+            <rect x="22" y="34" width="20" height="13" rx="4" fill="#ef4444" stroke="#ffffff" stroke-width="1.6" />
+            <circle cx="26" cy="45" r="2.2" fill="#fde047" />
+            <circle cx="38" cy="45" r="2.2" fill="#fde047" />
+          </svg>
+        </span>
+      }
       @default {
         <img class="brand-logo" src="favicon.svg" alt="Tabletop Royale" width="28" height="28" />
       }
@@ -70,6 +82,9 @@
         @case ('pandemic') {
           {{ 'HEADER.GAME_TITLE_PANDEMIC' | translate }}
         }
+        @case ('balik-kampung') {
+          {{ 'HEADER.GAME_TITLE_BALIK_KAMPUNG' | translate }}
+        }
         @default {
           {{ 'HEADER.BRAND' | translate }}
         }
@@ -81,6 +96,7 @@
       [class.badge-monopoly]="shellUi.activeGame() === 'monopoly'"
       [class.badge-avalon]="shellUi.activeGame() === 'avalon'"
       [class.badge-pandemic]="shellUi.activeGame() === 'pandemic'"
+      [class.badge-balik-kampung]="shellUi.activeGame() === 'balik-kampung'"
     >
       @switch (shellUi.activeGame()) {
         @case ('mahjong') {
@@ -94,6 +110,9 @@
         }
         @case ('pandemic') {
           {{ 'HEADER.BADGE_PANDEMIC' | translate }}
+        }
+        @case ('balik-kampung') {
+          {{ 'HEADER.BADGE_BALIK_KAMPUNG' | translate }}
         }
         @default {
           {{ 'HEADER.BADGE_PAVILION' | translate }}

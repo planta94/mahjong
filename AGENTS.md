@@ -1,15 +1,15 @@
 # Authoritative Agent Rules & Handover Index (`hk-mahjong`)
 
-This file is the always-on rulebook for AI coding agents and engineers working on `hk-mahjong` (Party Game Pavilion: Hong Kong 4-Player 144-Tile & Authentic Malaysian 3-Player 84-Tile Fly Mahjong, Monopoly, The Resistance: Avalon, and Pandemic: Global Defenses). Keep this file **under `20,000` bytes** (`npm run qa:agent-docs`) so Antigravity never truncates `<user_rules>`. Detailed specifications live in `docs/reference/`.
+This file is the always-on rulebook for AI coding agents and engineers working on `hk-mahjong` (Party Game Pavilion: Hong Kong 4-Player 144-Tile & Authentic Malaysian 3-Player 84-Tile Fly Mahjong, Monopoly, The Resistance: Avalon, Pandemic: Global Defenses, and Balik Kampung: The Federal Route Gauntlet). Keep this file **under `20,000` bytes** (`npm run qa:agent-docs`) so Antigravity never truncates `<user_rules>`. Detailed specifications live in `docs/reference/`.
 
 ---
 
 ## 1. Project Identity & Stack
 
-- **Application**: Serverless P2P & Offline AI Party Game Pavilion (`4p` HK 144-Tile & `3p` Malaysian 84-Tile `飛牌三人麻將`, `Monopoly`, `Avalon`, and `Pandemic` 2–4P Co-op)
+- **Application**: Serverless P2P & Offline AI Party Game Pavilion (`4p` HK 144-Tile & `3p` Malaysian 84-Tile `飛牌三人麻將`, `Monopoly`, `Avalon`, `Pandemic` 2–4P Co-op, and `Balik Kampung` 2–5P v3.5)
 - **Framework & Language**: **Angular 22** (Standalone Components & Zoneless Signals) + **TypeScript 6.0+**
 - **Styling & i18n**: **SCSS Design System** (`src/styles/`) + Signal-backed `TranslateService` / `TranslatePipe` (`public/assets/i18n/{en,zh}.json`)
-- **Networking**: **Zero Backend** — Host-in-browser authoritative state machine over WebRTC (`peerjs`) + same-browser `BroadcastChannel` fallback (`M*` / `P*` / `A*` / `D*` universal room codes)
+- **Networking**: **Zero Backend** — Host-in-browser authoritative state machine over WebRTC (`peerjs`) + same-browser `BroadcastChannel` fallback (`M*` / `P*` / `A*` / `D*` / `B*` universal room codes)
 - **Unit Testing & QA Gate**: **Vitest 5.0+** via `@angular/build:unit-test` (`@vitest/coverage-v8`) + **VeriScribe 1.5+** (`qa:scan` / `qa:gate`, `0` trivial assertions)
 - **Linter**: **ESLint 10+** + `typescript-eslint` + `eslint-plugin-security` (`0` errors, `0` warnings, `0` `eslint-disable`)
 
@@ -33,8 +33,9 @@ Before modifying files in any area below, **MUST** `read_file` the corresponding
 - **Canary Identifier**: `HKMJ-P2P-CHECK-01`
 - **Authentic 3-Player Mode (`3p`)**: Strictly **3 seats (`東/南/西`)** — **never** pad a 3P game with a 4th filler bot. Uses the 84-tile Malaysian Fly deck (`1–9筒` Dots, Winds, Dragons, 16 Bonus tiles including Animals `貓/鼠/雞/蜈` & Faces `男女頭`, and 4 `飛` `jk` wildcards).
 - **Pandemic 2–4P Co-op Defenses**: 48-city world map across 4 color disease networks, 7 specialist roles, 4 cures discovered to win. Defeat triggered upon 8 outbreaks, exhaustion of any disease cube supply (24 cap), or player draw deck exhaustion.
+- **Balik Kampung 2–5P v3.5**: 45-card procedural North-South Expressway & Federal Trunk Road scroller (`Simpang Tiga` in final 10 cards + `Finish`), simultaneous 5-card secret planning, front-to-back resolution, v3.5 Deceleration Zone (`Susur Masuk`), `ICE`/`EV` drivetrains, and `Net Family Happiness = Arrival Bonus - Stress - Bladder`.
 - **Scoring & Payouts**: Default **5-Fan Minimum (`五番起糊`)**, **10-Fan Cap (`十番封頂`)**, and **Discarder-Pays-All (`全銃制・半辣上`)**.
-- **Anti-Cheat Per-Seat View Sanitization**: Host never broadcasts raw authoritative state (`MatchState`, Monopoly decks, Avalon secret roles/votes, Pandemic unrevealed infection/player draw decks) directly to guests. Per-seat view builders strip hidden decks/walls, conceal opponents' hands/roles where applicable, mask concealed Kongs as `'back'` until `handOver`, and strip seat `token` values before P2P sync.
+- **Anti-Cheat Per-Seat View Sanitization**: Host never broadcasts raw authoritative state (`MatchState`, Monopoly decks, Avalon secret roles/votes, Pandemic unrevealed infection/player draw decks, Balik Kampung unrevealed road/traffic decks or opponents' face-down planned cards) directly to guests. Per-seat view builders strip hidden decks/walls, conceal opponents' hands/roles where applicable, mask concealed Kongs as `'back'` until `handOver`, and strip seat `token` values before P2P sync.
 - **URL Hygiene & Decoupled Reset**: Strip room parameters via `window.history.replaceState()` and dispatch `new CustomEvent('mahjong:leave')` / `new CustomEvent('p2p:leave')` on leave.
 
 ---

@@ -77,7 +77,7 @@
       "specStatus": "TRIAGED",
       "specMetrics": {
         "tests": 7,
-        "meaningfulAssertions": 111,
+        "meaningfulAssertions": 121,
         "trivialAssertions": 0,
         "scaffoldMarker": false
       },
@@ -90,7 +90,7 @@
         "src/app/shared/exit-confirm-dialog/exit-confirm-dialog.component.ts"
       ],
       "ambiguitiesOrSuspectedBugs": [],
-      "lastContentHash": "410acc59c69f"
+      "lastContentHash": "93d013d2f2bf"
     },
     "mahjong-session": {
       "filePath": "src/app/core/services/mahjong-session.service.ts",
@@ -134,7 +134,7 @@
       "specStatus": "TRIAGED",
       "specMetrics": {
         "tests": 13,
-        "meaningfulAssertions": 97,
+        "meaningfulAssertions": 99,
         "trivialAssertions": 0,
         "scaffoldMarker": false
       },
@@ -143,6 +143,8 @@
         "src/app/app.component.ts",
         "src/app/games/avalon/components/avalon-lobby/avalon-lobby.component.ts",
         "src/app/games/avalon/components/avalon-table/avalon-table.component.ts",
+        "src/app/games/balik-kampung/components/balik-kampung-board/balik-kampung-board.component.ts",
+        "src/app/games/balik-kampung/components/balik-kampung-lobby/balik-kampung-lobby.component.ts",
         "src/app/games/monopoly/components/monopoly-board/monopoly-board.component.ts",
         "src/app/games/monopoly/components/monopoly-lobby/monopoly-lobby.component.ts",
         "src/app/games/pandemic/components/pandemic-board/pandemic-board.component.ts",
@@ -155,7 +157,7 @@
         "src/app/shared/rulebook-dialog/rulebook-dialog.component.ts"
       ],
       "ambiguitiesOrSuspectedBugs": [],
-      "lastContentHash": "453a1b4f2303"
+      "lastContentHash": "ea74fe8ff5ae"
     },
     "translate": {
       "filePath": "src/app/core/services/translate.service.ts",
@@ -170,6 +172,7 @@
       },
       "httpEndpoints": [],
       "dependents": [
+        "src/app/games/balik-kampung/components/balik-kampung-board/balik-kampung-board.component.ts",
         "src/app/games/monopoly/components/monopoly-board/monopoly-board.component.ts",
         "src/app/layout/header/app-header.component.ts",
         "src/app/pages/hub/hub.component.ts",
@@ -228,6 +231,59 @@
       ],
       "ambiguitiesOrSuspectedBugs": [],
       "lastContentHash": "376a6d45a8be"
+    },
+    "balik-kampung-bot": {
+      "filePath": "src/app/games/balik-kampung/services/balik-kampung-bot.service.ts",
+      "specPath": "src/app/games/balik-kampung/services/balik-kampung-bot.service.spec.ts",
+      "className": "BalikKampungBotService",
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 2,
+        "meaningfulAssertions": 13,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "httpEndpoints": [],
+      "dependents": [],
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "aed4729286c5"
+    },
+    "balik-kampung-engine": {
+      "filePath": "src/app/games/balik-kampung/services/balik-kampung-engine.service.ts",
+      "specPath": "src/app/games/balik-kampung/services/balik-kampung-engine.service.spec.ts",
+      "className": "BalikKampungEngineService",
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 11,
+        "meaningfulAssertions": 136,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "httpEndpoints": [],
+      "dependents": [
+        "src/app/games/balik-kampung/components/balik-kampung-board/balik-kampung-board.component.ts"
+      ],
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "d1b8f8bbf140"
+    },
+    "balik-kampung-session": {
+      "filePath": "src/app/games/balik-kampung/services/balik-kampung-session.service.ts",
+      "specPath": "src/app/games/balik-kampung/services/balik-kampung-session.service.spec.ts",
+      "className": "BalikKampungSessionService",
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 3,
+        "meaningfulAssertions": 54,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "httpEndpoints": [],
+      "dependents": [
+        "src/app/games/balik-kampung/components/balik-kampung-board/balik-kampung-board.component.ts",
+        "src/app/games/balik-kampung/components/balik-kampung-lobby/balik-kampung-lobby.component.ts"
+      ],
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "6a745e43f805"
     },
     "monopoly-bot": {
       "filePath": "src/app/games/monopoly/services/monopoly-bot.service.ts",
@@ -570,6 +626,202 @@
       },
       "ambiguitiesOrSuspectedBugs": [],
       "lastContentHash": "ef11c6b105b8"
+    },
+    "balik-kampung-board": {
+      "filePath": "src/app/games/balik-kampung/components/balik-kampung-board/balik-kampung-board.component.ts",
+      "templatePath": "src/app/games/balik-kampung/components/balik-kampung-board/balik-kampung-board.component.html",
+      "specPath": "src/app/games/balik-kampung/components/balik-kampung-board/balik-kampung-board.component.spec.ts",
+      "selector": "app-balik-kampung-board",
+      "className": "BalikKampungBoardComponent",
+      "importedTypes": [
+        "CommonModule",
+        "TranslatePipe"
+      ],
+      "isStandalone": true,
+      "isInlineTemplate": false,
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 10,
+        "meaningfulAssertions": 123,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "detectedFeatures": {
+        "inputs": [],
+        "outputs": [],
+        "models": [],
+        "templateBranches": 139,
+        "interactiveEvents": [
+          "click",
+          "mouseenter",
+          "mouseleave",
+          "focus",
+          "change"
+        ],
+        "reactiveForms": [],
+        "i18nKeys": [
+          "BK.PHASE_PLANNING",
+          "BK.PHASE_RESOLVING",
+          "BK.PHASE_EV_CHARGE",
+          "BK.PHASE_SIMPANG_CHOICE",
+          "BK.PHASE_GAMEOVER",
+          "BK.RNR_BANNED_BADGE",
+          "BK.STANDINGS_BTN",
+          "BK.RADIO_BTN",
+          "BK.FOCUS_MY_CAR",
+          "BK.VIEW_RESULTS",
+          "BK.STEP_TRAFFIC",
+          "BK.STEP_PLANNING",
+          "BK.STEP_RESOLVING",
+          "BK.STEP_CLEANUP",
+          "BK.CONVOY_TELEMETRY_TITLE",
+          "BK.COL_DRIVER",
+          "BK.COL_LANE",
+          "BK.BLADDER_LABEL",
+          "BK.STRESS_LABEL",
+          "BK.COL_PLAN",
+          "BK.COL_NET_HAPPY",
+          "BK.SKIP_SHORT",
+          "COMMON.CLOSE",
+          "BK.HIGHWAY_RADIO_TITLE",
+          "BK.CEREMONY_PLANNING_TITLE",
+          "BK.CEREMONY_PLANNING_SUB",
+          "BK.CEREMONY_CLEANUP_TAG",
+          "BK.CEREMONY_REVEAL_TITLE",
+          "BK.CONVOY_NOW_MOVING",
+          "BK.CONVOY_DONE",
+          "BK.CONVOY_NEXT",
+          "BK.LANDSCAPE_TIP",
+          "BK.LANE_BAR_TRUNK",
+          "BK.LANE_BAR_LEFT",
+          "BK.LANE_BAR_RIGHT",
+          "BK.PAN_ROAD_BACK",
+          "BK.PAN_ROAD_AHEAD",
+          "BK.SUSUR_KELUAR",
+          "BK.DOWNHILL_REGEN",
+          "BK.BRANCH_UTAMA",
+          "BK.BRANCH_UTAMA_NOTE",
+          "BK.BRANCH_BENDANG",
+          "BK.BRANCH_BENDANG_NOTE",
+          "BK.BRANCH_KUBUR",
+          "BK.BRANCH_KUBUR_NOTE",
+          "BK.ROAD_FINISH",
+          "BK.SCOUT_HORIZON_TITLE",
+          "BK.PREVIEW_SCOUT_TAG",
+          "BK.LANE_TRUNK_SHORT",
+          "BK.LANE_LEFT_SHORT",
+          "BK.LANE_RIGHT_SHORT",
+          "BK.TAP_ROAD_PROMPT",
+          "BK.AUTO_SPEND_SCOUT",
+          "BK.YOU_ARE_SKIPPING",
+          "BK.CARD_LOCKED_WAITING",
+          "BK.CHANGE_CARD_BTN",
+          "BK.CONFIRM_CARD_BTN",
+          "BK.EV_MODAL_TITLE",
+          "BK.EV_MODAL_DESC",
+          "BK.EV_AC_BTN",
+          "BK.EV_AC_EXPLAIN",
+          "BK.EV_DC_BTN",
+          "BK.EV_DC_EXPLAIN",
+          "BK.SIMPANG_MODAL_TITLE",
+          "BK.SIMPANG_MODAL_DESC",
+          "BK.GAMEOVER_TITLE",
+          "BK.CHAMPION_SUB",
+          "BK.COL_ARRIVAL",
+          "BK.BACK_TO_LOBBY",
+          "BK.PLAY_AGAIN"
+        ],
+        "rbacDirectives": [],
+        "rxJsSubscriptions": 0
+      },
+      "dimensionsVerified": {
+        "functionalAndEdgeCases": false,
+        "errorAndDegradedStates": false,
+        "rbac": true,
+        "a11y": false,
+        "i18n": false,
+        "memoryLeakUnsubscribe": true
+      },
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "9c94afdbbbb7"
+    },
+    "balik-kampung-lobby": {
+      "filePath": "src/app/games/balik-kampung/components/balik-kampung-lobby/balik-kampung-lobby.component.ts",
+      "templatePath": "src/app/games/balik-kampung/components/balik-kampung-lobby/balik-kampung-lobby.component.html",
+      "specPath": "src/app/games/balik-kampung/components/balik-kampung-lobby/balik-kampung-lobby.component.spec.ts",
+      "selector": "app-balik-kampung-lobby",
+      "className": "BalikKampungLobbyComponent",
+      "importedTypes": [
+        "CommonModule",
+        "FormsModule",
+        "TranslatePipe"
+      ],
+      "isStandalone": true,
+      "isInlineTemplate": false,
+      "specStatus": "TRIAGED",
+      "specMetrics": {
+        "tests": 5,
+        "meaningfulAssertions": 55,
+        "trivialAssertions": 0,
+        "scaffoldMarker": false
+      },
+      "detectedFeatures": {
+        "inputs": [],
+        "outputs": [],
+        "models": [],
+        "templateBranches": 16,
+        "interactiveEvents": [
+          "click",
+          "idx",
+          "keyup.enter"
+        ],
+        "reactiveForms": [],
+        "i18nKeys": [
+          "BK.GANTRY_DIRECTION",
+          "BK.EDITION_TAG",
+          "BK.GAME_TITLE",
+          "BK.LOBBY_SUBTITLE",
+          "BK.FESTIVE_RIBBON",
+          "BK.VIEW_RULEBOOK",
+          "BK.ONLINE_CONVOY_ROOM",
+          "BK.VEHICLE_COUNT",
+          "BK.SEAT_HUMAN",
+          "BK.SEAT_BOT",
+          "BK.SEAT_OPEN",
+          "BK.CHOOSE_CAR_LABEL",
+          "BK.LEAVE_ROOM",
+          "BK.FLAG_OFF_CONVOY",
+          "BK.WAITING_FOR_HOST",
+          "BK.INVITE_DETECTED",
+          "BK.INVITE_PROMPT",
+          "BK.JOIN_CONVOY_NOW",
+          "BK.SETUP_HEADING",
+          "BK.START_SOLO_BTN",
+          "BK.CREATE_ROOM_BTN",
+          "BK.JOIN_ROOM_HEADING",
+          "BK.JOIN_ROOM_DESC",
+          "BK.JOIN_PLACEHOLDER",
+          "HUB.JOIN_BUTTON",
+          "BK.DRIVETRAIN_SPECS_TITLE",
+          "BK.ICE_TITLE",
+          "BK.ICE_DESC",
+          "BK.EV_TITLE",
+          "BK.EV_DESC",
+          "BK.FORMULA_LABEL"
+        ],
+        "rbacDirectives": [],
+        "rxJsSubscriptions": 1
+      },
+      "dimensionsVerified": {
+        "functionalAndEdgeCases": false,
+        "errorAndDegradedStates": false,
+        "rbac": true,
+        "a11y": false,
+        "i18n": false,
+        "memoryLeakUnsubscribe": true
+      },
+      "ambiguitiesOrSuspectedBugs": [],
+      "lastContentHash": "e522e98f9ba6"
     },
     "monopoly-board": {
       "filePath": "src/app/games/monopoly/components/monopoly-board/monopoly-board.component.ts",
@@ -980,7 +1232,7 @@
       "specStatus": "TRIAGED",
       "specMetrics": {
         "tests": 6,
-        "meaningfulAssertions": 108,
+        "meaningfulAssertions": 113,
         "trivialAssertions": 0,
         "scaffoldMarker": false
       },
@@ -998,11 +1250,13 @@
           "HEADER.GAME_TITLE_MONOPOLY",
           "HEADER.GAME_TITLE_AVALON",
           "HEADER.GAME_TITLE_PANDEMIC",
+          "HEADER.GAME_TITLE_BALIK_KAMPUNG",
           "HEADER.BRAND",
           "HEADER.BADGE_MAHJONG",
           "HEADER.BADGE_MONOPOLY",
           "HEADER.BADGE_AVALON",
           "HEADER.BADGE_PANDEMIC",
+          "HEADER.BADGE_BALIK_KAMPUNG",
           "HEADER.BADGE_PAVILION",
           "HEADER.RULEBOOK"
         ],
@@ -1018,7 +1272,7 @@
         "memoryLeakUnsubscribe": true
       },
       "ambiguitiesOrSuspectedBugs": [],
-      "lastContentHash": "d5c9f105eadc"
+      "lastContentHash": "7906516208af"
     },
     "hub": {
       "filePath": "src/app/pages/hub/hub.component.ts",
@@ -1036,7 +1290,7 @@
       "specStatus": "TRIAGED",
       "specMetrics": {
         "tests": 8,
-        "meaningfulAssertions": 52,
+        "meaningfulAssertions": 53,
         "trivialAssertions": 0,
         "scaffoldMarker": false
       },
@@ -1083,7 +1337,7 @@
         "memoryLeakUnsubscribe": true
       },
       "ambiguitiesOrSuspectedBugs": [],
-      "lastContentHash": "3fab377067f3"
+      "lastContentHash": "490bdc6576b0"
     },
     "lobby": {
       "filePath": "src/app/pages/lobby/lobby.component.ts",
@@ -1416,7 +1670,7 @@
       "specStatus": "TRIAGED",
       "specMetrics": {
         "tests": 3,
-        "meaningfulAssertions": 44,
+        "meaningfulAssertions": 49,
         "trivialAssertions": 0,
         "scaffoldMarker": false
       },
@@ -1426,7 +1680,7 @@
           "closed"
         ],
         "models": [],
-        "templateBranches": 16,
+        "templateBranches": 18,
         "interactiveEvents": [
           "click"
         ],
@@ -1435,6 +1689,7 @@
           "RULEBOOK.MONOPOLY_TITLE",
           "RULEBOOK.AVALON_TITLE",
           "RULEBOOK.PANDEMIC_TITLE",
+          "RULEBOOK.BK_TITLE",
           "RULEBOOK.TITLE",
           "RULEBOOK.MONOPOLY_RULE_1",
           "RULEBOOK.MONOPOLY_RULE_2",
@@ -1467,6 +1722,15 @@
           "RULEBOOK.PANDEMIC_COL_DIFFICULTY",
           "RULEBOOK.PANDEMIC_COL_EPIDEMICS",
           "RULEBOOK.PANDEMIC_COL_NOTES",
+          "RULEBOOK.BK_RULE_1",
+          "RULEBOOK.BK_RULE_2",
+          "RULEBOOK.BK_RULE_3",
+          "RULEBOOK.BK_RULE_4",
+          "RULEBOOK.BK_RULE_5",
+          "RULEBOOK.BK_CARDS_TITLE",
+          "RULEBOOK.BK_COL_CARD",
+          "RULEBOOK.BK_COL_SPEED",
+          "RULEBOOK.BK_COL_EFFECT",
           "RULEBOOK.TIER_1",
           "RULEBOOK.TIER_2",
           "RULEBOOK.TIER_3",
@@ -1496,7 +1760,7 @@
         "memoryLeakUnsubscribe": true
       },
       "ambiguitiesOrSuspectedBugs": [],
-      "lastContentHash": "a51a4ca577f6"
+      "lastContentHash": "69fac66dd5c5"
     },
     "tile": {
       "filePath": "src/app/shared/tile/tile.component.ts",
@@ -1817,6 +2081,70 @@
       "paramOverrides": {},
       "e2eSpecPath": "e2e/journeys/pandemic-board.e2e.spec.ts",
       "manualChapterId": "manual-pandemic-board",
+      "manualOutputPaths": [],
+      "status": "PENDING",
+      "dimensionsVerified": {
+        "happyPathJourney": false,
+        "errorResilience4xx5xx": false,
+        "rbacAccessMatrix": false,
+        "responsiveViewports": false,
+        "openApiContractSync": false,
+        "axeAccessibility": false,
+        "i18nLocales": false,
+        "performanceWebVitals": false
+      }
+    },
+    "balik-kampung-lobby": {
+      "routePath": "/balik-kampung/lobby",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "components": [
+        "balik-kampung-lobby"
+      ],
+      "services": [
+        "shell-ui",
+        "balik-kampung-session"
+      ],
+      "mockFixtures": [],
+      "params": [],
+      "paramOverrides": {},
+      "e2eSpecPath": "e2e/journeys/balik-kampung-lobby.e2e.spec.ts",
+      "manualChapterId": "manual-balik-kampung-lobby",
+      "manualOutputPaths": [],
+      "status": "PENDING",
+      "dimensionsVerified": {
+        "happyPathJourney": false,
+        "errorResilience4xx5xx": false,
+        "rbacAccessMatrix": false,
+        "responsiveViewports": false,
+        "openApiContractSync": false,
+        "axeAccessibility": false,
+        "i18nLocales": false,
+        "performanceWebVitals": false
+      }
+    },
+    "balik-kampung-board": {
+      "routePath": "/balik-kampung/board",
+      "allowedRoles": [
+        "admin",
+        "user"
+      ],
+      "components": [
+        "balik-kampung-board"
+      ],
+      "services": [
+        "shell-ui",
+        "translate",
+        "balik-kampung-session",
+        "balik-kampung-engine"
+      ],
+      "mockFixtures": [],
+      "params": [],
+      "paramOverrides": {},
+      "e2eSpecPath": "e2e/journeys/balik-kampung-board.e2e.spec.ts",
+      "manualChapterId": "manual-balik-kampung-board",
       "manualOutputPaths": [],
       "status": "PENDING",
       "dimensionsVerified": {

@@ -67,6 +67,11 @@
   border: 1px solid rgba(103, 232, 249, 0.42);
 }
 
+.emblem-balik-kampung {
+  background: radial-gradient(circle at 35% 30%, rgba(255, 209, 0, 0.32), rgba(0, 90, 54, 0.85));
+  border: 1px solid rgba(255, 209, 0, 0.55);
+}
+
 .brand-title {
   font-weight: 800;
   font-size: 1.04rem;
@@ -105,6 +110,11 @@
 
 .brand-badge.badge-pandemic {
   background: linear-gradient(135deg, #0284c7, #0369a1);
+}
+
+.brand-badge.badge-balik-kampung {
+  background: linear-gradient(135deg, #007a49, #005a36);
+  border: 1px solid rgba(255, 209, 0, 0.6);
 }
 
 .topbar-actions {

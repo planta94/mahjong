@@ -112,7 +112,7 @@ export function parseUniversalRoomCode(input: string): UniversalRoomInfo {
 
   // 1. Check URL parameters (?game=...&room=... or ?room=...)
   const isUrl = trimmed.includes('?') || trimmed.includes('/');
-  const gameMatch = /[?&]game=([a-z]+)/i.exec(trimmed);
+  const gameMatch = /[?&]game=([a-z-]+)/i.exec(trimmed);
   const roomMatch = /[?&]room=([A-Za-z0-9]+)/i.exec(trimmed);
 
   const rawCode = (
@@ -127,12 +127,13 @@ export function parseUniversalRoomCode(input: string): UniversalRoomInfo {
     matchedGame === 'monopoly' ||
     matchedGame === 'avalon' ||
     matchedGame === 'mahjong' ||
-    matchedGame === 'pandemic'
+    matchedGame === 'pandemic' ||
+    matchedGame === 'balik-kampung'
   ) {
     return { game: matchedGame, roomCode };
   }
 
-  // 2. Prefix-based resolution: 'M' -> mahjong, 'P' -> monopoly, 'A' -> avalon, 'D' -> pandemic
+  // 2. Prefix-based resolution: 'M' -> mahjong, 'P' -> monopoly, 'A' -> avalon, 'D' -> pandemic, 'B' -> balik-kampung
   const firstChar = roomCode.charAt(0) as GamePrefix;
   const gameFromPrefix = PREFIX_TO_GAME_MAP.get(firstChar);
   if (gameFromPrefix) {

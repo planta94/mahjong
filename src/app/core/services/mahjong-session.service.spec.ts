@@ -12,6 +12,12 @@ import {
   generateRoomCode,
   getPlayerToken,
 } from './mahjong-session.service';
+import {
+  RelaySocketFactory,
+  RelayWebSocketLike,
+  buildMqttPublishPacket,
+  drainMqttPackets,
+} from './p2p-wss-relay.transport';
 import { DEFAULT_RULES } from './scorer.service';
 
 function restoreProp(target: object, key: string, desc: PropertyDescriptor | undefined): void {
@@ -1436,6 +1442,126 @@ describe('MahjongSessionService & Host/Guest P2P Sync', () => {
     } finally {
       restoreProp(globalThis, 'RTCPeerConnection', rtcDesc);
       vi.useRealTimers();
+    }
+  });
+
+  it('connects Mahjong HostSession and GuestSession via E2EE WSS Relay when BroadcastChannel is absent and WebRTC ICE stalls', async () => {
+    const bcDesc = Object.getOwnPropertyDescriptor(globalThis, 'BroadcastChannel');
+    Object.defineProperty(globalThis, 'BroadcastChannel', {
+      configurable: true,
+      writable: true,
+      value: undefined,
+    });
+
+    const clients = new Set<{
+      sock: RelayWebSocketLike & { deliver(b: Uint8Array): void };
+      subs: Set<string>;
+    }>();
+    const relayFactory: RelaySocketFactory = () => {
+      const entry = {
+        sock: null as unknown as RelayWebSocketLike & { deliver(b: Uint8Array): void },
+        subs: new Set<string>(),
+      };
+      let state = 1;
+      const sock: RelayWebSocketLike & { deliver(b: Uint8Array): void } = {
+        binaryType: 'arraybuffer',
+        get readyState() {
+          return state;
+        },
+        onopen: null,
+        onmessage: null,
+        onerror: null,
+        onclose: null,
+        send(bytes: Uint8Array) {
+          const dec = new TextDecoder();
+          drainMqttPackets(bytes, (pktType, _f, body) => {
+            if (pktType === 1) {
+              sock.deliver(Uint8Array.of(0x20, 0x02, 0x00, 0x00));
+            } else if (pktType === 8 && body.byteLength >= 4) {
+              const v = new DataView(body.buffer, body.byteOffset, body.byteLength);
+              const id = v.getUint16(0, false);
+              const tLen = v.getUint16(2, false);
+              entry.subs.add(dec.decode(body.subarray(4, 4 + tLen)));
+              sock.deliver(Uint8Array.of(0x90, 0x03, (id >> 8) & 0xff, id & 0xff, 0x00));
+            } else if (pktType === 3 && body.byteLength >= 2) {
+              const v = new DataView(body.buffer, body.byteOffset, body.byteLength);
+              const tLen = v.getUint16(0, false);
+              const topic = dec.decode(body.subarray(2, 2 + tLen));
+              const text = dec.decode(body.subarray(2 + tLen));
+              const pub = buildMqttPublishPacket(topic, text);
+              for (const c of clients) {
+                if (c.subs.has(topic)) c.sock.deliver(pub);
+              }
+            }
+          });
+        },
+        close() {
+          state = 3;
+          clients.delete(entry);
+        },
+        deliver(bytes: Uint8Array) {
+          const copy = bytes.slice();
+          queueMicrotask(() => {
+            if (state === 1) sock.onmessage?.({ data: copy.buffer });
+          });
+        },
+      };
+      entry.sock = sock;
+      clients.add(entry);
+      queueMicrotask(() => {
+        if (state === 1) sock.onopen?.();
+      });
+      return sock;
+    };
+
+    const host = new HostSession({
+      hostName: '房主东',
+      mode: '3p',
+      online: true,
+      fillBots: false,
+      relaySocketFactory: relayFactory,
+    });
+
+    try {
+      for (let i = 0; i < 40 && !host.status.includes('云端中继'); i++) {
+        await new Promise<void>((r) => setTimeout(r, 10));
+      }
+      expect(host.status).toContain('云端中继 P2P 就绪');
+
+      host.toggleSeatBot(2);
+      const guest = new GuestSession({
+        roomCode: host.roomCode,
+        guestName: '大马雀友',
+        relaySocketFactory: relayFactory,
+      });
+
+      let guestSeat = -1;
+      let guestHandCount = 0;
+      let hostTokenInGuestLobby: string | null = 'unverified';
+      guest.onUpdate((snap) => {
+        guestSeat = snap.mySeat;
+        guestHandCount = snap.view?.players.at(1)?.hand?.length ?? 0;
+        hostTokenInGuestLobby = snap.lobby?.seats.at(0)?.token ?? null;
+      });
+
+      for (let i = 0; i < 60 && guestSeat < 0; i++) {
+        await new Promise<void>((r) => setTimeout(r, 15));
+      }
+
+      expect(guestSeat).toBe(1);
+      expect(host.lobby.seats.at(1)?.name).toBe('大马雀友');
+      expect(hostTokenInGuestLobby).toBeNull();
+
+      expect(host.startGame()).toBe(true);
+      for (let i = 0; i < 50 && guestHandCount === 0; i++) {
+        await new Promise<void>((r) => setTimeout(r, 12));
+      }
+      expect(guestHandCount).toBe(13);
+
+      guest.destroy();
+    } finally {
+      host.destroy();
+      restoreProp(globalThis, 'BroadcastChannel', bcDesc);
     }
   });
 });

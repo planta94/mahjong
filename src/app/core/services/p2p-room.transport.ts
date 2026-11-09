@@ -8,6 +8,15 @@ import {
   PREFIX_TO_GAME_MAP,
   UniversalRoomInfo,
 } from '../models/party.model';
+import {
+  RelaySocketFactory,
+  WssRelayGuestHandle,
+  WssRelayHostHandle,
+  createWssRelayGuest,
+  createWssRelayHost,
+} from './p2p-wss-relay.transport';
+
+export type { RelaySocketFactory, WssRelayGuestHandle, WssRelayHostHandle } from './p2p-wss-relay.transport';
 
 export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export const PEER_ID_PREFIX = 'party-pavilion-v1-';
@@ -17,13 +26,14 @@ export const MAX_DIRECT_JSON_BYTES = 12000;
 const CHUNK_SLICE_CHARS = 2000;
 const MAX_PENDING_CHUNK_STREAMS = 32;
 const MAX_CHUNKS_PER_MESSAGE = 512;
+const WSS_RELAY_HEADSTART_MS = 1200;
 
 const DEFAULT_STUN_SERVERS: readonly RTCIceServer[] = [
   {
     urls: [
       'stun:stun.l.google.com:19302',
       'stun:stun1.l.google.com:19302',
-      'stun:stun.cloudflare.com:3478',
+      'stun:stun2.l.google.com:19302',
     ],
   },
 ];
@@ -374,6 +384,7 @@ export interface GenericHostOptions<TState, TView, TAction> {
   applyAction: (state: TState, seatIdx: number, action: TAction) => void;
   onSeatConnectedChange?: (seatIdx: number, connected: boolean) => void;
   peerLoader?: () => Promise<PeerConstructorLike>;
+  relaySocketFactory?: RelaySocketFactory;
 }
 
 export class GenericHostSession<TState, TView, TAction> {
@@ -389,6 +400,7 @@ export class GenericHostSession<TState, TView, TAction> {
 
   private readonly listeners = new Set<(snap: GenericSessionSnapshot<TView>) => void>();
   private peer: PeerInstanceLike | null = null;
+  private wssRelay: WssRelayHostHandle | null = null;
   private readonly peerConns = new Map<string, PeerConnectionLike>();
   private bc: BroadcastChannel | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined;
@@ -399,6 +411,8 @@ export class GenericHostSession<TState, TView, TAction> {
   private readonly applyActionFn: (state: TState, seatIdx: number, action: TAction) => void;
   private readonly onSeatConnectedChange?: (seatIdx: number, connected: boolean) => void;
   private readonly peerLoader: () => Promise<PeerConstructorLike>;
+  private readonly hasCustomPeerLoader: boolean;
+  private readonly relaySocketFactory?: RelaySocketFactory;
 
   constructor(opts: GenericHostOptions<TState, TView, TAction>) {
     this.online = opts.online ?? false;
@@ -410,7 +424,9 @@ export class GenericHostSession<TState, TView, TAction> {
     this.buildPlayerView = opts.buildPlayerView;
     this.applyActionFn = opts.applyAction;
     this.onSeatConnectedChange = opts.onSeatConnectedChange;
+    this.hasCustomPeerLoader = Boolean(opts.peerLoader);
     this.peerLoader = opts.peerLoader ?? loadPeerClass;
+    this.relaySocketFactory = opts.relaySocketFactory;
 
     // Ensure host seat is configured
     const hostSeat = this.lobby.seats.at(0);
@@ -439,6 +455,8 @@ export class GenericHostSession<TState, TView, TAction> {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
       this.visibilityHandler = null;
     }
+    this.wssRelay?.destroy();
+    this.wssRelay = null;
     this.bc?.close();
     this.peer?.destroy();
   }
@@ -505,6 +523,44 @@ export class GenericHostSession<TState, TView, TAction> {
     }
   }
 
+  private bindIncomingConnection(conn: PeerConnectionLike): void {
+    const onData = createChunkAssembler((rawMsg: unknown) => {
+      if (this.destroyed || !isRecord(rawMsg)) return;
+      const tok = typeof rawMsg['token'] === 'string' ? rawMsg['token'] : '';
+      if (tok) this.peerConns.set(tok, conn);
+      this.handleClientMessage(rawMsg, (reply) => {
+        sendConnSafe(conn, reply);
+      });
+    });
+    conn.on('data', onData);
+    conn.on('error', () => {
+      // Swallow DataConnection transport errors cleanly; close handler updates seat state
+    });
+
+    conn.on('close', () => {
+      for (const [tok, c] of this.peerConns.entries()) {
+        if (c === conn) {
+          this.peerConns.delete(tok);
+          const seatObj = this.lobby.seats.find((s) => s.seat > 0 && s.token === tok);
+          if (seatObj) {
+            seatObj.connected = false;
+            this.onSeatConnectedChange?.(seatObj.seat, false);
+            this.broadcastAll();
+          }
+        }
+      }
+    });
+  }
+
+  private get isWssRelayEnabled(): boolean {
+    return (
+      Boolean(this.relaySocketFactory) ||
+      (!this.hasCustomPeerLoader &&
+        typeof RTCPeerConnection !== 'undefined' &&
+        typeof WebSocket !== 'undefined')
+    );
+  }
+
   private async initTransports(): Promise<void> {
     if (typeof BroadcastChannel !== 'undefined') {
       this.bc = new BroadcastChannel(`party-bc-${this.roomCode}`);
@@ -517,9 +573,27 @@ export class GenericHostSession<TState, TView, TAction> {
       };
     }
 
+    if (this.isWssRelayEnabled) {
+      this.wssRelay = createWssRelayHost({
+        namespace: 'party',
+        roomCode: this.roomCode,
+        socketFactory: this.relaySocketFactory,
+        onReady: () => {
+          if (this.destroyed) return;
+          if (!this.status.includes('WebRTC P2P 就绪')) {
+            this.status = `房号 ${this.roomCode} 已开启（云端中继 P2P 就绪）`;
+            this.broadcastAll();
+          }
+        },
+        onConnection: (conn) => this.bindIncomingConnection(conn),
+      });
+    }
+
     if (typeof RTCPeerConnection === 'undefined') {
-      this.status = `房号 ${this.roomCode} 已开启（本机通道就绪）`;
-      this.broadcastAll();
+      if (!this.wssRelay) {
+        this.status = `房号 ${this.roomCode} 已开启（本机通道就绪）`;
+        this.broadcastAll();
+      }
       return;
     }
 
@@ -552,33 +626,7 @@ export class GenericHostSession<TState, TView, TAction> {
 
       peer.on('connection', (rawConn: unknown) => {
         if (this.destroyed) return;
-        const conn = rawConn as PeerConnectionLike;
-        const onData = createChunkAssembler((rawMsg: unknown) => {
-          if (this.destroyed || !isRecord(rawMsg)) return;
-          const tok = typeof rawMsg['token'] === 'string' ? rawMsg['token'] : '';
-          if (tok) this.peerConns.set(tok, conn);
-          this.handleClientMessage(rawMsg, (reply) => {
-            sendConnSafe(conn, reply);
-          });
-        });
-        conn.on('data', onData);
-        conn.on('error', () => {
-          // Swallow DataConnection transport errors cleanly; close handler updates seat state
-        });
-
-        conn.on('close', () => {
-          for (const [tok, c] of this.peerConns.entries()) {
-            if (c === conn) {
-              this.peerConns.delete(tok);
-              const seatObj = this.lobby.seats.find((s) => s.seat > 0 && s.token === tok);
-              if (seatObj) {
-                seatObj.connected = false;
-                this.onSeatConnectedChange?.(seatObj.seat, false);
-                this.broadcastAll();
-              }
-            }
-          }
-        });
+        this.bindIncomingConnection(rawConn as PeerConnectionLike);
       });
 
       peer.on('error', (rawErr: unknown) => {
@@ -589,13 +637,19 @@ export class GenericHostSession<TState, TView, TAction> {
           this.reconnectTimer = setTimeout(() => this.tryReconnectSignaling(), 800);
           return;
         }
-        this.status = `本机分页连接就绪（外部信令离线：${err?.type ?? 'offline'}）`;
+        if (this.wssRelay?.ready) {
+          this.status = `房号 ${this.roomCode} 已开启（云端中继 P2P 就绪）`;
+        } else {
+          this.status = `本机分页连接就绪（外部信令离线：${err?.type ?? 'offline'}）`;
+        }
         this.broadcastAll();
       });
     } catch {
       if (this.destroyed) return;
-      this.status = '离线局域模式（支持同浏览器多分页或电脑对战）';
-      this.broadcastAll();
+      if (!this.wssRelay?.ready) {
+        this.status = '离线局域模式（支持同浏览器多分页或电脑对战）';
+        this.broadcastAll();
+      }
     }
   }
 
@@ -663,6 +717,7 @@ export interface GenericGuestOptions {
   guestName?: string;
   token?: string;
   peerLoader?: () => Promise<PeerConstructorLike>;
+  relaySocketFactory?: RelaySocketFactory;
 }
 
 export class GenericGuestSession<TView, TAction> {
@@ -673,23 +728,30 @@ export class GenericGuestSession<TView, TAction> {
 
   private readonly guestName: string;
   private readonly peerLoader: () => Promise<PeerConstructorLike>;
+  private readonly hasCustomPeerLoader: boolean;
+  private readonly relaySocketFactory?: RelaySocketFactory;
   private readonly listeners = new Set<(snap: GenericSessionSnapshot<TView>) => void>();
   private snapshot: GenericSessionSnapshot<TView>;
   private bc: BroadcastChannel | null = null;
   private peer: PeerInstanceLike | null = null;
+  private wssRelay: WssRelayGuestHandle | null = null;
   private conn: PeerConnectionLike | null = null;
   private connectedViaBc = false;
+  private connectedViaRelay = false;
   private destroyed = false;
   private joinRetryTimer: ReturnType<typeof setInterval> | undefined;
   private connectTimeoutTimer: ReturnType<typeof setTimeout> | undefined;
   private peerRetryTimer: ReturnType<typeof setTimeout> | undefined;
+  private relayFallbackTimer: ReturnType<typeof setTimeout> | undefined;
   private unavailableRetries = 0;
 
   constructor(opts: GenericGuestOptions) {
     this.roomCode = parseUniversalRoomCode(opts.roomCode).roomCode;
     this.guestName = opts.guestName?.trim() || '玩家';
     this.myToken = opts.token ?? getPartyGuestToken(this.roomCode);
+    this.hasCustomPeerLoader = Boolean(opts.peerLoader);
     this.peerLoader = opts.peerLoader ?? loadPeerClass;
+    this.relaySocketFactory = opts.relaySocketFactory;
     this.snapshot = {
       role: 'guest',
       online: true,
@@ -712,6 +774,8 @@ export class GenericGuestSession<TView, TAction> {
   destroy(): void {
     this.destroyed = true;
     this.clearHandshakeTimers();
+    this.wssRelay?.destroy();
+    this.wssRelay = null;
     this.bc?.close();
     this.peer?.destroy();
   }
@@ -723,6 +787,17 @@ export class GenericGuestSession<TView, TAction> {
     this.connectTimeoutTimer = undefined;
     clearTimeout(this.peerRetryTimer);
     this.peerRetryTimer = undefined;
+    clearTimeout(this.relayFallbackTimer);
+    this.relayFallbackTimer = undefined;
+  }
+
+  private get isWssRelayEnabled(): boolean {
+    return (
+      Boolean(this.relaySocketFactory) ||
+      (!this.hasCustomPeerLoader &&
+        typeof RTCPeerConnection !== 'undefined' &&
+        typeof WebSocket !== 'undefined')
+    );
   }
 
   sendAction(action: TAction): void {
@@ -793,6 +868,67 @@ export class GenericGuestSession<TView, TAction> {
     }, intervalMs);
   }
 
+  private startWssRelayFallback(): void {
+    if (
+      this.destroyed ||
+      this.connectedViaBc ||
+      this.connectedViaRelay ||
+      this.wssRelay ||
+      !this.isWssRelayEnabled
+    ) {
+      return;
+    }
+
+    const relay = createWssRelayGuest({
+      namespace: 'party',
+      roomCode: this.roomCode,
+      socketFactory: this.relaySocketFactory,
+    });
+    this.wssRelay = relay;
+    const relayConn = relay.conn;
+
+    relayConn.on('open', () => {
+      if (this.destroyed || this.connectedViaBc) return;
+      if (this.conn?.open && !this.connectedViaRelay) {
+        this.wssRelay?.destroy();
+        this.wssRelay = null;
+        return;
+      }
+      this.connectedViaRelay = true;
+      clearTimeout(this.peerRetryTimer);
+      this.peer?.destroy();
+      this.peer = null;
+      this.conn = relayConn;
+      this.snapshot = {
+        ...this.snapshot,
+        status: '已连接至房主（P2P 加密中继）',
+        error: null,
+      };
+      this.emitUpdate();
+      this.sendJoin();
+      if (!this.snapshot.lobby) {
+        this.startJoinRetryLoop(6, 1200);
+      }
+    });
+
+    relayConn.on(
+      'data',
+      createChunkAssembler((raw: unknown) => {
+        this.handleServerMessage(raw);
+      })
+    );
+
+    relayConn.on('close', () => {
+      if (this.destroyed || this.connectedViaBc || this.conn !== relayConn) return;
+      this.snapshot = {
+        ...this.snapshot,
+        status: '与房主连接中断',
+        error: '与房主连接已断开',
+      };
+      this.emitUpdate();
+    });
+  }
+
   private async connect(): Promise<void> {
     if (typeof BroadcastChannel !== 'undefined') {
       this.bc = new BroadcastChannel(`party-bc-${this.roomCode}`);
@@ -801,6 +937,8 @@ export class GenericGuestSession<TView, TAction> {
         const target = typeof ev.data['targetToken'] === 'string' ? ev.data['targetToken'] : '';
         if (target && target !== this.myToken) return;
         this.connectedViaBc = true;
+        this.wssRelay?.destroy();
+        this.wssRelay = null;
         this.handleServerMessage(ev.data);
       };
     }
@@ -813,6 +951,10 @@ export class GenericGuestSession<TView, TAction> {
       this.joinRetryTimer = undefined;
       if (this.destroyed || this.snapshot.lobby) return;
       if (!this.connectedViaBc && !this.conn?.open) {
+        this.wssRelay?.destroy();
+        this.wssRelay = null;
+        this.peer?.destroy();
+        this.peer = null;
         this.snapshot = {
           ...this.snapshot,
           status: `连接超时：找不到房间 ${this.roomCode}。请确认房号是否正确。`,
@@ -821,6 +963,18 @@ export class GenericGuestSession<TView, TAction> {
         this.emitUpdate();
       }
     }, 12000);
+
+    if (this.isWssRelayEnabled) {
+      if (typeof RTCPeerConnection === 'undefined') {
+        this.startWssRelayFallback();
+        return;
+      }
+      this.relayFallbackTimer = setTimeout(() => {
+        if (!this.destroyed && !this.connectedViaBc && !this.conn?.open) {
+          this.startWssRelayFallback();
+        }
+      }, WSS_RELAY_HEADSTART_MS);
+    }
 
     if (typeof RTCPeerConnection === 'undefined') {
       return;
@@ -832,15 +986,17 @@ export class GenericGuestSession<TView, TAction> {
   private async initPeerJs(): Promise<void> {
     try {
       const PeerCtor = await this.peerLoader();
-      if (this.destroyed || this.connectedViaBc) return;
-      this.conn?.close?.();
+      if (this.destroyed || this.connectedViaBc || this.connectedViaRelay) return;
+      if (!this.connectedViaRelay) {
+        this.conn?.close?.();
+      }
       this.peer?.destroy();
       const guestId = `${PEER_ID_PREFIX}g-${createCleanPeerSuffix(10)}`;
       const peer = new PeerCtor(guestId, buildPeerOptions());
       this.peer = peer;
 
       peer.on('open', () => {
-        if (this.destroyed || this.connectedViaBc) return;
+        if (this.destroyed || this.connectedViaBc || this.connectedViaRelay) return;
         const hostPeerId = `${PEER_ID_PREFIX}${this.roomCode}`;
         const conn = peer.connect(hostPeerId, {
           reliable: true,
@@ -849,7 +1005,11 @@ export class GenericGuestSession<TView, TAction> {
         this.conn = conn;
 
         conn.on('open', () => {
-          if (this.destroyed) return;
+          if (this.destroyed || this.connectedViaBc || this.connectedViaRelay) return;
+          clearTimeout(this.relayFallbackTimer);
+          this.relayFallbackTimer = undefined;
+          this.wssRelay?.destroy();
+          this.wssRelay = null;
           this.snapshot = {
             ...this.snapshot,
             status: `已连接至房主（P2P）`,
@@ -870,7 +1030,13 @@ export class GenericGuestSession<TView, TAction> {
         );
 
         conn.on('error', () => {
-          if (this.destroyed || this.connectedViaBc) return;
+          if (this.destroyed || this.connectedViaBc || this.connectedViaRelay || this.conn !== conn) {
+            return;
+          }
+          if (this.isWssRelayEnabled && !this.snapshot.lobby) {
+            this.startWssRelayFallback();
+            return;
+          }
           this.clearHandshakeTimers();
           this.snapshot = {
             ...this.snapshot,
@@ -881,7 +1047,9 @@ export class GenericGuestSession<TView, TAction> {
         });
 
         conn.on('close', () => {
-          if (this.destroyed || this.connectedViaBc) return;
+          if (this.destroyed || this.connectedViaBc || this.connectedViaRelay || this.conn !== conn) {
+            return;
+          }
           this.snapshot = {
             ...this.snapshot,
             status: '与房主连接中断',
@@ -892,7 +1060,10 @@ export class GenericGuestSession<TView, TAction> {
       });
 
       peer.on('error', (rawErr: unknown) => {
-        if (this.destroyed) return;
+        if (this.destroyed || this.connectedViaBc || this.connectedViaRelay) return;
+        if (this.isWssRelayEnabled) {
+          this.startWssRelayFallback();
+        }
         const err = rawErr as PeerErrorLike | undefined;
         if (err?.type === 'peer-unavailable' && this.unavailableRetries < 3) {
           this.unavailableRetries++;
@@ -900,7 +1071,7 @@ export class GenericGuestSession<TView, TAction> {
           this.peerRetryTimer = setTimeout(() => void this.initPeerJs(), 1500);
           return;
         }
-        if (!this.snapshot.lobby) {
+        if (!this.snapshot.lobby && !this.isWssRelayEnabled) {
           this.snapshot = {
             ...this.snapshot,
             status: `WebRTC 信令错误 (${err?.type ?? 'error'})，尝试本地通道…`,
@@ -909,7 +1080,9 @@ export class GenericGuestSession<TView, TAction> {
         }
       });
     } catch {
-      // PeerJS unavailable, BroadcastChannel active
+      if (this.isWssRelayEnabled) {
+        this.startWssRelayFallback();
+      }
     }
   }
 }

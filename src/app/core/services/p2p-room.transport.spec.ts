@@ -24,6 +24,12 @@ import {
   sendConnSafe,
   updateBrowserUrlWithRoom,
 } from './p2p-room.transport';
+import {
+  RelaySocketFactory,
+  RelayWebSocketLike,
+  buildMqttPublishPacket,
+  drainMqttPackets,
+} from './p2p-wss-relay.transport';
 
 describe('P2PRoomTransport & Universal Transport Protocol', () => {
   let transportService: P2PRoomTransportService;
@@ -1176,6 +1182,134 @@ describe('P2PRoomTransport & Universal Transport Protocol', () => {
         assembler({ __p2pChunk: `stream_${s}`, idx: 0, total: 2, data: '{"a":1' });
       }
       expect(assembledMessages.length).toBe(1);
+    });
+
+    it('falls back to E2EE WSS Relay when BroadcastChannel is unavailable and WebRTC ICE stalls behind Symmetric NAT', async () => {
+      const bcDesc = Object.getOwnPropertyDescriptor(globalThis, 'BroadcastChannel');
+      Object.defineProperty(globalThis, 'BroadcastChannel', {
+        configurable: true,
+        writable: true,
+        value: undefined,
+      });
+
+      const clients = new Set<{ sock: RelayWebSocketLike & { deliver(b: Uint8Array): void }; subs: Set<string> }>();
+      const relayFactory: RelaySocketFactory = () => {
+        const entry = {
+          sock: null as unknown as RelayWebSocketLike & { deliver(b: Uint8Array): void },
+          subs: new Set<string>(),
+        };
+        let state = 1;
+        const sock: RelayWebSocketLike & { deliver(b: Uint8Array): void } = {
+          binaryType: 'arraybuffer',
+          get readyState() {
+            return state;
+          },
+          onopen: null,
+          onmessage: null,
+          onerror: null,
+          onclose: null,
+          send(bytes: Uint8Array) {
+            const dec = new TextDecoder();
+            drainMqttPackets(bytes, (pktType, _f, body) => {
+              if (pktType === 1) {
+                sock.deliver(Uint8Array.of(0x20, 0x02, 0x00, 0x00));
+              } else if (pktType === 8 && body.byteLength >= 4) {
+                const v = new DataView(body.buffer, body.byteOffset, body.byteLength);
+                const id = v.getUint16(0, false);
+                const tLen = v.getUint16(2, false);
+                entry.subs.add(dec.decode(body.subarray(4, 4 + tLen)));
+                sock.deliver(Uint8Array.of(0x90, 0x03, (id >> 8) & 0xff, id & 0xff, 0x00));
+              } else if (pktType === 3 && body.byteLength >= 2) {
+                const v = new DataView(body.buffer, body.byteOffset, body.byteLength);
+                const tLen = v.getUint16(0, false);
+                const topic = dec.decode(body.subarray(2, 2 + tLen));
+                const text = dec.decode(body.subarray(2 + tLen));
+                const pub = buildMqttPublishPacket(topic, text);
+                for (const c of clients) {
+                  if (c.subs.has(topic)) c.sock.deliver(pub);
+                }
+              }
+            });
+          },
+          close() {
+            state = 3;
+            clients.delete(entry);
+          },
+          deliver(bytes: Uint8Array) {
+            const copy = bytes.slice();
+            queueMicrotask(() => {
+              if (state === 1) sock.onmessage?.({ data: copy.buffer });
+            });
+          },
+        };
+        entry.sock = sock;
+        clients.add(entry);
+        queueMicrotask(() => {
+          if (state === 1) sock.onopen?.();
+        });
+        return sock;
+      };
+
+      const host = new GenericHostSession<TestState, TestView, TestAction>({
+        gamePrefix: 'P',
+        roomCode: 'PNAT99',
+        online: true,
+        relaySocketFactory: relayFactory,
+        initialState: { pot: 500, secretDeck: ['s1', 's2'], playerHands: { 0: ['h0'], 1: ['h1_secret'] } },
+        initialLobby: createTestLobby(),
+        buildPlayerView: (s, seat) => ({
+          pot: s.pot,
+          hand: s.playerHands[seat] ?? [],
+          deckCount: s.secretDeck.length,
+        }),
+        applyAction: (s, _seat, act) => {
+          if (act.type === 'bid' && act.amount) s.pot += act.amount;
+        },
+      });
+
+      try {
+        for (let i = 0; i < 40 && !host.status.includes('云端中继'); i++) {
+          await new Promise<void>((r) => setTimeout(r, 10));
+        }
+        expect(host.status).toContain('云端中继 P2P 就绪');
+
+        const guest = new GenericGuestSession<TestView, TestAction>({
+          roomCode: 'PNAT99',
+          guestName: 'NatTraversalGuest',
+          relaySocketFactory: relayFactory,
+        });
+
+        let syncedPot = 0;
+        let syncedHand: string[] = [];
+        guest.onUpdate((snap) => {
+          syncedPot = snap.view?.pot ?? 0;
+          syncedHand = snap.view?.hand ?? [];
+        });
+
+        for (let i = 0; i < 60 && syncedPot === 0; i++) {
+          await new Promise<void>((r) => setTimeout(r, 12));
+        }
+
+        expect(host.lobby.seats.at(1)?.name).toBe('NatTraversalGuest');
+        expect(syncedPot).toBe(500);
+        expect(syncedHand).toEqual(['h1_secret']);
+
+        guest.sendAction({ type: 'bid', amount: 75 });
+        for (let i = 0; i < 50 && syncedPot < 575; i++) {
+          await new Promise<void>((r) => setTimeout(r, 12));
+        }
+        expect(host.state.pot).toBe(575);
+        expect(syncedPot).toBe(575);
+
+        guest.destroy();
+      } finally {
+        host.destroy();
+        if (bcDesc) {
+          Object.defineProperty(globalThis, 'BroadcastChannel', bcDesc);
+        } else {
+          Reflect.deleteProperty(globalThis, 'BroadcastChannel');
+        }
+      }
     });
   });
 });

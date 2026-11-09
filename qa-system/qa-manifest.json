@@ -98,8 +98,8 @@
       "className": "MahjongSessionService",
       "specStatus": "TRIAGED",
       "specMetrics": {
-        "tests": 11,
-        "meaningfulAssertions": 169,
+        "tests": 12,
+        "meaningfulAssertions": 175,
         "trivialAssertions": 0,
         "scaffoldMarker": false
       },
@@ -109,7 +109,7 @@
         "src/app/pages/table/table.component.ts"
       ],
       "ambiguitiesOrSuspectedBugs": [],
-      "lastContentHash": "cf23619818ec"
+      "lastContentHash": "4735c310c687"
     },
     "scorer": {
       "filePath": "src/app/core/services/scorer.service.ts",

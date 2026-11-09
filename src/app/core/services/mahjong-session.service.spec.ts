@@ -25,6 +25,7 @@ function restoreProp(target: object, key: string, desc: PropertyDescriptor | und
 describe('MahjongSessionService & Host/Guest P2P Sync', () => {
   it('extracts room codes from invite URLs, isolates Host/Guest tokens across tabs, and syncs seats', async () => {
     expect(generateRoomCode(6).length).toBe(6);
+    expect(generateRoomCode().startsWith('M')).toBe(true);
     expect(getPlayerToken().length).toBeGreaterThan(3);
     expect(extractRoomCode('  hk8x4 ')).toBe('HK8X4');
     expect(extractRoomCode('https://planta94.github.io/mahjong/?room=ab92z')).toBe('AB92Z');
@@ -1068,6 +1069,7 @@ describe('MahjongSessionService & Host/Guest P2P Sync', () => {
       svc.createOnlineRoom('LinkHost', '3p', DEFAULT_RULES);
       await svc.copyInviteLink();
       expect(copiedText).toContain(`?room=${svc.snapshot()?.roomCode ?? ''}`);
+      expect(copiedText).toContain('&game=mahjong');
       expect(svc.copiedToast()).toBe(true);
       vi.advanceTimersByTime(1900);
       expect(svc.copiedToast()).toBe(false);

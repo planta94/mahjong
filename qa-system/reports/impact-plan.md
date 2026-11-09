@@ -1,7 +1,7 @@
 # Incremental QA & User Manual Impact Plan
 
 - **Compared Against**: `df1b32d01b1010c8dccc52fb8a13543529192948`
-- **Changed Files Detected**: 147
+- **Changed Files Detected**: 148
 - **OpenAPI Contract Changed**: No
 - **i18n Translations Changed**: YES (re-run locale manual snapshots)
 

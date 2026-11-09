@@ -99,7 +99,7 @@
       "specStatus": "TRIAGED",
       "specMetrics": {
         "tests": 11,
-        "meaningfulAssertions": 167,
+        "meaningfulAssertions": 169,
         "trivialAssertions": 0,
         "scaffoldMarker": false
       },
@@ -109,7 +109,7 @@
         "src/app/pages/table/table.component.ts"
       ],
       "ambiguitiesOrSuspectedBugs": [],
-      "lastContentHash": "c66b967619f1"
+      "lastContentHash": "cf23619818ec"
     },
     "scorer": {
       "filePath": "src/app/core/services/scorer.service.ts",
@@ -379,7 +379,7 @@
       "specStatus": "TRIAGED",
       "specMetrics": {
         "tests": 17,
-        "meaningfulAssertions": 86,
+        "meaningfulAssertions": 90,
         "trivialAssertions": 0,
         "scaffoldMarker": false
       },
@@ -389,7 +389,7 @@
         "src/app/games/pandemic/components/pandemic-lobby/pandemic-lobby.component.ts"
       ],
       "ambiguitiesOrSuspectedBugs": [],
-      "lastContentHash": "955a7f2fbe89"
+      "lastContentHash": "954f4b8a3674"
     }
   },
   "components": {

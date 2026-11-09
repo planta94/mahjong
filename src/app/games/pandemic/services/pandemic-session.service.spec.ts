@@ -176,12 +176,29 @@ describe('PandemicSessionService & Session Lifecycle', () => {
       expect(router.navigate).toHaveBeenCalledWith(['/pandemic/board']);
     });
 
-    it('joins multiplayer room as guest and updates session state', () => {
-      session.joinMultiplayerRoom('D9999');
+    it('joins multiplayer room as guest and hydrates Map fields after WebRTC JSON round-trip', () => {
+      session.createMultiplayerRoom(2);
+      session.startMatchFromLobby();
+      const hostSnap = session.snapshot()!;
+      const wireParsedSnap = JSON.parse(JSON.stringify(hostSnap)) as PandemicSnapshot;
 
+      session.joinMultiplayerRoom('D9999');
       expect(session.isHost()).toBe(false);
       expect(session.snapshot()?.role).toBe('guest');
       expect(session.snapshot()?.roomCode).toBe('D9999');
+
+      const guestSession = (
+        session as unknown as {
+          guestSession: { handleServerMessage: (raw: unknown) => void };
+        }
+      ).guestSession;
+      guestSession.handleServerMessage({ type: 'sync', snapshot: wireParsedSnap });
+
+      const guestView = session.currentView()!;
+      expect(guestView.cityCubes instanceof Map).toBe(true);
+      expect(guestView.cubesRemaining instanceof Map).toBe(true);
+      expect(guestView.cureStatus instanceof Map).toBe(true);
+      expect(guestView.cureStatus.get('blue')).toBe('uncured');
     });
   });
 

@@ -11,7 +11,7 @@
 | `bot` | **TRIAGED** | 36 / 0 | 0 | 0 |
 | `engine` | **TRIAGED** | 182 / 0 | 0 | 0 |
 | `game-session-manager` | **TRIAGED** | 121 / 0 | 0 | 5 |
-| `mahjong-session` | **TRIAGED** | 167 / 0 | 0 | 2 |
+| `mahjong-session` | **TRIAGED** | 169 / 0 | 0 | 2 |
 | `scorer` | **TRIAGED** | 29 / 0 | 0 | 0 |
 | `shell-ui` | **TRIAGED** | 99 / 0 | 0 | 15 |
 | `translate` | **TRIAGED** | 15 / 0 | 0 | 5 |
@@ -26,7 +26,7 @@
 | `monopoly-session` | **TRIAGED** | 101 / 0 | 0 | 2 |
 | `pandemic-bot` | **TRIAGED** | 39 / 0 | 0 | 0 |
 | `pandemic-engine` | **TRIAGED** | 249 / 0 | 0 | 1 |
-| `pandemic-session` | **TRIAGED** | 86 / 0 | 0 | 2 |
+| `pandemic-session` | **TRIAGED** | 90 / 0 | 0 | 2 |
 
 ## 2. Components
 | Component | Spec Status | Meaningful / Trivial Asserts | Template Branches | Events | Forms | RxJS Subs | Template |

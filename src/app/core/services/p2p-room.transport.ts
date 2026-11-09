@@ -11,6 +11,22 @@ import {
 
 export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export const PEER_ID_PREFIX = 'party-pavilion-v1-';
+export const CUSTOM_ICE_SERVERS_STORAGE_KEY = 'party_pavilion_ice_servers';
+export const CUSTOM_PEER_SERVER_STORAGE_KEY = 'party_pavilion_peer_server';
+export const MAX_DIRECT_JSON_BYTES = 12000;
+const CHUNK_SLICE_CHARS = 2000;
+const MAX_PENDING_CHUNK_STREAMS = 32;
+const MAX_CHUNKS_PER_MESSAGE = 512;
+
+const DEFAULT_STUN_SERVERS: readonly RTCIceServer[] = [
+  {
+    urls: [
+      'stun:stun.l.google.com:19302',
+      'stun:stun1.l.google.com:19302',
+      'stun:stun.cloudflare.com:3478',
+    ],
+  },
+];
 
 export const PEER_OPTIONS = {
   host: '0.peerjs.com',
@@ -19,25 +35,7 @@ export const PEER_OPTIONS = {
   secure: true,
   pingInterval: 5000,
   config: {
-    iceServers: [
-      {
-        urls: [
-          'stun:stun.l.google.com:19302',
-          'stun:stun1.l.google.com:19302',
-          'stun:stun.cloudflare.com:3478',
-        ],
-      },
-      {
-        urls: [
-          'turn:openrelay.metered.ca:80',
-          'turn:openrelay.metered.ca:443',
-          'turn:openrelay.metered.ca:443?transport=tcp',
-          'turns:openrelay.metered.ca:443?transport=tcp',
-        ],
-        username: 'openrelayproject',
-        credential: 'openrelayproject',
-      },
-    ],
+    iceServers: [...DEFAULT_STUN_SERVERS],
   },
 };
 
@@ -73,18 +71,186 @@ function isRecord(val: unknown): val is Record<string, unknown> {
   return typeof val === 'object' && val !== null;
 }
 
+function isValidIceServer(entry: unknown): entry is RTCIceServer {
+  if (!isRecord(entry)) return false;
+  const urls = entry['urls'];
+  if (typeof urls === 'string') return urls.trim().length > 0;
+  if (Array.isArray(urls)) {
+    return urls.length > 0 && urls.every((u) => typeof u === 'string' && u.trim().length > 0);
+  }
+  return false;
+}
+
+export function buildPeerOptions(): Record<string, unknown> {
+  const extraIceServers: RTCIceServer[] = [];
+  let hostOverride: Record<string, unknown> = {};
+
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const rawIce = localStorage.getItem(CUSTOM_ICE_SERVERS_STORAGE_KEY);
+      if (rawIce) {
+        const parsedIce: unknown = JSON.parse(rawIce);
+        if (Array.isArray(parsedIce)) {
+          for (const item of parsedIce) {
+            if (isValidIceServer(item)) {
+              extraIceServers.push(item);
+            }
+          }
+        }
+      }
+
+      const rawBroker = localStorage.getItem(CUSTOM_PEER_SERVER_STORAGE_KEY);
+      if (rawBroker) {
+        const parsedBroker: unknown = JSON.parse(rawBroker);
+        if (isRecord(parsedBroker) && typeof parsedBroker['host'] === 'string' && parsedBroker['host'].trim()) {
+          hostOverride = {
+            host: parsedBroker['host'].trim(),
+            ...(typeof parsedBroker['port'] === 'number' ? { port: parsedBroker['port'] } : {}),
+            ...(typeof parsedBroker['path'] === 'string' ? { path: parsedBroker['path'] } : {}),
+            ...(typeof parsedBroker['secure'] === 'boolean' ? { secure: parsedBroker['secure'] } : {}),
+            ...(typeof parsedBroker['key'] === 'string' ? { key: parsedBroker['key'] } : {}),
+          };
+        }
+      }
+    }
+  } catch {
+    // Ignore storage or JSON parse errors and fall back to defaults
+  }
+
+  return {
+    ...PEER_OPTIONS,
+    ...hostOverride,
+    config: {
+      iceServers: [...DEFAULT_STUN_SERVERS, ...extraIceServers],
+    },
+  };
+}
+
+let nextChunkSeq = 1;
+const utf8Encoder = new TextEncoder();
+
+function deliverPayloadOverConn(conn: PeerConnectionLike, payload: unknown): void {
+  let serialized: string | undefined;
+  try {
+    serialized = JSON.stringify(payload);
+  } catch {
+    conn.send(payload);
+    return;
+  }
+
+  if (typeof serialized !== 'string') {
+    conn.send(payload);
+    return;
+  }
+
+  const byteLength = utf8Encoder.encode(serialized).byteLength;
+  if (byteLength <= MAX_DIRECT_JSON_BYTES) {
+    conn.send(payload);
+    return;
+  }
+
+  const total = Math.ceil(serialized.length / CHUNK_SLICE_CHARS);
+  const chunkId = `chk_${nextChunkSeq++}_${Date.now().toString(36)}`;
+  for (let idx = 0; idx < total; idx++) {
+    const start = idx * CHUNK_SLICE_CHARS;
+    const data = serialized.slice(start, start + CHUNK_SLICE_CHARS);
+    conn.send({
+      __p2pChunk: chunkId,
+      idx,
+      total,
+      data,
+    });
+  }
+}
+
+export function createChunkAssembler(
+  onMessage: (assembled: unknown) => void
+): (raw: unknown) => void {
+  const pending = new Map<string, { total: number; parts: Map<number, string> }>();
+
+  return (raw: unknown): void => {
+    if (!isRecord(raw) || typeof raw['__p2pChunk'] !== 'string') {
+      onMessage(raw);
+      return;
+    }
+
+    const id = raw['__p2pChunk'];
+    const idx = raw['idx'];
+    const total = raw['total'];
+    const data = raw['data'];
+    if (
+      typeof idx !== 'number' ||
+      typeof total !== 'number' ||
+      typeof data !== 'string' ||
+      !Number.isInteger(idx) ||
+      !Number.isInteger(total) ||
+      total < 1 ||
+      total > MAX_CHUNKS_PER_MESSAGE ||
+      idx < 0 ||
+      idx >= total
+    ) {
+      return;
+    }
+
+    let entry = pending.get(id);
+    if (!entry) {
+      if (pending.size >= MAX_PENDING_CHUNK_STREAMS) {
+        const oldestKey = pending.keys().next().value;
+        if (typeof oldestKey === 'string') {
+          pending.delete(oldestKey);
+        }
+      }
+      entry = { total, parts: new Map<number, string>() };
+      pending.set(id, entry);
+    }
+
+    if (entry.total !== total) {
+      pending.delete(id);
+      return;
+    }
+
+    entry.parts.set(idx, data);
+    if (entry.parts.size < entry.total) {
+      return;
+    }
+
+    pending.delete(id);
+    let joined = '';
+    for (let i = 0; i < entry.total; i++) {
+      const part = entry.parts.get(i);
+      if (typeof part !== 'string') return;
+      joined += part;
+    }
+
+    try {
+      onMessage(JSON.parse(joined));
+    } catch {
+      // Drop malformed reassembled JSON frame
+    }
+  };
+}
+
 export function sendConnSafe(conn: PeerConnectionLike, payload: unknown): void {
   if (conn.open) {
-    conn.send(payload);
+    deliverPayloadOverConn(conn, payload);
     return;
   }
   let sent = false;
   conn.on('open', () => {
     if (!sent) {
       sent = true;
-      conn.send(payload);
+      deliverPayloadOverConn(conn, payload);
     }
   });
+}
+
+export function createCleanPeerSuffix(len = 10): string {
+  let out = '';
+  for (let i = 0; i < len; i++) {
+    const ch = CODE_ALPHABET.at(Math.floor(Math.random() * CODE_ALPHABET.length)) ?? 'A';
+    out += ch.toLowerCase();
+  }
+  return out;
 }
 
 export function createRandomToken(prefix: string): string {
@@ -360,7 +526,7 @@ export class GenericHostSession<TState, TView, TAction> {
     try {
       const PeerCtor = await this.peerLoader();
       if (this.destroyed) return;
-      const peer = new PeerCtor(`${PEER_ID_PREFIX}${this.roomCode}`, PEER_OPTIONS);
+      const peer = new PeerCtor(`${PEER_ID_PREFIX}${this.roomCode}`, buildPeerOptions());
       this.peer = peer;
 
       if (typeof document !== 'undefined') {
@@ -387,13 +553,17 @@ export class GenericHostSession<TState, TView, TAction> {
       peer.on('connection', (rawConn: unknown) => {
         if (this.destroyed) return;
         const conn = rawConn as PeerConnectionLike;
-        conn.on('data', (rawMsg: unknown) => {
+        const onData = createChunkAssembler((rawMsg: unknown) => {
           if (this.destroyed || !isRecord(rawMsg)) return;
           const tok = typeof rawMsg['token'] === 'string' ? rawMsg['token'] : '';
           if (tok) this.peerConns.set(tok, conn);
           this.handleClientMessage(rawMsg, (reply) => {
             sendConnSafe(conn, reply);
           });
+        });
+        conn.on('data', onData);
+        conn.on('error', () => {
+          // Swallow DataConnection transport errors cleanly; close handler updates seat state
         });
 
         conn.on('close', () => {
@@ -562,7 +732,7 @@ export class GenericGuestSession<TView, TAction> {
       action,
     };
     if (this.conn?.open) {
-      this.conn.send(payload);
+      sendConnSafe(this.conn, payload);
     } else if (this.bc) {
       this.bc.postMessage(payload);
     }
@@ -579,7 +749,7 @@ export class GenericGuestSession<TView, TAction> {
       name: this.guestName,
     };
     if (this.conn?.open) {
-      this.conn.send(payload);
+      sendConnSafe(this.conn, payload);
     } else if (this.bc) {
       this.bc.postMessage(payload);
     }
@@ -609,6 +779,20 @@ export class GenericGuestSession<TView, TAction> {
     }
   }
 
+  private startJoinRetryLoop(maxAttempts: number, intervalMs: number): void {
+    clearInterval(this.joinRetryTimer);
+    let joinAttempts = 0;
+    this.joinRetryTimer = setInterval(() => {
+      joinAttempts++;
+      if (this.destroyed || this.snapshot.lobby || this.snapshot.error || joinAttempts > maxAttempts) {
+        clearInterval(this.joinRetryTimer);
+        this.joinRetryTimer = undefined;
+        return;
+      }
+      this.sendJoin();
+    }, intervalMs);
+  }
+
   private async connect(): Promise<void> {
     if (typeof BroadcastChannel !== 'undefined') {
       this.bc = new BroadcastChannel(`party-bc-${this.roomCode}`);
@@ -622,16 +806,7 @@ export class GenericGuestSession<TView, TAction> {
     }
 
     this.sendJoin();
-    let joinAttempts = 0;
-    this.joinRetryTimer = setInterval(() => {
-      joinAttempts++;
-      if (this.destroyed || this.snapshot.lobby || this.snapshot.error || joinAttempts > 10) {
-        clearInterval(this.joinRetryTimer);
-        this.joinRetryTimer = undefined;
-        return;
-      }
-      this.sendJoin();
-    }, 1000);
+    this.startJoinRetryLoop(10, 1000);
 
     this.connectTimeoutTimer = setTimeout(() => {
       clearInterval(this.joinRetryTimer);
@@ -657,13 +832,15 @@ export class GenericGuestSession<TView, TAction> {
   private async initPeerJs(): Promise<void> {
     try {
       const PeerCtor = await this.peerLoader();
-      if (this.destroyed) return;
-      const guestId = `${PEER_ID_PREFIX}g-${createRandomToken('tok').slice(0, 12)}`;
-      const peer = new PeerCtor(guestId, PEER_OPTIONS);
+      if (this.destroyed || this.connectedViaBc) return;
+      this.conn?.close?.();
+      this.peer?.destroy();
+      const guestId = `${PEER_ID_PREFIX}g-${createCleanPeerSuffix(10)}`;
+      const peer = new PeerCtor(guestId, buildPeerOptions());
       this.peer = peer;
 
       peer.on('open', () => {
-        if (this.destroyed) return;
+        if (this.destroyed || this.connectedViaBc) return;
         const hostPeerId = `${PEER_ID_PREFIX}${this.roomCode}`;
         const conn = peer.connect(hostPeerId, {
           reliable: true,
@@ -680,14 +857,31 @@ export class GenericGuestSession<TView, TAction> {
           };
           this.emitUpdate();
           this.sendJoin();
+          if (!this.snapshot.lobby) {
+            this.startJoinRetryLoop(6, 1200);
+          }
         });
 
-        conn.on('data', (raw: unknown) => {
-          this.handleServerMessage(raw);
+        conn.on(
+          'data',
+          createChunkAssembler((raw: unknown) => {
+            this.handleServerMessage(raw);
+          })
+        );
+
+        conn.on('error', () => {
+          if (this.destroyed || this.connectedViaBc) return;
+          this.clearHandshakeTimers();
+          this.snapshot = {
+            ...this.snapshot,
+            status: 'WebRTC 通道连接失败（可能受对称型 NAT 或防火墙限制）',
+            error: `与房主建立 WebRTC 通道失败（房号 ${this.roomCode}）`,
+          };
+          this.emitUpdate();
         });
 
         conn.on('close', () => {
-          if (this.destroyed) return;
+          if (this.destroyed || this.connectedViaBc) return;
           this.snapshot = {
             ...this.snapshot,
             status: '与房主连接中断',

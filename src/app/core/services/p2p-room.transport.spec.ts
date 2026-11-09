@@ -2,13 +2,20 @@ import { TestBed } from '@angular/core/testing';
 import { GenericLobby, GenericSeat } from '../models/party.model';
 import {
   CODE_ALPHABET,
+  CUSTOM_ICE_SERVERS_STORAGE_KEY,
+  CUSTOM_PEER_SERVER_STORAGE_KEY,
   GenericGuestSession,
   GenericHostSession,
   P2PRoomTransportService,
+  PEER_ID_PREFIX,
+  PEER_OPTIONS,
   PeerConnectionLike,
   PeerConstructorLike,
   PeerInstanceLike,
+  buildPeerOptions,
   clearBrowserUrlRoom,
+  createChunkAssembler,
+  createCleanPeerSuffix,
   createRandomToken,
   dispatchP2pLeaveEvent,
   generatePrefixedRoomCode,
@@ -1063,6 +1070,7 @@ describe('P2PRoomTransport & Universal Transport Protocol', () => {
           vi.advanceTimersByTime(1600);
           await Promise.resolve();
           await Promise.resolve();
+          expect(curPeer.destroyed).toBe(true);
         }
         const fourthPeer = createdPeers.at(retryStartIdx + 3)!;
         fourthPeer.emit('error', { type: 'peer-unavailable' });
@@ -1083,6 +1091,91 @@ describe('P2PRoomTransport & Universal Transport Protocol', () => {
         }
         vi.useRealTimers();
       }
+    });
+
+    it('chunks and reassembles >16.3KB DataChannel payloads, validates peer IDs, and merges custom ICE/broker options', () => {
+      // 1. Default PEER_OPTIONS has no dead openrelay.metered.ca blackhole servers
+      const defaultSerialized = JSON.stringify(PEER_OPTIONS);
+      expect(defaultSerialized.includes('openrelay.metered.ca')).toBe(false);
+      expect(defaultSerialized.includes('stun.l.google.com:19302')).toBe(true);
+
+      // 2. buildPeerOptions merges valid custom TURN/ICE & custom PeerServer overrides and ignores invalid JSON
+      localStorage.setItem(
+        CUSTOM_ICE_SERVERS_STORAGE_KEY,
+        JSON.stringify([
+          { urls: 'turn:turn.example.com:3478', username: 'u1', credential: 'p1' },
+          { urls: '' },
+          null,
+        ])
+      );
+      localStorage.setItem(
+        CUSTOM_PEER_SERVER_STORAGE_KEY,
+        JSON.stringify({ host: 'peer.example.com', port: 9000, path: '/myapp', secure: true, key: 'k1' })
+      );
+      const mergedOpts = buildPeerOptions();
+      expect(mergedOpts['host']).toBe('peer.example.com');
+      expect(mergedOpts['port']).toBe(9000);
+      const mergedIce = (mergedOpts['config'] as { iceServers: RTCIceServer[] }).iceServers;
+      expect(mergedIce.length).toBe(2);
+      expect(mergedIce.at(1)?.urls).toBe('turn:turn.example.com:3478');
+
+      localStorage.setItem(CUSTOM_ICE_SERVERS_STORAGE_KEY, '{corrupted_json');
+      const fallbackOpts = buildPeerOptions();
+      expect(fallbackOpts['host']).toBe('0.peerjs.com');
+      localStorage.removeItem(CUSTOM_ICE_SERVERS_STORAGE_KEY);
+      localStorage.removeItem(CUSTOM_PEER_SERVER_STORAGE_KEY);
+
+      // 3. createCleanPeerSuffix always produces PeerJS validateId-compliant IDs
+      const peerIdRegex = /^[A-Za-z0-9]+(?:[ _-][A-Za-z0-9]+)*$/;
+      for (let i = 0; i < 25; i++) {
+        const gid = `${PEER_ID_PREFIX}g-${createCleanPeerSuffix(10)}`;
+        expect(peerIdRegex.test(gid)).toBe(true);
+      }
+
+      // 4. Transparent chunking & reassembly for >20KB UTF-8 Chinese/JSON snapshots (<16,300 bytes per frame)
+      const frames: unknown[] = [];
+      const assembledMessages: unknown[] = [];
+      const assembler = createChunkAssembler((msg) => assembledMessages.push(msg));
+      const chunkingConn: PeerConnectionLike = {
+        open: true,
+        send: (frame: unknown) => {
+          frames.push(frame);
+          assembler(frame);
+        },
+        on: () => undefined,
+      };
+
+      const largeLogs = Array.from(
+        { length: 220 },
+        (_, i) => `第 ${i + 1} 回合：玩家在南北大道高速行驶并触发交通事件 "AWAS" #${i}`
+      );
+      const largePayload = {
+        type: 'sync',
+        snapshot: {
+          role: 'guest',
+          roomCode: 'B99999',
+          logs: largeLogs,
+        },
+      };
+
+      sendConnSafe(chunkingConn, largePayload);
+      expect(frames.length).toBeGreaterThan(2);
+      const encoder = new TextEncoder();
+      for (const frame of frames) {
+        const frameBytes = encoder.encode(JSON.stringify(frame)).byteLength;
+        expect(frameBytes).toBeLessThan(16300);
+      }
+      expect(assembledMessages.length).toBe(1);
+      expect(assembledMessages.at(0)).toEqual(largePayload);
+
+      // 5. Malformed / out-of-range chunks and stream eviction guard
+      assembler({ __p2pChunk: 'bad', idx: -1, total: 2, data: 'x' });
+      assembler({ __p2pChunk: 'bad2', idx: 0, total: 2, data: '{broken' });
+      assembler({ __p2pChunk: 'bad2', idx: 1, total: 3, data: '}' }); // mismatched total drops stream
+      for (let s = 0; s < 35; s++) {
+        assembler({ __p2pChunk: `stream_${s}`, idx: 0, total: 2, data: '{"a":1' });
+      }
+      expect(assembledMessages.length).toBe(1);
     });
   });
 });

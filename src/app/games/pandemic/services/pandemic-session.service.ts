@@ -18,6 +18,7 @@ import {
   DifficultyLevel,
   DiseaseColor,
   EventCardId,
+  hydratePandemicPlayerView,
   PandemicAction,
   PandemicLobbySettings,
   PandemicMatchState,
@@ -656,7 +657,12 @@ export class PandemicSessionService {
   }
 
   private handleSnapshotUpdate(snap: PandemicSnapshot): void {
-    this.snapshot.set(snap);
+    const hydratedView = snap.view ? hydratePandemicPlayerView(snap.view) : null;
+    const hydratedSnap: PandemicSnapshot = {
+      ...snap,
+      view: hydratedView,
+    };
+    this.snapshot.set(hydratedSnap);
 
     // Auto-navigate to board if started
     if (snap.lobby?.started && this.router.url.includes('/pandemic/lobby')) {
@@ -667,10 +673,10 @@ export class PandemicSessionService {
     if (
       this.isHost() &&
       !this.isSoloCommander() &&
-      snap.view &&
-      snap.view.phase !== 'game_over'
+      hydratedView &&
+      hydratedView.phase !== 'game_over'
     ) {
-      this.checkAndTriggerBotTurn(snap.view);
+      this.checkAndTriggerBotTurn(hydratedView);
     }
   }
 

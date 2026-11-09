@@ -15,8 +15,24 @@ import {
 import { windLabel } from '../utils/tiles.util';
 import { chooseBotAction } from './bot.service';
 import { applyAction, createMatch, getPlayerView, startNewHand } from './engine.service';
+import {
+  PeerConnectionLike,
+  PeerConstructorLike,
+  PeerErrorLike,
+  PeerInstanceLike,
+  buildPeerOptions,
+  createChunkAssembler,
+  sendConnSafe,
+} from './p2p-room.transport';
 import { DEFAULT_RULES, getWaitingTiles } from './scorer.service';
 import { ShellUiService } from './shell-ui.service';
+
+export type {
+  PeerConnectionLike,
+  PeerConstructorLike,
+  PeerErrorLike,
+  PeerInstanceLike,
+} from './p2p-room.transport';
 
 export interface SerializedMahjongSave {
   lobby: PublicLobby;
@@ -39,83 +55,12 @@ const PEER_PREFIX = 'hkmj-v1-room-';
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const BOT_NAMES: readonly string[] = ['阿发 (Bot)', '十三姨 (Bot)', '雀神强 (Bot)', '六婶 (Bot)'];
 
-const PEER_OPTIONS = {
-  host: '0.peerjs.com',
-  port: 443,
-  path: '/',
-  secure: true,
-  pingInterval: 5000,
-  config: {
-    iceServers: [
-      {
-        urls: [
-          'stun:stun.l.google.com:19302',
-          'stun:stun1.l.google.com:19302',
-          'stun:stun.cloudflare.com:3478',
-        ],
-      },
-      {
-        urls: [
-          'turn:openrelay.metered.ca:80',
-          'turn:openrelay.metered.ca:443',
-          'turn:openrelay.metered.ca:443?transport=tcp',
-          'turns:openrelay.metered.ca:443?transport=tcp',
-        ],
-        username: 'openrelayproject',
-        credential: 'openrelayproject',
-      },
-    ],
-  },
-};
-
-export interface PeerConnectionLike {
-  readonly open: boolean;
-  send(data: unknown): void;
-  on(event: string, cb: (arg?: unknown) => void): void;
-  close?(): void;
-}
-
-export interface PeerErrorLike {
-  readonly type?: string;
-}
-
-export interface PeerInstanceLike {
-  readonly disconnected?: boolean;
-  readonly destroyed?: boolean;
-  connect(
-    id: string,
-    opts?: { reliable?: boolean; serialization?: string }
-  ): PeerConnectionLike;
-  on(event: string, cb: (arg?: unknown) => void): void;
-  reconnect?(): void;
-  destroy(): void;
-}
-
-export type PeerConstructorLike = new (
-  idOrOpts?: string | Record<string, unknown>,
-  opts?: Record<string, unknown>
-) => PeerInstanceLike;
-
 interface WindowWithWebkitAudio extends Window {
   webkitAudioContext?: typeof AudioContext;
 }
 
 function isRecord(val: unknown): val is Record<string, unknown> {
   return typeof val === 'object' && val !== null;
-}
-
-function sendConnSafe(conn: PeerConnectionLike, payload: unknown): void {
-  if (conn.open) {
-    conn.send(payload);
-    return;
-  }
-  let sent = false;
-  conn.on('open', () => {
-    if (!sent) {
-      sent = true;
-      conn.send(payload);
-    }
-  });
 }
 
 function createRandomToken(prefix: string): string {
@@ -136,9 +81,10 @@ export function extractRoomCode(raw: string): string {
   return trimmed.replace(/[^A-Za-z0-9]/g, '').slice(0, 8).toUpperCase();
 }
 
-export function generateRoomCode(len = 5): string {
-  let out = '';
-  for (let i = 0; i < len; i++) {
+export function generateRoomCode(len = 6): string {
+  const suffixLen = Math.max(1, len - 1);
+  let out = 'M';
+  for (let i = 0; i < suffixLen; i++) {
     const ch = CODE_ALPHABET.at(Math.floor(Math.random() * CODE_ALPHABET.length)) ?? 'A';
     out += ch;
   }
@@ -335,7 +281,7 @@ export class HostSession {
     try {
       const PeerCtor = await this.peerLoader();
       if (this.destroyed) return;
-      const peer = new PeerCtor(`${PEER_PREFIX}${this.roomCode}`, PEER_OPTIONS);
+      const peer = new PeerCtor(`${PEER_PREFIX}${this.roomCode}`, buildPeerOptions());
       this.peer = peer;
 
       if (typeof document !== 'undefined') {
@@ -362,13 +308,19 @@ export class HostSession {
       peer.on('connection', (rawConn: unknown) => {
         if (this.destroyed) return;
         const conn = rawConn as PeerConnectionLike;
-        conn.on('data', (rawMsg: unknown) => {
-          if (this.destroyed || !isRecord(rawMsg)) return;
-          const tok = typeof rawMsg['token'] === 'string' ? rawMsg['token'] : '';
-          if (tok) this.peerConns.set(tok, conn);
-          this.handleClientMessage(rawMsg, (reply) => {
-            sendConnSafe(conn, reply);
-          });
+        conn.on(
+          'data',
+          createChunkAssembler((rawMsg: unknown) => {
+            if (this.destroyed || !isRecord(rawMsg)) return;
+            const tok = typeof rawMsg['token'] === 'string' ? rawMsg['token'] : '';
+            if (tok) this.peerConns.set(tok, conn);
+            this.handleClientMessage(rawMsg, (reply) => {
+              sendConnSafe(conn, reply);
+            });
+          })
+        );
+        conn.on('error', () => {
+          // Swallow DataConnection transport errors cleanly; close handler updates seat state
         });
 
         conn.on('close', () => {
@@ -757,25 +709,28 @@ export class GuestSession {
       }, 1400);
     });
 
-    conn.on('data', (rawMsg: unknown) => {
-      if (this.destroyed || !isRecord(rawMsg)) return;
-      if (rawMsg['type'] === 'sync' && isRecord(rawMsg['snapshot'])) {
-        this.clearHandshakeTimers();
-        this.snapshot = {
-          ...(rawMsg['snapshot'] as unknown as SessionSnapshot),
-          error: null,
-          status: `已连接至房间 ${this.roomCode}`,
-        };
-        this.emit();
-      } else if (rawMsg['type'] === 'error') {
-        this.clearHandshakeTimers();
-        this.snapshot = {
-          ...this.snapshot,
-          error: typeof rawMsg['message'] === 'string' ? rawMsg['message'] : '连接错误',
-        };
-        this.emit();
-      }
-    });
+    conn.on(
+      'data',
+      createChunkAssembler((rawMsg: unknown) => {
+        if (this.destroyed || !isRecord(rawMsg)) return;
+        if (rawMsg['type'] === 'sync' && isRecord(rawMsg['snapshot'])) {
+          this.clearHandshakeTimers();
+          this.snapshot = {
+            ...(rawMsg['snapshot'] as unknown as SessionSnapshot),
+            error: null,
+            status: `已连接至房间 ${this.roomCode}`,
+          };
+          this.emit();
+        } else if (rawMsg['type'] === 'error') {
+          this.clearHandshakeTimers();
+          this.snapshot = {
+            ...this.snapshot,
+            error: typeof rawMsg['message'] === 'string' ? rawMsg['message'] : '连接错误',
+          };
+          this.emit();
+        }
+      })
+    );
 
     conn.on('error', () => {
       if (this.destroyed || this.connectedViaBc) return;
@@ -840,7 +795,7 @@ export class GuestSession {
     try {
       const PeerCtor = await this.peerLoader();
       if (this.destroyed || this.connectedViaBc) return;
-      const peer = new PeerCtor(PEER_OPTIONS);
+      const peer = new PeerCtor(buildPeerOptions());
       this.peer = peer;
 
       peer.on('open', () => {
@@ -1345,7 +1300,7 @@ export class MahjongSessionService implements OnDestroy {
   async copyInviteLink(): Promise<void> {
     const code = this.snapshot()?.roomCode;
     if (!code || typeof window === 'undefined') return;
-    const url = new URL(`?room=${code}`, document.baseURI).toString();
+    const url = new URL(`?room=${code}&game=mahjong`, document.baseURI).toString();
     try {
       await navigator.clipboard.writeText(url);
       this.copiedToast.set(true);

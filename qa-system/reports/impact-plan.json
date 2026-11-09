@@ -72,6 +72,8 @@
     "src/app/core/services/mahjong-session.service.ts",
     "src/app/core/services/p2p-room.transport.spec.ts",
     "src/app/core/services/p2p-room.transport.ts",
+    "src/app/core/services/p2p-wss-relay.transport.spec.ts",
+    "src/app/core/services/p2p-wss-relay.transport.ts",
     "src/app/core/services/shell-ui.service.spec.ts",
     "src/app/core/services/shell-ui.service.ts",
     "src/app/core/services/translate.service.spec.ts",
@@ -201,8 +203,8 @@
       "className": "MahjongSessionService",
       "specStatus": "TRIAGED",
       "specMetrics": {
-        "tests": 11,
-        "meaningfulAssertions": 169,
+        "tests": 12,
+        "meaningfulAssertions": 175,
         "trivialAssertions": 0,
         "scaffoldMarker": false
       },
@@ -212,7 +214,7 @@
         "src/app/pages/table/table.component.ts"
       ],
       "ambiguitiesOrSuspectedBugs": [],
-      "lastContentHash": "cf23619818ec"
+      "lastContentHash": "4735c310c687"
     },
     {
       "key": "shell-ui",

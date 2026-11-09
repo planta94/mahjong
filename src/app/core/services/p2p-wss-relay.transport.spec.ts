@@ -341,4 +341,66 @@ describe('P2P Encrypted MQTT-over-WSS Relay Transport', () => {
     guest.destroy();
     host.destroy();
   });
+
+  it('ignores malformed or tampered frames and supports LAN HTTP plain fallback when subtle crypto is absent', async () => {
+    const hub = new InMemoryMqttBrokerHub();
+    const originalSubtle = crypto.subtle;
+    Object.defineProperty(crypto, 'subtle', { value: undefined, configurable: true });
+    try {
+      const hostMsgs: unknown[] = [];
+      const guestMsgs: unknown[] = [];
+
+      const host = createWssRelayHost({
+        namespace: 'hkmj',
+        roomCode: 'MLAN01',
+        brokers: ['wss://lan.test/mqtt'],
+        socketFactory: hub.factory,
+        onConnection: (conn) => {
+          conn.on('data', (m) => {
+            hostMsgs.push(m);
+            conn.send({ ack: true, received: m });
+          });
+        },
+      });
+      await waitForCondition(() => host.ready);
+
+      // Inject malformed frames onto the host topic via a raw client socket
+      const rogue = hub.factory('wss://lan.test/mqtt', 'mqtt');
+      await new Promise<void>((r) => setTimeout(r, 15));
+      rogue.send(buildMqttConnectPacket('pp_rogue_01'));
+      await new Promise<void>((r) => setTimeout(r, 15));
+      const hostTopic = 'party-pavilion/v2/hkmj/MLAN01/h';
+      rogue.send(buildMqttPublishPacket(hostTopic, '{not-json'));
+      rogue.send(buildMqttPublishPacket(hostTopic, JSON.stringify({ t: 'hello', gid: 'bad!' })));
+      rogue.send(
+        buildMqttPublishPacket(
+          hostTopic,
+          JSON.stringify({ t: 'enc', sid: 'unknownGuest12', iv: 'AA==', ct: 'BB==' })
+        )
+      );
+
+      const guest = createWssRelayGuest({
+        namespace: 'hkmj',
+        roomCode: 'MLAN01',
+        brokers: ['wss://lan.test/mqtt'],
+        socketFactory: hub.factory,
+      });
+      guest.conn.on('data', (m) => guestMsgs.push(m));
+
+      await waitForCondition(() => guest.conn.open);
+      expect(guest.conn.open).toBe(true);
+
+      guest.conn.send({ action: 'ping-lan' });
+      await waitForCondition(() => guestMsgs.length >= 1);
+
+      expect(hostMsgs).toEqual([{ action: 'ping-lan' }]);
+      expect(guestMsgs).toEqual([{ ack: true, received: { action: 'ping-lan' } }]);
+
+      rogue.close();
+      guest.destroy();
+      host.destroy();
+    } finally {
+      Object.defineProperty(crypto, 'subtle', { value: originalSubtle, configurable: true });
+    }
+  });
 });
